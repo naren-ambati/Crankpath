@@ -2554,3 +2554,44 @@ Each fix that involves code has a test that was seen failing first.
 ### Verified (release review fixes), 2026-11-16, at fbb0fc3
 - `npm run verify` five times in a row, 22:59 to 23:07 UTC (1-minute load averages 1.4 to 28.8, the suite's own): 5 of 5 exit 0. Each run: `Test Files 119 passed (119)`, `Tests 2053 passed | 4 skipped (2057)`; Lines 96.26%, Statements 94.34%, Branches 87.79%, Functions 97.83%; check-tree 819 files, 0 findings; check-docs 74 Markdown files, 16 claims mapped, 0 problems, 0 pending; secret-grep; check-pack 159 files; check-images 15 images, 1,067,793 bytes, 0 problems; check-examples 10 examples, 21 runs, 15 quotes; interim-reason. The deny-list was NOT RUN (unset), and npm-audit and goldens are release only. `offline checks: nothing blocks`.
 - `CRANKPATH_GOLDEN_CACHE=<the shared golden cache> npm run release:check`: exit 1, blocked only by `denylist NOT RUN`. npm-audit PASS (0 and 0) and `golden lane: 19 passed, 0 failed, 0 skipped`; 9 passed, 0 failed, 1 not run.
+
+## State for the owner (2026-11-16, end of the build)
+
+`main` holds one squash commit per bolt (B0, B1, B4, B5, B6, B2, B3, B8, B7, B9, in that integration order), two release-round commits and two lead BUILD-NOTES commits, on top of the four pre-build design commits. Every commit on `main` is authored `naren-ambati <32987080+naren-ambati@users.noreply.github.com>`. Nothing was pushed or published; there is no remote.
+
+**Verified (2026-11-16, one macOS arm64 machine, Node 22.23.2, helm v4.3.2, kustomize v5.8.1, git 2.55.0).**
+- Fresh clone of `main` at d48991a into a folder with a different parent, `npm ci --ignore-scripts` (0 vulnerabilities), `npm run verify` exit 0: `Test Files 119 passed (119)`, `Tests 2053 passed | 4 skipped (2057)` (the 4 skips are the helm-and-network goldens, run by the golden lane below), lines 96.26% (6837/7102); check-tree 819 files 0 findings; check-docs 74 Markdown files, 16 claims mapped, 0 problems, 0 pending; secret-grep 0 findings; check-pack 159 files would ship (`dist/`, README.md, CHANGELOG.md, LICENSE, NOTICE, package.json); check-images 15 images, 1,067,793 bytes, 0 problems; check-examples 10 examples, 21 runs, 0 problems; denylist NOT RUN; `offline checks: nothing blocks`.
+- From the same clone with an empty golden cache, `npm run verify:golden` exit 0: `golden lane: 19 passed, 0 failed, 0 skipped` (thin slice, Vault before and after its two edits, homelab at 8b9d40f without and with the bootstrap cranks, and 14 mutations, each changing a named result).
+- `npm run release:check` from the same clone: 9 passed, 0 failed, 1 not run; `release check: FAILED, blocked by denylist NOT RUN` (npm audit 0 vulnerabilities; goldens 19 of 19). The release is blocked only on the owner's denylist file.
+- A case-insensitive grep of every tracked file outside the design workspace, and of every commit message and author, for the employer name (given on the command line only, never written) found nothing; no personal path or hostname is in any committed file outside the design workspace (check-tree).
+- The release-round branch passed `npm run verify` 5 times in a row; earlier bolt branches passed 3 to 5 times in a row where a flake had been seen.
+
+**Census against the one-third threshold (D12).** Day-1 static estimate: at least 176 of 214 counted units opaque (0.8224), over one third among the counted units only. Real discovery with this build (B9): at least 268 of 311 D12 units (0.8617, over one third) and at least 316 of 839 sources of every kind (0.3766, over one third). D12 consequence applied: the README states opacity first. Largest real reasons: Flux Kustomizations whose source kind is not a GitRepository (148, nixos-k3s), Kustomizations naming a `flux-system` GitRepository the bootstrap creates (68), Argo CD Applications using kustomize `helmCharts` (28).
+
+**Goldens.** Vault fixture: cycle A (3 nodes, 3 edges) and cycle B (5 nodes, 5 edges), both extracted, three unspecified externals; after the two documented edits A is cranked, B is gone, and the plan has 15 steps with one manual step (with the externals declared available). khuedoan/homelab at 8b9d40f (fetched read-only, GPL-3.0, ids and counts only): without a crank NOTHING ANALYSED, 31 chart directories nothing deploys listed with the crank suggestion; with the bootstrap crank file (render `system/argocd` as a hand-applied root, reroute the root ApplicationSet and its 31 generated Applications to github.com, github.com declared available) one component c-35843cd4 of 12 nodes and 22 edges holding both research cycles, cranked (was extracted), plan step 1 the manual crank.
+
+**Screenshots** (`docs/images/`, from captured transcripts, all in `docs/tour.md`, hero also in README): hero, thin-slice-text, thin-slice-json, explain, mermaid (drawn by Mermaid 12.3.0 itself), cranked-uncranked, plan, declared, opaque, refusals, exit-codes, no-color, action-summary-fail, action-summary-pass, homelab-golden (reduced golden JSON only).
+
+**Deviations from the design (each recorded in its bolt section and in CHANGELOG's amendment table).**
+- Licence Apache-2.0, not private (owner's choice for both siblings), superseding D9 and BR12.4.
+- Tested toolchain helm v4.3.2 (Homebrew on 2026-11-15) instead of v4.3.1 (OD-13).
+- Repo identity: tokens only to the URL named on the command line; `repos: {fetch: true}` entries fetch anonymously (OD-9 narrowed); the fetch cache is a verified bare object store, never a trusted work tree.
+- A `creates: render:<path>` crank renders the named chart or Kustomize directory as a hand-applied root (new optional crank keys `namespace:` and `release:`); undeployed directories are listed, never graphed without a crank. The research's uncranked homelab expectation (two cycles) was a hand trace that rendered `system/argocd` by hand.
+- The research's homelab crank was incomplete: the generated Applications also need the reroute (option b, carrying an ApplicationSet's reroute to what it generates, is an owner item for v1.1).
+- Run status: a declared fact that changes the graph (match override, declared edge, repo-supplied repos: mapping) is a gap; declared externals, served_by and cranks are listed assumptions.
+- The Action's gap rule: any head gap item absent from the base (a multiset over full keys) is NOT_CHECKED; a new uncranked cycle is FAILED first; the base is the merge base; only what the CLI reads is copied.
+- Every Helm chart is rendered twice to detect nondeterminism; this cannot prove determinism, and the homelab estate's JSON varies by one floating note between runs (docs/limits.md, docs/json-output.md).
+- Many limits beyond the design's list, each derived and recorded in docs/limits.md (per-file lexemes, per-run memory budget with parse transients charged before parsing, fetches per run, explain output bounds); the sync-wave model is a node attribute; the `not-in-this-build` interim reason was removed before release.
+
+**Decisions taken for the owner** (also in "Lead decisions and process" above): OD-26 estates; D12 consequence; m11 (ids and counts only); OD-28 denylist from `CRANKPATH_DENYLIST_FILE`; every other OD on its recommendation; the declared-facts rule; Argo CD namespace derivation; host placement by the IANA root-zone list; the single heap budget; the homelab crank file; option (a) for hand-applied roots; per-item gap matching in the Action; no npm-shrinkwrap; schemas not packed.
+
+**Not verified.**
+- Linux and x64 (only macOS arm64 ran); the Action on a hosted runner; the release workflow (never run); trusted publishing.
+- The owner's denylist (never available); a real https server's failure texts for git (recorded over plain http on loopback); DNS rebinding (stated limit).
+- Mutation testing of the last B3 pass-3 guards was by test design, not by a mutation run.
+
+**Owner's to-do.**
+1. Confirm or replace the decisions above (OD-26 estates first; the v1.1 pick among the census's largest reasons; option b for reroutes).
+2. Create `CRANKPATH_DENYLIST_FILE` outside the repository and run `npm run release:check` until it passes.
+3. Re-check that the npm name `crankpath` and the GitHub name are free.
+4. Push, only when you say go: the coordinator removes the design workspace kept in the local history (as for the sibling project), then create an empty repository at github.com/naren-ambati/crankpath, `git -C ~/Documents/crankpath remote add origin https://github.com/naren-ambati/crankpath.git` and `git -C ~/Documents/crankpath push -u origin main` (main only; the local `bolt/*` and `release/*` branches hold design-workspace files and unredacted review text and must never be pushed). Then follow `docs/release-checklist.md` (private vulnerability reporting, the golden and live lanes on a machine with helm and network, the tag and publish).
