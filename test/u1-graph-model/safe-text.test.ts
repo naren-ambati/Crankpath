@@ -160,6 +160,19 @@ describe("SafeText quote, Mermaid destination (BR1.6)", () => {
     expect(inner.includes("#")).toBe(false);
   });
 
+  it("writes each of the 18 Mermaid and HTML syntax characters as its own entity code (B6 review m2)", () => {
+    // every one, so dropping any from the escape set fails here; `&` matters for HTML labels, where
+    // a raw `&quot;` or `&#60;` could display as another character than the repo wrote
+    const specials = ['"', "#", "&", "<", ">", "`", "[", "]", "{", "}", "(", ")", "|", ";", "'", "%", "=", "$"];
+    for (const ch of specials) {
+      const code = `#${ch.codePointAt(0)};`;
+      const out = quote("name", `a${ch}b`, "mermaid");
+      // the terminal form escapes the quote with a backslash first
+      expect(out, ch).toBe(ch === '"' ? `"name #34;a\\${code}b#34;"` : `"name #34;a${code}b#34;"`);
+    }
+    expect(quote("name", "&lt;b&gt; x=1 'q'", "mermaid")).toBe('"name #34;#38;lt#59;b#38;gt#59; x#61;1 #39;q#39;#34;"');
+  });
+
   it("keeps newlines as visible codes inside the label", () => {
     const out = quote("name", "a\nb", "mermaid");
     expect(out.includes("\n")).toBe(false);

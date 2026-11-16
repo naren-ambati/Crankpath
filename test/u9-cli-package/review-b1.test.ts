@@ -11,6 +11,7 @@ import { writeJson } from "../../src/u8-output/json-renderer.js";
 import { main } from "../../src/u9-cli-package/cli-shell.js";
 import { EXTRACTORS, runPipeline } from "../../src/u9-cli-package/pipeline-runner.js";
 import { app, estate, FIXTURE, run, THIN_SLICE_URL } from "../helpers/scan.js";
+import { unwrapText } from "../helpers/text.js";
 
 const cleanup: string[] = [];
 afterAll(() => {
@@ -153,11 +154,11 @@ describe("m4: objects of a foreign destination are named in the text", () => {
   it("counts them and does not say nothing opaque, nothing skipped", () => {
     const far = app("far", "p").replace("https://kubernetes.default.svc", "https://far.example.org");
     const r = run([make({ "apps/far.yaml": far, "p/c.yaml": CM("c") }), "--repo-url", THIN_SLICE_URL], process.cwd());
-    expect(r.stdout).toContain(
+    expect(unwrapText(r.stdout)).toContain(
       "  foreign destination: 1 object deployed to another cluster, left out of Service and host matching",
     );
-    expect(r.stdout).not.toContain("(nothing opaque, nothing skipped)");
-    expect(r.stdout).toMatch(/Not verified: .*1 object of a foreign destination/);
+    expect(unwrapText(r.stdout)).not.toContain("(nothing opaque, nothing skipped)");
+    expect(unwrapText(r.stdout)).toMatch(/Not verified: .*1 object of a foreign destination/);
   });
 });
 
@@ -167,7 +168,7 @@ describe("m5: the opaque share never rounds toward clean", () => {
     files["apps/bad.yaml"] = app("bad", "nope");
     for (const n of ["a", "b"]) files[`apps/${n}.yaml`] = app(n, "p");
     const r = run([make(files), "--repo-url", THIN_SLICE_URL], process.cwd());
-    expect(r.stdout).toContain("Opacity: 1 of 3 sources opaque (34%)");
+    expect(unwrapText(r.stdout)).toContain("Opacity: 1 of 3 sources opaque (34%)");
   });
 });
 
@@ -176,16 +177,16 @@ describe("m6: the exit-2 text holds no absolute path", () => {
     const root = make({ "README.md": "x\n" });
     const r = run([root], "/");
     expect(r.code).toBe(2);
-    expect(r.stdout).not.toContain(root);
-    expect(r.stdout).toContain(`path: "${path.basename(root)}" (absolute path, last segment only)`);
+    expect(unwrapText(r.stdout)).not.toContain(root);
+    expect(unwrapText(r.stdout)).toContain(`path: "${path.basename(root)}" (absolute path, last segment only)`);
   });
 });
 
 describe("m7: the files count says what it means", () => {
   it("says files hold no source document, not ignored", () => {
     const r = run([path.join(FIXTURE, "repo"), "--repo-url", THIN_SLICE_URL], process.cwd());
-    expect(r.stdout).toContain("; 5 files hold no source document");
-    expect(r.stdout).not.toContain("files ignored");
+    expect(unwrapText(r.stdout)).toContain("; 5 files hold no source document");
+    expect(unwrapText(r.stdout)).not.toContain("files ignored");
   });
 });
 

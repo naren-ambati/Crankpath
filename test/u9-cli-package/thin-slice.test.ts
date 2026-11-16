@@ -7,6 +7,7 @@ import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { claimWordsInOwnVoice } from "../../src/u1-graph-model/status-model.js";
 import { copyThinSlice, FIXTURE, run, THIN_SLICE_URL, tempDir } from "../helpers/scan.js";
+import { unwrapLines, unwrapText } from "../helpers/text.js";
 
 const REPO = path.join(FIXTURE, "repo");
 const ARGS = ["--repo-url", THIN_SLICE_URL];
@@ -15,7 +16,7 @@ afterAll(() => {
   for (const d of cleanup) fs.rmSync(d, { recursive: true, force: true });
 });
 
-function expected(name: "expected.txt" | "expected.json"): string {
+function expected(name: "expected.txt" | "expected.json" | "expected-explain.txt" | "expected-mermaid.md"): string {
   return fs.readFileSync(path.join(FIXTURE, name), "utf8");
 }
 
@@ -30,6 +31,25 @@ describe("thin slice: the committed expected output (B1 definition of done)", ()
     const r = run([REPO, ...ARGS, "--format", "json"], process.cwd());
     expect(r.code).toBe(0);
     expect(r.stdout).toBe(expected("expected.json"));
+  });
+  it("prints expected-explain.txt for --explain on the cycle, and the same with no id (B6)", () => {
+    const r = run([REPO, ...ARGS, "--explain", "c-d8197e7d"], process.cwd());
+    expect(r.stderr).toBe("");
+    expect(r.code).toBe(0);
+    expect(r.stdout).toBe(expected("expected-explain.txt"));
+    const all = run([REPO, ...ARGS, "--explain"], process.cwd());
+    expect(all.stdout).toBe(
+      expected("expected-explain.txt").replace(
+        'crankpath 0.1.0 explain: "c-d8197e7d"',
+        "crankpath 0.1.0 explain: every cycle",
+      ),
+    );
+  });
+  it("prints expected-mermaid.md for --format mermaid (B6)", () => {
+    const r = run([REPO, ...ARGS, "--format", "mermaid"], process.cwd());
+    expect(r.stderr).toBe("");
+    expect(r.code).toBe(0);
+    expect(r.stdout).toBe(expected("expected-mermaid.md"));
   });
   it("shows one uncranked extracted cycle with evidence on every edge", () => {
     const report = JSON.parse(run([REPO, ...ARGS, "--format", "json"], process.cwd()).stdout);
@@ -63,11 +83,13 @@ describe("thin slice: a mutation changes the output (B1, MutationChecker arrives
     expect(text.code).toBe(0);
     expect(text.stdout).not.toBe(expected("expected.txt"));
     expect(json.cycles).toEqual([]);
-    expect(text.stdout).toContain(
+    expect(unwrapText(text.stdout)).toContain(
       "Cycles: none found among 5 nodes and 5 edges read (1 node opaque, so cycles inside it cannot be seen; 2 unresolved items; 2 objects skipped)",
     );
     // The host may be in-cluster and now matches no Service: each Application that names it is listed.
-    expect(text.stdout).toContain('  unresolved 1 of 2  why: host-unplaced  subject: Application "argocd/gitea"');
+    expect(unwrapText(text.stdout)).toContain(
+      '  unresolved 1 of 2  why: host-unplaced  subject: Application "argocd/gitea"',
+    );
   });
   it("pointing the repoURL at a host no Service has removes the cycle", () => {
     const repo = copyThinSlice();
@@ -144,7 +166,11 @@ describe("thin slice: hostile input (FR8.6, NFR4, BR1.3)", () => {
     "Assumed,",
   ]);
   it("starts every line with crankpath's own words", () => {
-    for (const line of lines) expect(OWN.has(line.trimStart().split(" ")[0] as string), line).toBe(true);
+    // each statement (the 80-column layout undone) starts with one of crankpath's first words
+    for (const line of unwrapLines(text).filter((l) => l.length > 0))
+      expect(OWN.has(line.trimStart().split(" ")[0] as string), line).toBe(true);
+    // and no output line, continuation lines included, starts with a quoted value
+    for (const line of lines) expect(line.trimStart().startsWith('"'), line).toBe(false);
   });
   it("shows control characters as visible codes and never emits a raw one", () => {
     // biome-ignore lint/suspicious/noControlCharactersInRegex: the test is about control characters

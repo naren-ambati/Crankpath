@@ -8,7 +8,7 @@ import { analyse } from "../../src/u7-graph-analysis/analysis.js";
 import type { EstateGraph } from "../../src/u7-graph-analysis/graph-builder.js";
 import { assembleReport } from "../../src/u8-output/report-assembler.js";
 import { renderJson } from "../../src/u8-output/json-renderer.js";
-import { renderText } from "../../src/u8-output/text-renderer.js";
+import { textLogicalLines } from "../../src/u8-output/text-renderer.js";
 import { crank, edge, external, externalDecl, facts, graph, n, node } from "../helpers/graphs.js";
 
 function report(g: EstateGraph, f: ConfigDocument = facts(), unusedMatches: ConfigDocument["matches"] = []) {
@@ -28,7 +28,7 @@ function report(g: EstateGraph, f: ConfigDocument = facts(), unusedMatches: Conf
     unusedMatches,
   });
 }
-const text = (g: EstateGraph, f?: ConfigDocument) => renderText(report(g, f));
+const text = (g: EstateGraph, f?: ConfigDocument) => `${textLogicalLines(report(g, f)).join("\n")}\n`;
 
 describe("not startable from a cold start (M1)", () => {
   it("groups nodes by their named blocker, blockers first, each node with the dependency it is blocked through", () => {

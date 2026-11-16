@@ -15,4 +15,6 @@ process.exitCode = main(process.argv.slice(2), {
   stdout: (text) => process.stdout.write(text),
   stderr: (text) => process.stderr.write(text),
   cwd: process.cwd(),
+  isTTY: process.stdout.isTTY === true,
+  ...(process.env.NO_COLOR === undefined ? {} : { noColor: process.env.NO_COLOR }),
 });

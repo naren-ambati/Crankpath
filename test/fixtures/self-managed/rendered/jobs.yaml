@@ -1,0 +1,14 @@
+# Render jobs of the self-managed fixture, for FixtureKit (test/helpers/fixture-kit.ts).
+sources:
+  - gitops/bootstrap
+jobs:
+  - owner: Application/argocd/root
+    ownerFile: bootstrap/root.yaml
+    ownerField: spec.source.path
+    namespace: argocd
+    read: gitops/system
+  - owner: Application/argocd/gitea
+    ownerFile: system/gitea.yaml
+    ownerField: spec.source.path
+    namespace: gitea
+    read: gitops/platform/gitea

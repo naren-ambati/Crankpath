@@ -5,7 +5,9 @@
 // never starts a line; a Kubernetes kind prints bare only from the fixed vocabulary. No meaning is
 // carried by colour (there is none). The not-startable section groups nodes by their named blocker;
 // the plan states its disclaimer and its assumptions in every case, steps or none (BR7.18, BR7.20).
-// Counts come from the Report; nothing here counts.
+// Counts come from the Report; nothing here counts. Lines are built whole (logical lines) and then
+// laid out at 80 columns by TextLayout, which never starts a line with repo text; the section
+// builders are shared with the --explain and Mermaid renderers so every format says one thing.
 
 import type { Evidence, NodeId } from "../u1-graph-model/graph-model.js";
 import { parseNodeId } from "../u1-graph-model/graph-model.js";
@@ -16,6 +18,7 @@ import { EDGE_WORDS, PRINTABLE_KINDS } from "../u1-graph-model/vocabulary.js";
 import type { NotComputed, PlanConflict } from "../u7-graph-analysis/analysis.js";
 import type { EdgeRef } from "../u7-graph-analysis/cycle-finder.js";
 import type { NotStartableGroup, NotVerifiedItem, OpaqueEntry, Report } from "./report-model.js";
+import { wrapLines } from "./text-layout.js";
 
 const T = "terminal";
 
@@ -38,10 +41,12 @@ export function crankRef(id: string, by: string): string {
   return `${n ? `crank ${n[1]}` : quote("crank", id, T)} ${quote("by:", by, T)}`;
 }
 
-const SAFE_FIELD = /^[A-Za-z0-9_.[\]/-]+$/;
-
+/**
+ * An edge's evidence field, always quoted: a field path can hold repo keys (a map key, a seal
+ * type), so no charset makes it crankpath's own text (B6; it printed bare when it looked plain).
+ */
 function fieldText(field: string): string {
-  return SAFE_FIELD.test(field) ? `field: ${field}` : quote("field:", field, T);
+  return quote("field:", field, T);
 }
 
 const NOT_COMPUTED_WORDS: Readonly<Record<NotComputed, string>> = Object.freeze({
@@ -163,7 +168,7 @@ function toolchainLine(): string {
   return "toolchain: helm not detected, kustomize not detected (this build runs neither tool)";
 }
 
-function scannedLine(r: Report): string {
+export function scannedLine(r: Report): string {
   const tail = "  commit: not read in this build  floating: no";
   if (r.repo.urlFrom === null) {
     return `scanned: repo URL unknown (no --repo-url and no origin in .git/config; only explicit mappings apply)${tail}`;
@@ -174,7 +179,7 @@ function scannedLine(r: Report): string {
   return `scanned: ${url} (${from}${note})${tail}`;
 }
 
-function statusLines(r: Report, out: string[]): void {
+export function statusLines(r: Report, out: string[]): void {
   out.push(`Run status: ${r.runStatus.state}`);
   const gaps = GAP_REASONS.filter((g) => r.runStatus.reasons.includes(g)).map((g) => gapPhrase(g, r));
   if (gaps.length > 0) out.push(`  gaps: ${gaps.join("; ")}`);
@@ -297,7 +302,8 @@ function hiddenLines(r: Report, out: string[]): void {
   }
 }
 
-function cycles(r: Report, out: string[]): void {
+/** The cycles section: its headline and each cycle with its representative (shared with --explain). */
+export function cycles(r: Report, out: string[]): void {
   const c = r.runStatus.counts;
   const dropped = c.runLimitEdges;
   if (r.cycles.length === 0 && dropped > 0) {
@@ -528,16 +534,20 @@ function plan(r: Report, out: string[]): void {
     }
     if (unordered > 0)
       out.push(
-        `  not ordered: ${plural(unordered, "node", "nodes")} blocked or unverified, listed under "Not startable from a cold start"`,
+        `  not ordered: ${plural(unordered, "node", "nodes")} blocked or unverified, listed under Not startable from a cold start`,
       );
   }
-  const a = p.assumes;
-  out.push(
-    `  Assumed, not verified by crankpath: ${plural(a.externals.length, "external", "externals")} declared available; ${plural(a.servedBy.length, "external", "externals")} served by an in-estate node; ${plural(a.cranks.length, "crank", "cranks")} (documented); ${plural(a.matchEntries.length, "match entry", "match entries")}; ${plural(a.clusterProvided.length, "object", "objects")} every cluster provides;${aliasCount(r) > 0 ? ` ${plural(aliasCount(r), "repository", "repositories")} read through --repo-alias;` : ""}${a.argocdNamespace.length > 0 ? ` Argo CD's namespace taken to be ${a.argocdNamespace.map(nodeRef).join(", ")};` : ""} and the ${a.notModelled.length} not-modelled items below. Every start step is relative to these and to the edges read.`,
-  );
+  out.push(`  ${assumedLine(r)}`);
 }
 
-function closing(r: Report, out: string[]): void {
+/** The plan's assumptions in one line (BR7.20), shared with --explain. */
+export function assumedLine(r: Report): string {
+  const a = r.plan.assumes;
+  return `Assumed, not verified by crankpath: ${plural(a.externals.length, "external", "externals")} declared available; ${plural(a.servedBy.length, "external", "externals")} served by an in-estate node; ${plural(a.cranks.length, "crank", "cranks")} (documented); ${plural(a.matchEntries.length, "match entry", "match entries")}; ${plural(a.clusterProvided.length, "object", "objects")} every cluster provides;${aliasCount(r) > 0 ? ` ${plural(aliasCount(r), "repository", "repositories")} read through --repo-alias;` : ""}${a.argocdNamespace.length > 0 ? ` Argo CD's namespace taken to be ${a.argocdNamespace.map(nodeRef).join(", ")};` : ""} and the ${a.notModelled.length} not-modelled items below. Every start step is relative to these and to the edges read.`;
+}
+
+/** The closing lines: what was not verified, then the fixed not-modelled list (computed from the Report). */
+export function closing(r: Report, out: string[]): void {
   const items = r.notVerified
     .filter((v) => v.item !== "declared-edges")
     .map((v) => notVerifiedPhrase(v.item, v.count, r));
@@ -570,8 +580,13 @@ export function renderText(r: Report): string {
   return `${renderTextLines(r).join("\n")}\n`;
 }
 
-/** The report's lines, in the fixed order, without line ends. */
+/** The report's output lines at 80 columns, in the fixed order, without line ends. */
 export function renderTextLines(r: Report): string[] {
+  return wrapLines(textLogicalLines(r));
+}
+
+/** The report's logical lines before the 80-column layout (one per statement). */
+export function textLogicalLines(r: Report): string[] {
   const out: string[] = [];
   header(r, out);
   if (r.runStatus.state === "NOTHING ANALYSED") {

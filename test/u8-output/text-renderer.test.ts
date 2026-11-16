@@ -6,6 +6,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import { claimWordsInOwnVoice } from "../../src/u1-graph-model/status-model.js";
 import { nodeRef } from "../../src/u8-output/text-renderer.js";
 import { app, estate, run, THIN_SLICE_URL } from "../helpers/scan.js";
+import { flat, unwrapText } from "../helpers/text.js";
 
 const cleanup: string[] = [];
 afterAll(() => {
@@ -16,7 +17,7 @@ function scan(files: Record<string, string>, extra: string[] = []): string {
   cleanup.push(d);
   const r = run([d, "--repo-url", THIN_SLICE_URL, ...extra], process.cwd());
   expect(r.code).toBe(0);
-  return r.stdout;
+  return unwrapText(r.stdout);
 }
 function line(text: string, prefix: string): string {
   return text.split("\n").find((l) => l.startsWith(prefix)) ?? "";
@@ -33,7 +34,7 @@ function scanPublic(files: Record<string, string>): string {
   cleanup.push(d);
   const r = run([d, "--repo-url", PUBLIC_URL], process.cwd());
   expect(r.code).toBe(0);
-  return r.stdout;
+  return unwrapText(r.stdout);
 }
 
 describe("no-cycle wording (BR8.13, M9)", () => {
@@ -55,7 +56,7 @@ describe("no-cycle wording (BR8.13, M9)", () => {
     cleanup.push(d);
     const r = run([d, "--repo-url", inCluster], process.cwd());
     expect(r.code).toBe(0);
-    const text = r.stdout;
+    const text = unwrapText(r.stdout);
     expect(line(text, "Cycles:")).toBe("Cycles: none found among 1 node; no dependency edges were extracted.");
     expect(line(text, "  gaps:")).toContain("no dependency edges were extracted");
   });
@@ -176,7 +177,10 @@ describe("pass 2: an in-cluster repo host that matches no Service is named (m5)"
   it("prints the host after a fixed label on the item's line, quoted, and keeps it in the JSON", () => {
     const text = scan({ "apps/a.yaml": app("a", "cfg"), "cfg/cm.yaml": CM });
     expect(text).toContain('  unresolved 1 of 1  why: host-unplaced  subject: Application "argocd/a"');
-    expect(text).toContain('    where: "apps/a.yaml#1"  field: "spec.source.repoURL"  host: "gitea-http.gitea"');
+    // the statement may wrap at a double space (80 columns): compared with spaces collapsed
+    expect(flat(text)).toContain(
+      flat('    where: "apps/a.yaml#1"  field: "spec.source.repoURL"  host: "gitea-http.gitea"'),
+    );
     const json = JSON.parse(scan({ "apps/a.yaml": app("a", "cfg"), "cfg/cm.yaml": CM }, ["--format", "json"]));
     expect(json.unresolved.map((u: { why: string; value: string | null }) => [u.why, u.value])).toEqual([
       ["host-unplaced", "gitea-http.gitea"],

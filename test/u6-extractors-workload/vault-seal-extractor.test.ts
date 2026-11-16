@@ -8,6 +8,7 @@ import { claimWordsInOwnVoice } from "../../src/u1-graph-model/status-model.js";
 import { vaultSealExtractor } from "../../src/u6-extractors-workload/vault-seal-extractor.js";
 import { context, job, meta, obj } from "../helpers/objects.js";
 import { app, estate, run, THIN_SLICE_URL } from "../helpers/scan.js";
+import { flat, unwrapText } from "../helpers/text.js";
 
 const AWS = 'seal "awskms" {\n  region = "us-east-1"\n  kms_key_id = "k"\n}\n';
 
@@ -206,8 +207,10 @@ describe("hostile seal text through the whole command (quoted, never in crankpat
     cleanup.push(d);
     const r = run([d, "--repo-url", THIN_SLICE_URL], process.cwd());
     expect(r.code).toBe(0);
-    expect(r.stdout).toContain('why: unsupported-provider  subject: StatefulSet "vault/vault"');
-    expect(r.stdout).toContain('field: "data.extraconfig-from-values.hcl.seal.x\\x0aRun status: ANALYSED PASS"');
+    expect(flat(r.stdout)).toContain(flat('why: unsupported-provider  subject: StatefulSet "vault/vault"'));
+    expect(unwrapText(r.stdout)).toContain(
+      'field: "data.extraconfig-from-values.hcl.seal.x\\x0aRun status: ANALYSED PASS"',
+    );
     for (const l of r.stdout.split("\n")) {
       expect(l).not.toBe("Run status: ANALYSED");
       expect([...l].some((c) => (c.codePointAt(0) ?? 0) < 0x20)).toBe(false);

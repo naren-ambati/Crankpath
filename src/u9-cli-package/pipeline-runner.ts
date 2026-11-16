@@ -50,6 +50,7 @@ import { findCycles } from "../u7-graph-analysis/cycle-finder.js";
 import { buildGraph, compareEdges } from "../u7-graph-analysis/graph-builder.js";
 import { cyclesHiddenByOverrides } from "../u7-graph-analysis/match-overrides.js";
 import { assembleReport, type SourceOutcome } from "../u8-output/report-assembler.js";
+import { matchControllerSignatures } from "../u5-extractors-gitops/controller-signatures.js";
 import { type BudgetSpec, RunBudget } from "./run-budget.js";
 import { READER_PARSE_COST, RUN_LIMITS, RUN_RATES } from "../u1-graph-model/run-limits.js";
 
@@ -464,6 +465,8 @@ export function runPipeline(options: RunOptions): RunOutcome {
     unusedMatches: hosts.unusedRules(),
     matchOverrides: overrides,
     hiddenCycles: hidden,
+    // explanatory only (US5.4): read after the analysis, which never sees it
+    controllerMatches: matchControllerSignatures(objects, [...jobs.values()]),
     repoMappings: [
       ...config.repos.map((m) => ({
         url: m.url,

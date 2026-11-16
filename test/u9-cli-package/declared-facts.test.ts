@@ -6,6 +6,7 @@ import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { claimWordsInOwnVoice } from "../../src/u1-graph-model/status-model.js";
 import { copyThinSlice, run, THIN_SLICE_URL } from "../helpers/scan.js";
+import { flat, unwrapText } from "../helpers/text.js";
 
 const cleanup: string[] = [];
 afterAll(() => {
@@ -21,7 +22,7 @@ function withConfig(config: string, edit?: (repo: string) => void, url = THIN_SL
   const json = run([repo, "--repo-url", url, "--format", "json"], process.cwd());
   return {
     code: text.code,
-    text: text.stdout,
+    text: unwrapText(text.stdout),
     stderr: text.stderr,
     json: json.code === 0 ? JSON.parse(json.stdout) : null,
   };
@@ -53,7 +54,7 @@ describe("a crank that breaks the thin-slice cycle (BR7.10, BR7.15)", () => {
         '  step 2  start   ConfigMap "gitea/gitea-config" (wave -1), Secret "gitea/gitea-admin" (wave -1)',
         '  step 3  start   Deployment "gitea/gitea"',
         '  step 4  start   Service "gitea/gitea-http"',
-        '  not ordered: 1 node blocked or unverified, listed under "Not startable from a cold start"',
+        "  not ordered: 1 node blocked or unverified, listed under Not startable from a cold start",
         "  Assumed, not verified by crankpath: 0 externals declared available; 0 externals served by an in-estate node; 1 crank (documented); 0 match entries; 0 objects every cluster provides; and the 5 not-modelled items below. Every start step is relative to these and to the edges read.",
       ].join("\n"),
     );
@@ -121,9 +122,11 @@ describe("match: entries (US2.3, AC2.3.4)", () => {
       "https://git.example.org/ops/thin-slice",
     );
     expect(r.text).toMatch(/ {2}cycle c-d8197e7d {2}label: declared \(unverified\)/);
-    expect(r.text).toContain("[field: spec.source.repoURL]  (declared, unverified)");
-    expect(r.text).toContain(
-      '  unused match entry 1 of 1  key: "match[1]"  host: "*.unused.example.org"  node: "other"  (matched no host)\n',
+    expect(r.text).toContain('[field: "spec.source.repoURL"]  (declared, unverified)');
+    expect(flat(r.text)).toContain(
+      flat(
+        '  unused match entry 1 of 1  key: "match[1]"  host: "*.unused.example.org"  node: "other"  (matched no host)\n',
+      ),
     );
     expect(line(r.text, "Not verified:")).toContain("1 match entry relied on (not verified); 1 match entry unused");
     expect(r.text).toContain(

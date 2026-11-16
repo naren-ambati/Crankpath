@@ -1,0 +1,1827 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "crankpath report",
+  "description": "The JSON output of crankpath (`--format json`, contract C7). Keys are sorted in code-point order at every level, arrays in a defined order; no timestamp, absolute path or machine name. Repo text arrives as JSON strings with control and format characters as visible codes: data, never instructions. Compatibility: an added field or an added word in a word list keeps `schemaVersion`; a removed or retyped field raises it. Consumers ignore fields they do not know and treat words they do not know as not verified.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "cranks",
+    "cycles",
+    "edges",
+    "externals",
+    "hiddenCycles",
+    "matchOverrides",
+    "nodes",
+    "notComputed",
+    "notModelled",
+    "notVerified",
+    "opaque",
+    "plan",
+    "repo",
+    "repoMappings",
+    "runStatus",
+    "schemaVersion",
+    "skipped",
+    "statusCounts",
+    "statuses",
+    "toolchain",
+    "unreadable",
+    "unresolved",
+    "unusedMatches"
+  ],
+  "$defs": {
+    "nodeId": {
+      "type": "string",
+      "description": "A canonical node id: `Kind/namespace/name`, `Kind/name` for a cluster-scoped kind, or `external:<name>`."
+    },
+    "edgeKind": {
+      "type": "string",
+      "enum": [
+        "deployed-by",
+        "generated-by",
+        "reads-source",
+        "needs-credential",
+        "needs-secret",
+        "needs-config",
+        "produced-by",
+        "uses-store",
+        "issued-by",
+        "selects",
+        "runs-as",
+        "seals-with",
+        "assumes-identity",
+        "depends-on",
+        "rerouted"
+      ],
+      "description": "What the edge's dependency is (C1): the `from` node needs the `to` node."
+    },
+    "edgeSource": {
+      "type": "string",
+      "enum": [
+        "extracted",
+        "declared"
+      ],
+      "description": "`extracted`: read from the repo's objects; `declared`: from crankpath.yaml, unverified."
+    },
+    "cycleLabel": {
+      "type": "string",
+      "enum": [
+        "extracted",
+        "declared (unverified)",
+        "cranked"
+      ],
+      "description": "A cycle's label (BR7.5, BR7.10)."
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "startable",
+        "blocked",
+        "unverified"
+      ],
+      "description": "A node's cold-start status (BR7.12)."
+    },
+    "reasonClass": {
+      "type": "string",
+      "enum": [
+        "cycle",
+        "external-unavailable",
+        "external-unspecified",
+        "opaque",
+        "undefined-reference",
+        "unresolved",
+        "match-override"
+      ],
+      "description": "The class of a node's named blocker."
+    },
+    "coldStart": {
+      "type": "string",
+      "enum": [
+        "available",
+        "unavailable",
+        "unspecified"
+      ],
+      "description": "An external's declared cold-start availability; `unspecified` is never available."
+    },
+    "opaqueReason": {
+      "type": "string",
+      "enum": [
+        "unreadable-repo",
+        "private-chart",
+        "encrypted-values",
+        "cluster-created-values",
+        "cluster-inputs-missing",
+        "unsupported-template",
+        "unsupported-field",
+        "tool-missing",
+        "render-failed",
+        "limit",
+        "offline",
+        "remote-base",
+        "foreign-destination",
+        "unreadable-file",
+        "not-in-this-build"
+      ],
+      "description": "Why a source could not be read or rendered (FR4.1). `not-in-this-build` names a source kind this build does not render yet and is removed by the build that renders it."
+    },
+    "suggestion": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "A suggested `repos:` entry for an unreadable repository (FR2.4): data only, never applied.",
+      "additionalProperties": false,
+      "required": [
+        "readFrom",
+        "url"
+      ],
+      "properties": {
+        "url": {
+          "type": "string",
+          "description": "The repoURL, userinfo removed."
+        },
+        "readFrom": {
+          "type": "string",
+          "description": "The suggested `read_from` path."
+        }
+      }
+    },
+    "edgeRef": {
+      "type": "object",
+      "description": "An edge of a cycle, by its key.",
+      "additionalProperties": false,
+      "required": [
+        "from",
+        "kind",
+        "source",
+        "to"
+      ],
+      "properties": {
+        "from": {
+          "$ref": "#/$defs/nodeId",
+          "description": "The dependent node."
+        },
+        "to": {
+          "$ref": "#/$defs/nodeId",
+          "description": "What it needs."
+        },
+        "kind": {
+          "$ref": "#/$defs/edgeKind",
+          "description": "The edge kind."
+        },
+        "source": {
+          "$ref": "#/$defs/edgeSource",
+          "description": "Extracted or declared."
+        }
+      }
+    }
+  },
+  "properties": {
+    "schemaVersion": {
+      "const": 1,
+      "description": "The schema version: raised only by a breaking change (a removed or retyped field)."
+    },
+    "repo": {
+      "type": "object",
+      "description": "The scanned repository.",
+      "additionalProperties": false,
+      "required": [
+        "commit",
+        "floating",
+        "url",
+        "urlFrom"
+      ],
+      "properties": {
+        "url": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Its URL with userinfo removed; null when unknown or unparseable."
+        },
+        "urlFrom": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "flag",
+            "git-config",
+            null
+          ],
+          "description": "Where the URL came from: `flag` (--repo-url) or `git-config` (the origin in .git/config); null when unknown."
+        },
+        "commit": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The commit read; null when not read."
+        },
+        "floating": {
+          "type": "boolean",
+          "description": "True when the revision is a branch or tag that can move."
+        }
+      }
+    },
+    "toolchain": {
+      "type": "object",
+      "description": "The tools that produced the report.",
+      "additionalProperties": false,
+      "required": [
+        "crankpath",
+        "helm",
+        "kustomize",
+        "tested"
+      ],
+      "properties": {
+        "crankpath": {
+          "type": "string",
+          "description": "crankpath's version."
+        },
+        "helm": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "helm's version; null when not detected."
+        },
+        "kustomize": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "kustomize's version; null when not detected."
+        },
+        "tested": {
+          "type": "boolean",
+          "description": "True only when both versions are the tested pair."
+        }
+      }
+    },
+    "runStatus": {
+      "type": "object",
+      "description": "How completely the estate was read and analysed (BR1.10).",
+      "additionalProperties": false,
+      "required": [
+        "counts",
+        "floor",
+        "reasons",
+        "state"
+      ],
+      "properties": {
+        "state": {
+          "type": "string",
+          "enum": [
+            "ANALYSED",
+            "ANALYSED WITH GAPS",
+            "NOTHING ANALYSED"
+          ],
+          "description": "`ANALYSED` only when there is no gap of any kind."
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "declared-facts",
+              "no-dependency-edges",
+              "no-sources",
+              "not-computed",
+              "opaque-sources",
+              "run-limit",
+              "skipped-objects",
+              "timeouts",
+              "unreadable-files",
+              "unresolved-items"
+            ],
+            "description": "A gap reason."
+          },
+          "description": "The gap reasons, sorted; empty only for `ANALYSED`."
+        },
+        "floor": {
+          "type": "boolean",
+          "description": "True when the opaque count is a lower bound (unreadable files, opaque ApplicationSets, timeouts, skipped sources or a run limit)."
+        },
+        "counts": {
+          "type": "object",
+          "description": "Counts computed once by the report assembler; every format prints these and none recounts.",
+          "additionalProperties": false,
+          "required": [
+            "declaredAssumptions",
+            "declaredFacts",
+            "droppedHooks",
+            "edgesDeclared",
+            "edgesExtracted",
+            "foreignDestination",
+            "ignoredFiles",
+            "nodes",
+            "opaque",
+            "opaqueApplicationSets",
+            "rendered",
+            "runLimitEdges",
+            "runLimitFiles",
+            "runLimitJobs",
+            "skipped",
+            "skippedSources",
+            "sourcesByKind",
+            "sourcesFound",
+            "timeouts",
+            "unreadableFiles",
+            "unresolved"
+          ],
+          "properties": {
+            "sourcesFound": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Sources found: Applications, ApplicationSets, Kustomizations, HelmReleases and Kustomize roots."
+            },
+            "sourcesByKind": {
+              "type": "object",
+              "description": "Sources found, per kind.",
+              "additionalProperties": false,
+              "required": [
+                "Application",
+                "ApplicationSet",
+                "HelmRelease",
+                "Kustomization",
+                "KustomizeRoot"
+              ],
+              "properties": {
+                "Application": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Applications."
+                },
+                "ApplicationSet": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "ApplicationSets."
+                },
+                "Kustomization": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Flux Kustomizations."
+                },
+                "HelmRelease": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Flux HelmReleases."
+                },
+                "KustomizeRoot": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Kustomize roots (directories with a kustomization file)."
+                }
+              }
+            },
+            "rendered": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Sources read or rendered (not opaque)."
+            },
+            "opaque": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Opaque sources."
+            },
+            "opaqueApplicationSets": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Opaque ApplicationSets (their Applications are not counted, so `floor` is true)."
+            },
+            "unresolved": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Unresolved items."
+            },
+            "skipped": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Objects skipped (a name that is not Kubernetes syntax, a document that is not an object)."
+            },
+            "skippedSources": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Of those, source documents (missing from the opacity denominator)."
+            },
+            "unreadableFiles": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Files that could not be read."
+            },
+            "ignoredFiles": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Files that hold no source document (they may still be read by a render)."
+            },
+            "droppedHooks": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Helm test hooks dropped from Helm renders (not a gap)."
+            },
+            "foreignDestination": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Objects deployed to another cluster, left out of Service and host matching."
+            },
+            "runLimitFiles": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Files not read because the run's memory budget was reached."
+            },
+            "runLimitJobs": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Render jobs not taken in because the run's memory budget was reached."
+            },
+            "runLimitEdges": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Edges not kept because the run's edge budget was reached."
+            },
+            "timeouts": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Render jobs stopped by a time limit."
+            },
+            "edgesExtracted": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Edges read from the repo's objects."
+            },
+            "edgesDeclared": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Edges declared in crankpath.yaml (unverified)."
+            },
+            "nodes": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Nodes in the graph, externals included."
+            },
+            "declaredFacts": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Declared facts that change the graph read (match entries that override a host, declared edges kept, `repos:` mappings a source was read through): a gap."
+            },
+            "declaredAssumptions": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Declared facts the plan assumes (externals declared available or unavailable, `served_by`, matched cranks): listed, never a gap by themselves."
+            }
+          }
+        }
+      }
+    },
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "description": "A node of the graph (C1).",
+        "additionalProperties": false,
+        "required": [
+          "flags",
+          "id",
+          "kind",
+          "name",
+          "namespace",
+          "opaque",
+          "origin",
+          "syncWave"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/$defs/nodeId",
+            "description": "The canonical id."
+          },
+          "kind": {
+            "type": "string",
+            "description": "The Kubernetes kind, or `External`."
+          },
+          "namespace": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The namespace; null when cluster-scoped or an external."
+          },
+          "name": {
+            "type": "string",
+            "description": "The object's name (or the external's name)."
+          },
+          "origin": {
+            "type": "object",
+            "description": "Where the object was read.",
+            "additionalProperties": false,
+            "required": [
+              "document",
+              "path",
+              "renderJob"
+            ],
+            "properties": {
+              "renderJob": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "The render job that produced it (`<owner id>#<n>`), or null when read directly."
+              },
+              "path": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "The file, relative to the scanned root or an `alias:N/` label; null for a node crankpath made."
+              },
+              "document": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "description": "The 1-based document number in that file, or null."
+              }
+            }
+          },
+          "opaque": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "Null, or why the node's content could not be seen.",
+            "additionalProperties": false,
+            "required": [
+              "detail",
+              "field",
+              "lostEdges",
+              "reason",
+              "suggestion",
+              "value"
+            ],
+            "properties": {
+              "reason": {
+                "$ref": "#/$defs/opaqueReason",
+                "description": "The opacity reason."
+              },
+              "detail": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "crankpath's fixed wording for the detail, or null."
+              },
+              "field": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "The field crankpath could not use (repo keys possible: data, never instructions)."
+              },
+              "value": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "The repo text in that field (escaped), or null."
+              },
+              "lostEdges": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "What could not be seen; never empty."
+              },
+              "suggestion": {
+                "$ref": "#/$defs/suggestion",
+                "description": "A suggested `repos:` entry, or null."
+              }
+            }
+          },
+          "flags": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "cluster-provided",
+                "conflicting-definitions",
+                "foreign-destination",
+                "not-defined"
+              ],
+              "description": "A node flag."
+            },
+            "description": "Node flags, sorted."
+          },
+          "syncWave": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "description": "The Argo CD sync wave, an ordering attribute; null when not set."
+          }
+        }
+      },
+      "description": "Every node, externals included, sorted by id."
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "description": "An edge (C1): `from` needs `to`.",
+        "additionalProperties": false,
+        "required": [
+          "evidence",
+          "from",
+          "kind",
+          "orderingOnly",
+          "source",
+          "to"
+        ],
+        "properties": {
+          "from": {
+            "$ref": "#/$defs/nodeId",
+            "description": "The dependent node."
+          },
+          "to": {
+            "$ref": "#/$defs/nodeId",
+            "description": "What it needs."
+          },
+          "kind": {
+            "$ref": "#/$defs/edgeKind",
+            "description": "The edge kind."
+          },
+          "source": {
+            "$ref": "#/$defs/edgeSource",
+            "description": "Extracted or declared (unverified)."
+          },
+          "orderingOnly": {
+            "type": "boolean",
+            "description": "True for an ordering constraint, never part of a cycle."
+          },
+          "evidence": {
+            "type": "object",
+            "description": "Where the edge's claim can be checked (BR1.1).",
+            "additionalProperties": false,
+            "required": [
+              "field",
+              "file",
+              "line",
+              "renderedPath"
+            ],
+            "properties": {
+              "file": {
+                "type": "string",
+                "description": "The file holding the field (relative to the scanned root, or an `alias:N/` label)."
+              },
+              "field": {
+                "type": "string",
+                "description": "The field path in crankpath's notation."
+              },
+              "renderedPath": {
+                "type": "string",
+                "description": "The rendered object the edge was read from (`<file>#<document>` for plain sources)."
+              },
+              "line": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "description": "The line, when recorded; null otherwise."
+              }
+            }
+          }
+        }
+      },
+      "description": "Every edge, sorted by (from, to, kind, source)."
+    },
+    "opaque": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "description": "An opaque source.",
+        "additionalProperties": false,
+        "required": [
+          "detail",
+          "field",
+          "kustomizeRoot",
+          "lostEdges",
+          "node",
+          "reason",
+          "suggestion",
+          "value"
+        ],
+        "properties": {
+          "node": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/nodeId",
+                "description": "The opaque node."
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The opaque node, or null for a Kustomize root."
+          },
+          "kustomizeRoot": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The Kustomize root directory, or null."
+          },
+          "reason": {
+            "$ref": "#/$defs/opaqueReason",
+            "description": "The opacity reason."
+          },
+          "detail": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "crankpath's fixed wording, or null."
+          },
+          "field": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The field crankpath could not use, or null."
+          },
+          "value": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The repo text in that field (escaped), or null."
+          },
+          "lostEdges": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "What could not be seen; never empty."
+          },
+          "suggestion": {
+            "$ref": "#/$defs/suggestion",
+            "description": "A suggested `repos:` entry, or null."
+          }
+        }
+      },
+      "description": "Opaque sources, sorted by node (or Kustomize root)."
+    },
+    "cycles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "description": "A cycle: a strongly connected component with its full node and edge set (OD-2).",
+        "additionalProperties": false,
+        "required": [
+          "crankedBy",
+          "edges",
+          "id",
+          "introducedBy",
+          "label",
+          "labelBeforeCranks",
+          "nodes",
+          "representative",
+          "residual",
+          "residualLabel",
+          "touchedBy"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "`c-` and hex digits of the sha256 of its sorted node ids: stable across runs."
+          },
+          "label": {
+            "$ref": "#/$defs/cycleLabel",
+            "description": "Its label after cranks."
+          },
+          "labelBeforeCranks": {
+            "type": "string",
+            "enum": [
+              "extracted",
+              "declared (unverified)"
+            ],
+            "description": "Its label on the graph as read."
+          },
+          "nodes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/nodeId",
+              "description": "A node."
+            },
+            "description": "Its nodes, sorted."
+          },
+          "edges": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/edgeRef",
+              "description": "An edge."
+            },
+            "description": "Every non-ordering edge between its nodes, sorted."
+          },
+          "representative": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/nodeId",
+              "description": "A node."
+            },
+            "description": "One shortest cycle through its smallest id, as a path (the last node returns to the first)."
+          },
+          "residual": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/$defs/nodeId",
+              "description": "A node."
+            },
+            "description": "For a cycle a crank touched but did not break: the nodes still on a cycle; else null."
+          },
+          "residualLabel": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/cycleLabel",
+                "description": "A label."
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The residual's own label, or null."
+          },
+          "crankedBy": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "For a `cranked` cycle, the cranks that broke it (documented, not verified)."
+          },
+          "touchedBy": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "For an uncranked cycle, the cranks that touched it without breaking it."
+          },
+          "introducedBy": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "For a cycle that exists only once cranks are applied, the cranks whose reroutes close it."
+          }
+        }
+      },
+      "description": "Cycles, sorted by id."
+    },
+    "statuses": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "description": "A node's cold-start verdict.",
+        "additionalProperties": false,
+        "required": [
+          "blockers",
+          "node",
+          "reason",
+          "status",
+          "via"
+        ],
+        "properties": {
+          "node": {
+            "$ref": "#/$defs/nodeId",
+            "description": "The node."
+          },
+          "status": {
+            "$ref": "#/$defs/status",
+            "description": "Its status."
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/reasonClass",
+                "description": "The blocker's class."
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The class of its named blocker; null only for startable."
+          },
+          "blockers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Its named blocker (a cycle id, node id or `extractor:<name>`); empty only for startable."
+          },
+          "via": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/nodeId",
+                "description": "A node."
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The dependency the blocker comes through; null when the node is itself the cause, or startable."
+          }
+        }
+      },
+      "description": "One verdict per node, externals included, sorted by node."
+    },
+    "statusCounts": {
+      "type": "object",
+      "description": "Status counts over the estate's nodes (externals not counted).",
+      "additionalProperties": false,
+      "required": [
+        "blocked",
+        "startable",
+        "unverified"
+      ],
+      "properties": {
+        "startable": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Startable nodes."
+        },
+        "blocked": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Blocked nodes."
+        },
+        "unverified": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Unverified nodes."
+        }
+      }
+    },
+    "externals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "description": "An external precondition.",
+        "additionalProperties": false,
+        "required": [
+          "coldStart",
+          "id",
+          "servedBy"
+        ],
+        "properties": {
+          "id": {
+            "$ref": "#/$defs/nodeId",
+            "description": "`external:<name>`."
+          },
+          "coldStart": {
+            "$ref": "#/$defs/coldStart",
+            "description": "Its declared availability."
+          },
+          "servedBy": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/nodeId",
+                "description": "A node."
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The in-estate node that serves it (declared), or null."
+          }
+        }
+      },
+      "description": "Externals, sorted by id."
+    },
+    "cranks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "description": "A crank of crankpath.yaml and what it did (documented, not verified).",
+        "additionalProperties": false,
+        "required": [
+          "alreadyCreated",
+          "by",
+          "createdNodes",
+          "id",
+          "keyPath",
+          "matched",
+          "ref",
+          "removedEdges",
+          "reroutedEdges"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "`crank:<n>`, its 1-based position in crankpath.yaml."
+          },
+          "by": {
+            "type": "string",
+            "description": "The documented step (repo text)."
+          },
+          "ref": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Its reference (repo text), or null."
+          },
+          "keyPath": {
+            "type": "string",
+            "description": "Its key path in crankpath.yaml."
+          },
+          "matched": {
+            "type": "boolean",
+            "description": "False when none of its targets matched a node."
+          },
+          "createdNodes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/nodeId",
+              "description": "A node."
+            },
+            "description": "Nodes it creates first, sorted."
+          },
+          "alreadyCreated": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Nodes its targets name that an earlier crank or target already created."
+          },
+          "reroutedEdges": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "description": "A reroute.",
+              "additionalProperties": false,
+              "required": [
+                "from",
+                "to"
+              ],
+              "properties": {
+                "from": {
+                  "$ref": "#/$defs/nodeId",
+                  "description": "The node rerouted."
+                },
+                "to": {
+                  "$ref": "#/$defs/nodeId",
+                  "description": "The external it now reads from."
+                }
+              }
+            },
+            "description": "Its reroutes, sorted."
+          },
+          "removedEdges": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Edges of the graph as read it removes."
+          }
+        }
+      },
+      "description": "Every crank, in file order."
+    },
+    "unusedMatches": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "description": "A `match:` entry that matched no host.",
+        "additionalProperties": false,
+        "required": [
+          "host",
+          "keyPath",
+          "node"
+        ],
+        "properties": {
+          "keyPath": {
+            "type": "string",
+            "description": "Its key path."
+          },
+          "host": {
+            "type": "string",
+            "description": "Its host pattern (repo text)."
+          },
+          "node": {
+            "type": "string",
+            "description": "The node it names (repo text)."
+          }
+        }
+      },
+      "description": "Unused `match:` entries, in file order."
+    },
+    "matchOverrides": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "description": "A host a `match:` entry resolved otherwise than the extracted rules.",
+        "additionalProperties": false,
+        "required": [
+          "declared",
+          "extracted",
+          "host",
+          "keyPath"
+        ],
+        "properties": {
+          "keyPath": {
+            "type": "string",
+            "description": "The entry's key path."
+          },
+          "host": {
+            "type": "string",
+            "description": "The host, lower-cased (repo text)."
+          },
+          "extracted": {
+            "type": "object",
+            "description": "What the Service rules alone resolve the host to.",
+            "additionalProperties": false,
+            "required": [
+              "candidates",
+              "node",
+              "outcome"
+            ],
+            "properties": {
+              "outcome": {
+                "type": "string",
+                "enum": [
+                  "unique",
+                  "none",
+                  "ambiguous"
+                ],
+                "description": "The outcome."
+              },
+              "node": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/nodeId",
+                    "description": "A node."
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "The unique match, or null."
+              },
+              "candidates": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/nodeId",
+                  "description": "A node."
+                },
+                "description": "Every candidate, sorted."
+              }
+            }
+          },
+          "declared": {
+            "$ref": "#/$defs/nodeId",
+            "description": "The node the entry names."
+          }
+        }
+      },
+      "description": "Overrides, one per host."
+    },
+    "repoMappings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "description": "A repository mapping.",
+        "additionalProperties": false,
+        "required": [
+          "from",
+          "root",
+          "url",
+          "used"
+        ],
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "The repository URL, userinfo removed."
+          },
+          "root": {
+            "type": "string",
+            "description": "The root read: a path inside the scanned root, `(fetch)`, or an `alias:N` label."
+          },
+          "from": {
+            "type": "string",
+            "enum": [
+              "crankpath.yaml",
+              "--repo-alias"
+            ],
+            "description": "`crankpath.yaml` (a declared fact of the scanned repo) or `--repo-alias` (the user's own input)."
+          },
+          "used": {
+            "type": "boolean",
+            "description": "True when some source was read through it."
+          }
+        }
+      },
+      "description": "Mappings, sorted by (from, url)."
+    },
+    "hiddenCycles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "description": "A cycle of the graph without the `match:` entries that the report does not hold.",
+        "additionalProperties": false,
+        "required": [
+          "edges",
+          "hiddenBy",
+          "id",
+          "label",
+          "nodeIds",
+          "nodes"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Its id on the graph without the entries."
+          },
+          "label": {
+            "type": "string",
+            "enum": [
+              "extracted",
+              "declared (unverified)"
+            ],
+            "description": "Its label there."
+          },
+          "nodes": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Its node count."
+          },
+          "edges": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Its edge count."
+          },
+          "nodeIds": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/nodeId",
+              "description": "A node."
+            },
+            "description": "Its nodes, sorted (they are unverified)."
+          },
+          "hiddenBy": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Key paths of the entries that overrode a host on it, in file order."
+          }
+        }
+      },
+      "description": "Hidden cycles, sorted by id."
+    },
+    "plan": {
+      "type": "object",
+      "description": "The restoration plan (an order, not a schedule).",
+      "additionalProperties": false,
+      "required": [
+        "assumes",
+        "conflicts",
+        "disclaimer",
+        "listedUnordered",
+        "steps"
+      ],
+      "properties": {
+        "assumes": {
+          "type": "object",
+          "description": "What every start step is relative to.",
+          "additionalProperties": false,
+          "required": [
+            "argocdNamespace",
+            "clusterProvided",
+            "cranks",
+            "externals",
+            "matchEntries",
+            "notModelled",
+            "servedBy"
+          ],
+          "properties": {
+            "externals": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/nodeId",
+                "description": "An external."
+              },
+              "description": "Externals declared available."
+            },
+            "cranks": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Cranks relied on (documented, not verified)."
+            },
+            "clusterProvided": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/nodeId",
+                "description": "A node."
+              },
+              "description": "Objects every cluster provides (the dated list) that the estate references."
+            },
+            "servedBy": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/nodeId",
+                "description": "An external."
+              },
+              "description": "Externals served by an in-estate node (declared)."
+            },
+            "matchEntries": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Key paths of the `match:` entries the graph relies on."
+            },
+            "argocdNamespace": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/nodeId",
+                "description": "A Namespace."
+              },
+              "description": "The namespace taken to be Argo CD's."
+            },
+            "notModelled": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "The fixed not-modelled list."
+            }
+          }
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "description": "A step.",
+            "additionalProperties": false,
+            "required": [
+              "crank",
+              "kind",
+              "manual",
+              "no",
+              "nodes",
+              "ref",
+              "why"
+            ],
+            "properties": {
+              "no": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "The step number, from 1."
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "crank",
+                  "start"
+                ],
+                "description": "A manual crank step or a start step."
+              },
+              "nodes": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/$defs/nodeId",
+                  "description": "A node."
+                },
+                "description": "A start step: its nodes by wave then id; a crank step: the nodes it creates."
+              },
+              "manual": {
+                "type": "boolean",
+                "description": "True for a crank step."
+              },
+              "why": {
+                "type": "string",
+                "description": "A crank step: the crank's `by` (repo text); a start step: crankpath's fixed reason."
+              },
+              "crank": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "The crank id of a crank step, else null."
+              },
+              "ref": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "The crank's `ref` (repo text), else null."
+              }
+            }
+          },
+          "description": "Crank steps first, then start steps."
+        },
+        "conflicts": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "description": "An ordering constraint dropped because a hard dependency contradicts it.",
+            "additionalProperties": false,
+            "required": [
+              "from",
+              "fromWave",
+              "job",
+              "kind",
+              "to",
+              "toWave"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "sync-wave",
+                  "ordering-edge"
+                ],
+                "description": "Which kind of constraint."
+              },
+              "job": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "For a sync wave: the render job; else null."
+              },
+              "fromWave": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "description": "For a sync wave: the earlier wave; else null."
+              },
+              "toWave": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "description": "For a sync wave: the later wave; else null."
+              },
+              "from": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/nodeId",
+                    "description": "A node."
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "For an ordering edge: its from node; else null."
+              },
+              "to": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/nodeId",
+                    "description": "A node."
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "For an ordering edge: its to node; else null."
+              }
+            }
+          },
+          "description": "Dropped constraints."
+        },
+        "disclaimer": {
+          "const": "an order, not a schedule; cold-load pickup is not modelled",
+          "description": "The fixed order-not-schedule disclaimer (BR8.12)."
+        },
+        "listedUnordered": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "description": "A node not startable, listed after the plan.",
+            "additionalProperties": false,
+            "required": [
+              "blockers",
+              "node",
+              "reason",
+              "status"
+            ],
+            "properties": {
+              "node": {
+                "$ref": "#/$defs/nodeId",
+                "description": "The node."
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "blocked",
+                  "unverified"
+                ],
+                "description": "Its status."
+              },
+              "reason": {
+                "$ref": "#/$defs/reasonClass",
+                "description": "Its blocker's class."
+              },
+              "blockers": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Its named blocker."
+              }
+            }
+          },
+          "description": "Blocked and unverified nodes, by node."
+        }
+      }
+    },
+    "unresolved": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "description": "Something crankpath could not resolve: a gap, never a pass.",
+        "additionalProperties": false,
+        "required": [
+          "candidates",
+          "candidatesTruncated",
+          "field",
+          "owner",
+          "subject",
+          "value",
+          "where",
+          "why"
+        ],
+        "properties": {
+          "subject": {
+            "type": "string",
+            "description": "What is unresolved: a node id, or repo text."
+          },
+          "why": {
+            "type": "string",
+            "enum": [
+              "address-missing",
+              "argocd-namespace-assumed",
+              "argocd-namespace-derived",
+              "argocd-namespace-unknown",
+              "conflicting-definitions",
+              "crank-target-unmatched",
+              "crank-unused",
+              "credential-ambiguous",
+              "credential-outside-argocd",
+              "credential-unreadable",
+              "credential-url-unresolved",
+              "declared-edge-endpoint-missing",
+              "external-unspecified",
+              "extractor-failed",
+              "host-ambiguous",
+              "host-unplaced",
+              "invalid-reference",
+              "invalid-sync-wave",
+              "match-limit",
+              "namespace-unknown",
+              "not-defined",
+              "region-unresolved",
+              "seal-unreadable",
+              "seal-workload-unidentified",
+              "selector-ambiguous",
+              "selector-invalid",
+              "served-by-missing",
+              "unsupported-provider"
+            ],
+            "description": "Why."
+          },
+          "where": {
+            "type": "string",
+            "description": "Where it was found: a rendered path or `crankpath.yaml`."
+          },
+          "field": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The field or key path, or null."
+          },
+          "candidates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/nodeId",
+              "description": "A node."
+            },
+            "description": "Candidates of an ambiguity, sorted; possibly only the first ones."
+          },
+          "candidatesTruncated": {
+            "type": "boolean",
+            "description": "True when more candidates exist than are listed."
+          },
+          "owner": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/nodeId",
+                "description": "A node."
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The node that holds it (never startable), or null for a run-level item."
+          },
+          "value": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The repo text the item is about (a host), or null."
+          }
+        }
+      },
+      "description": "Unresolved items, sorted."
+    },
+    "skipped": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "description": "An object not in the graph.",
+        "additionalProperties": false,
+        "required": [
+          "document",
+          "file",
+          "item",
+          "kind",
+          "name",
+          "namespace",
+          "reason",
+          "renderJob",
+          "source"
+        ],
+        "properties": {
+          "file": {
+            "type": "string",
+            "description": "The file."
+          },
+          "document": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "The 1-based document number."
+          },
+          "item": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0,
+            "description": "The `.items[i]` of a List, or null."
+          },
+          "kind": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The kind as found (repo text), or null."
+          },
+          "namespace": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The namespace as found (repo text), or null."
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The name as found (repo text), or null."
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "invalid-kind",
+              "invalid-name",
+              "invalid-namespace",
+              "no-namespace",
+              "not-an-object"
+            ],
+            "description": "Why it was skipped."
+          },
+          "renderJob": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The render job that produced it, or null."
+          },
+          "source": {
+            "type": "boolean",
+            "description": "True for a source document."
+          }
+        }
+      },
+      "description": "Skipped objects, sorted by (file, document, item)."
+    },
+    "unreadable": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "description": "A file that could not be read.",
+        "additionalProperties": false,
+        "required": [
+          "detail",
+          "outcome",
+          "path",
+          "reasonWord"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Its display path."
+          },
+          "outcome": {
+            "type": "string",
+            "description": "The reader's outcome word (for example `too-large`, `symlink`, `parse-error`)."
+          },
+          "reasonWord": {
+            "type": "string",
+            "description": "crankpath's fixed wording for it."
+          },
+          "detail": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "A fixed detail, or null."
+          }
+        }
+      },
+      "description": "Unreadable files, sorted by path."
+    },
+    "notComputed": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "cranks",
+          "plan",
+          "statuses"
+        ],
+        "description": "A part not computed."
+      },
+      "description": "Parts of the analysis not computed; empty in every run of this version."
+    },
+    "notModelled": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "The fixed list of what crankpath does not model."
+    },
+    "notVerified": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "description": "A closing-line item.",
+        "additionalProperties": false,
+        "required": [
+          "count",
+          "item"
+        ],
+        "properties": {
+          "item": {
+            "type": "string",
+            "enum": [
+              "opaque-sources",
+              "unreadable-files",
+              "skipped-objects",
+              "foreign-destination-objects",
+              "run-limit",
+              "unresolved-items",
+              "timeouts",
+              "uncranked-cycles",
+              "unverified-nodes",
+              "unspecified-externals",
+              "externals-declared",
+              "cranks-documented",
+              "match-entries-relied",
+              "repo-mappings",
+              "match-unused",
+              "cluster-provided",
+              "clusters-not-used",
+              "fetch-not-used",
+              "not-computed",
+              "declared-edges"
+            ],
+            "description": "What is not verified."
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "How many."
+          }
+        }
+      },
+      "description": "What was not verified, in a fixed order; `declared-edges` always present."
+    }
+  }
+}

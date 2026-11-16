@@ -19,6 +19,7 @@ import {
 import type { ScannedRepo } from "../u2-intake-config/repo-identity.js";
 import { type AnalysisResult, type HiddenCycle, NOT_MODELLED } from "../u7-graph-analysis/analysis.js";
 import type { EstateGraph } from "../u7-graph-analysis/graph-builder.js";
+import type { ControllerMatch } from "../u5-extractors-gitops/controller-signatures.js";
 import { BLOCKED_REASONS, UNVERIFIED_REASONS } from "../u7-graph-analysis/reachability.js";
 import {
   NOT_VERIFIED_ITEMS,
@@ -61,6 +62,8 @@ export interface AssemblyInput {
   readonly hiddenCycles?: readonly HiddenCycle[];
   /** Repository mappings and whether a source was read through each. */
   readonly repoMappings?: readonly RepoMappingEntry[];
+  /** Rendered objects matching a controller signature (for --explain only). */
+  readonly controllerMatches?: readonly ControllerMatch[];
 }
 
 const REASON_ORDER: readonly string[] = [...BLOCKED_REASONS, ...UNVERIFIED_REASONS];
@@ -231,5 +234,6 @@ export function assembleReport(input: AssemblyInput): Report {
     scannedPath: path.isAbsolute(input.scannedPath) ? path.basename(input.scannedPath) : input.scannedPath,
     scannedPathAbsolute: path.isAbsolute(input.scannedPath),
     cranksDeclared: config.cranks.length,
+    controllerMatches: Object.freeze([...(input.controllerMatches ?? [])]),
   });
 }

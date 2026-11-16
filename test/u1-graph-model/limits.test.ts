@@ -22,7 +22,6 @@ describe("LimitSet (OD-5)", () => {
   });
 
   it("names the limits with no derivation yet, with the bolt that derives them (no picked constants)", () => {
-    expect(LIMITS.explainElementaryCycles).toMatchObject({ status: "notYetDerived", derivedIn: "B6 step 0" });
     expect(LIMITS.generatedApplicationsPerApplicationSet).toMatchObject({
       status: "notYetDerived",
       derivedIn: "B3 step 0",
@@ -61,6 +60,7 @@ describe("LimitSet (OD-5)", () => {
     expect(LIMITS.expandedNodesPerDocument.value).toBe((3 * 1024 * 1024) / 2);
     expect(LIMITS.quotedTextChars.value).toBe(63 + 1 + 63 + 1 + 253);
     expect(LIMITS.nestingDepth.value).toBe(287);
+    expect(LIMITS.explainElementaryCycles.value).toBe(24 - 3);
     expect(LIMITS.lexemesPerFile.value).toBe(Math.floor((2_500_000_000 - 45 * 1024 * 1024 - 3 * 10_000_000) / 937));
   });
 

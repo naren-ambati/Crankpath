@@ -19,6 +19,7 @@ import { main } from "../../src/u9-cli-package/cli-shell.js";
 import { type RunOptions, runPipeline } from "../../src/u9-cli-package/pipeline-runner.js";
 import { context, meta, obj } from "../helpers/objects.js";
 import { app, estate, FIXTURE, THIN_SLICE_URL } from "../helpers/scan.js";
+import { unwrapText } from "../helpers/text.js";
 
 const ROOT = fileURLToPath(new URL("../../", import.meta.url));
 const cleanup: string[] = [];
@@ -121,7 +122,9 @@ describe("m1: the budget is not sticky: a later item that fits is still taken in
     );
     expect(r.opaque.map((o) => [o.node, o.reason])).toEqual([["Application/argocd/a0", "limit"]]);
     expect(r.nodes.map((n) => n.id)).toContain("ConfigMap/a1/s");
-    expect(renderText(r)).toContain("which items are refused follows the code-point order of file names and sources");
+    expect(unwrapText(renderText(r))).toContain(
+      "which items are refused follows the code-point order of file names and sources",
+    );
   });
 });
 
@@ -133,10 +136,10 @@ describe("m2: a budget refusal is never NOTHING ANALYSED", () => {
     );
     const r = cli(make({ "a.yaml": only, "p/c.yaml": CM("c") }), 3000);
     expect(r.code).toBe(0);
-    expect(r.stdout).toContain("Run status: ANALYSED WITH GAPS");
-    expect(r.stdout).toContain('  unreadable 1 of 1  file: "a.yaml"  (run budget reached)');
-    expect(r.stdout).toContain("  run limit: the run's memory budget was reached: 1 file not read");
-    expect(r.stdout).not.toContain("NOTHING ANALYSED");
+    expect(unwrapText(r.stdout)).toContain("Run status: ANALYSED WITH GAPS");
+    expect(unwrapText(r.stdout)).toContain('  unreadable 1 of 1  file: "a.yaml"  (run budget reached)');
+    expect(unwrapText(r.stdout)).toContain("  run limit: the run's memory budget was reached: 1 file not read");
+    expect(unwrapText(r.stdout)).not.toContain("NOTHING ANALYSED");
   });
 });
 
@@ -144,18 +147,18 @@ describe("m3: dropped edges never read as none found", () => {
   const repo = path.join(FIXTURE, "repo");
   it("says not determined when no cycle is left and edges were dropped", () => {
     const r = cli(repo, 1e12, [], 1);
-    expect(r.stdout).toContain("Cycles: not determined (8 edges not kept over the run limit)");
-    expect(r.stdout).not.toContain("none found");
+    expect(unwrapText(r.stdout)).toContain("Cycles: not determined (8 edges not kept over the run limit)");
+    expect(unwrapText(r.stdout)).not.toContain("none found");
   });
   it("adds that other cycles may exist when cycles remain", () => {
     const r = cli(repo, 1e12, [], 8);
-    expect(r.stdout).toContain("Cycles: 1 uncranked");
-    expect(r.stdout).toContain("  (1 edge not kept over the run limit: other cycles may exist)");
+    expect(unwrapText(r.stdout)).toContain("Cycles: 1 uncranked");
+    expect(unwrapText(r.stdout)).toContain("  (1 edge not kept over the run limit: other cycles may exist)");
   });
   it("never prints nothing opaque, nothing skipped when only edges were dropped", () => {
     const r = cli(make({ "apps/a.yaml": app("a", "p"), "p/c.yaml": `${CM("c")}---\n${CM("d")}` }), 1e12, [], 1);
-    expect(r.stdout).toContain("run limit:");
-    expect(r.stdout).not.toContain("(nothing opaque, nothing skipped)");
+    expect(unwrapText(r.stdout)).toContain("run limit:");
+    expect(unwrapText(r.stdout)).not.toContain("(nothing opaque, nothing skipped)");
   });
 });
 
@@ -185,7 +188,9 @@ describe("m4: a truncated candidate list says so", () => {
       ).join("---\n");
     const svcYaml = "apiVersion: v1\nkind: Service\nmetadata: {name: s}\nspec: {selector: {app: x}}\n";
     const r = cli(make({ "apps/a.yaml": app("a", "p"), "p/d.yaml": deps(5), "p/s.yaml": svcYaml }), 1e12);
-    expect(r.stdout).toContain('    candidates: first 2 of more than 2: Deployment "a/d0", Deployment "a/d1"');
+    expect(unwrapText(r.stdout)).toContain(
+      '    candidates: first 2 of more than 2: Deployment "a/d0", Deployment "a/d1"',
+    );
   });
 });
 
@@ -244,7 +249,7 @@ describe("nits", () => {
     const files: Record<string, string> = { "p/c.yaml": `${CM("c")}---\n${CM("d")}` };
     for (let i = 0; i < 5; i++) files[`apps/a${i}.yaml`] = app(`a${i}`, "p");
     const r = cli(make(files), 3000, ["--format", "json"]);
-    expect(r.stdout).not.toContain("docs/limits.md");
+    expect(unwrapText(r.stdout)).not.toContain("docs/limits.md");
     expect(cli(make(files), 3000).stdout).not.toContain("docs/limits.md");
   });
 });

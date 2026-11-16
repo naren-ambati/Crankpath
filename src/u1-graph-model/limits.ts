@@ -18,7 +18,8 @@ export type LimitUnit =
   | "objects"
   | "lexemes"
   | "entries"
-  | "steps";
+  | "steps"
+  | "lines";
 
 export interface DerivedLimit<U extends LimitUnit = LimitUnit> {
   readonly status: "derived";
@@ -54,7 +55,10 @@ export interface LimitSet {
   readonly generatedApplicationsPerApplicationSet: NotYetDerivedLimit<"applications">;
   readonly mermaidMaxEdges: DerivedLimit<"edges">;
   readonly mermaidMaxTextChars: DerivedLimit<"characters">;
-  readonly explainElementaryCycles: NotYetDerivedLimit<"cycles">;
+  readonly explainElementaryCycles: DerivedLimit<"cycles">;
+  readonly explainListEntries: DerivedLimit<"entries">;
+  readonly explainEdgeEntries: DerivedLimit<"entries">;
+  readonly explainOutputLines: DerivedLimit<"lines">;
   readonly declaredEntries: DerivedLimit<"entries">;
   readonly hostPatternComparisons: DerivedLimit<"steps">;
   readonly filesPerScan: NotYetDerivedLimit<"files">;
@@ -89,6 +93,17 @@ const MIN_JSON_BYTES_PER_NODE = 2;
 const KIND_CHARS = 63;
 const NAMESPACE_CHARS = 63;
 const NAME_CHARS = 253;
+// VT100 User Guide, chapter 1: a screen of 24 lines (80 or 132 columns). The --explain listing of
+// elementary cycles prints a heading line, a stop line, then one line per cycle; the shell prompt
+// takes one more line after the output (B6).
+const VT100_SCREEN_LINES = 24;
+const EXPLAIN_CYCLE_LISTING_OWN_LINES = 3;
+// xterm(1), resource saveLines: "the number of lines to save beyond the top of the screen when a
+// scrollbar is turned on. The default is 1024" (B6 review m4).
+const XTERM_DEFAULT_SAVE_LINES = 1024;
+// An --explain edge entry prints four lines: the edge, its file and line, its field, its rendered
+// path (more when a long value wraps).
+const EXPLAIN_EDGE_ENTRY_LINES = 4;
 // GitHub docs, standard hosted runners: the smallest is ubuntu-slim, 1 CPU, 5 GB. V8 12.4 (Node 22)
 // sizes the old generation as physical memory / kPhysicalMemoryToOldGenerationRatio (4) x
 // kHeapLimitMultiplier (kSystemPointerSize / 4 = 2 on 64-bit without pointer compression).
@@ -184,11 +199,40 @@ export const LIMITS: LimitSet = freezeAll({
     date: DATE,
   },
   explainElementaryCycles: {
-    status: "notYetDerived",
+    status: "derived",
+    value: VT100_SCREEN_LINES - EXPLAIN_CYCLE_LISTING_OWN_LINES,
     unit: "cycles",
-    protects: "readability of --explain: the elementary cycles of one component fit one screen",
-    derivedIn: "B6 step 0",
-    why: "a VT100 screen is 24 lines (VT100 User Guide, chapter 1), but the lines the --explain listing itself uses are not designed yet.",
+    protects:
+      "readability of --explain (the elementary cycles of one component fit one screen) and the time spent finding them (each costs at most one pass over the component)",
+    basis: `a VT100 screen is ${VT100_SCREEN_LINES} lines (VT100 User Guide, chapter 1); the --explain listing of one component's elementary cycles uses ${EXPLAIN_CYCLE_LISTING_OWN_LINES} of them for itself (its heading line, its stop line, and the shell prompt after the output): ${VT100_SCREEN_LINES} - ${EXPLAIN_CYCLE_LISTING_OWN_LINES}. The output is sized by this bound (review m5): it counts entries, one per cycle, and each cycle's line shows at most explainListEntries nodes, so a long cycle's line wraps to a few lines; the whole output is bounded separately by explainOutputLines.`,
+    date: DATE,
+  },
+  explainListEntries: {
+    status: "derived",
+    value: VT100_SCREEN_LINES - EXPLAIN_CYCLE_LISTING_OWN_LINES,
+    unit: "entries",
+    protects:
+      "readability and size of each list --explain prints (a cycle's nodes, its edges with their evidence, the nodes of one elementary cycle, a node's dependencies and its dependents)",
+    basis: `the same basis as explainElementaryCycles: one VT100 screen of ${VT100_SCREEN_LINES} lines less the ${EXPLAIN_CYCLE_LISTING_OWN_LINES} a listing uses for itself, for lists of one-line entries (nodes, dependents, unresolved items, self-management notes as observations, cranks and blockers inline). Edge entries take four lines and have their own bound, explainEdgeEntries. A list over the bound shows its first entries and says how many it left out, and points to the JSON output only for what the JSON carries.`,
+    date: DATE,
+  },
+  explainEdgeEntries: {
+    status: "derived",
+    value: Math.floor((VT100_SCREEN_LINES - EXPLAIN_CYCLE_LISTING_OWN_LINES) / EXPLAIN_EDGE_ENTRY_LINES),
+    unit: "entries",
+    protects:
+      "readability of the evidence lists of --explain (a cycle's edges, a node's dependencies): they fit one screen",
+    basis: `one VT100 screen of ${VT100_SCREEN_LINES} lines less the ${EXPLAIN_CYCLE_LISTING_OWN_LINES} a listing uses for itself, divided by the ${EXPLAIN_EDGE_ENTRY_LINES} lines an edge entry prints (the edge, its file and line, its field, its rendered path): (${VT100_SCREEN_LINES} - ${EXPLAIN_CYCLE_LISTING_OWN_LINES}) / ${EXPLAIN_EDGE_ENTRY_LINES}, rounded down (B6 review pass 2, m4). A wrapped long value can still push a list past the screen.`,
+    date: DATE,
+  },
+  explainOutputLines: {
+    status: "derived",
+    value: XTERM_DEFAULT_SAVE_LINES,
+    unit: "lines",
+    protects:
+      "the whole of one --explain output stays in a terminal's default scrollback, so it can be read back to its first line",
+    basis: `xterm(1), resource saveLines: the lines kept above the screen default to ${XTERM_DEFAULT_SAVE_LINES} (lookup 2026-11-15). The output, counted at 80 columns (a wider terminal shows fewer lines, a narrower one more; a file has no scrollback at all), holds at most that many lines: whole explanations while they fit, then a stop line saying what was left out; an explanation's own closing lines, the plan's assumptions and the not-modelled list are always printed.`,
+    date: DATE,
   },
   declaredEntries: {
     status: "derived",

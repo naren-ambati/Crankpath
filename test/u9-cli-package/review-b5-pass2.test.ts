@@ -8,6 +8,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { app, copyThinSlice, run, THIN_SLICE_URL } from "../helpers/scan.js";
+import { flat, unwrapText } from "../helpers/text.js";
 
 const cleanup: string[] = [];
 afterAll(() => {
@@ -27,7 +28,7 @@ function thin(files: Record<string, string>, extra: string[] = []) {
   const t = run([repo, "--repo-url", THIN_SLICE_URL, ...extra], repo);
   const j = run([repo, "--repo-url", THIN_SLICE_URL, "--format", "json", ...extra], repo);
   expect(t.code, t.stderr).toBe(0);
-  return { text: t.stdout, json: JSON.parse(j.stdout), repo };
+  return { text: unwrapText(t.stdout), json: JSON.parse(j.stdout), repo };
 }
 const OTHER = "apiVersion: v1\nkind: ConfigMap\nmetadata: {name: other, namespace: other}\ndata: {k: v}\n";
 
@@ -38,8 +39,10 @@ describe("M2: repository mappings", () => {
       "vendor/o/cm.yaml": OTHER,
       "crankpath.yaml": 'repos:\n  "https://github.com/acme/y": {read_from: vendor}\n',
     });
-    expect(r.text).toContain(
-      '  read through a mapping: repo "https://github.com/acme/y"  root: "vendor"  (crankpath.yaml repos:, declared, not verified)\n',
+    expect(flat(r.text)).toContain(
+      flat(
+        '  read through a mapping: repo "https://github.com/acme/y"  root: "vendor"  (crankpath.yaml repos:, declared, not verified)\n',
+      ),
     );
     expect(line(r.text, "Run status:")).toBe("Run status: ANALYSED WITH GAPS");
     expect(line(r.text, "  gaps:")).toContain("1 declared fact changes the graph read");
@@ -54,8 +57,8 @@ describe("M2: repository mappings", () => {
       "--repo-alias",
       `https://github.com/acme/z=${alias}`,
     ]);
-    expect(r.text).toContain(
-      '  read through a mapping: repo "https://github.com/acme/z"  root: "alias:1"  (--repo-alias, your input)\n',
+    expect(flat(r.text)).toContain(
+      flat('  read through a mapping: repo "https://github.com/acme/z"  root: "alias:1"  (--repo-alias, your input)\n'),
     );
     expect(r.json.runStatus.reasons).not.toContain("declared-facts");
     expect(line(r.text, "  Assumed,")).toContain("1 repository read through --repo-alias");

@@ -5,6 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { app, estate, FIXTURE, run, tempDir, THIN_SLICE_URL } from "../helpers/scan.js";
+import { flat, unwrapText } from "../helpers/text.js";
 
 const REPO = path.join(FIXTURE, "repo");
 const cleanup: string[] = [];
@@ -54,14 +55,17 @@ describe("exit codes (BR9.3 to BR9.5)", () => {
     const root = make({ "README.md": "docs only\n", "docs/a.yaml": "a: 1\n", "docs/b.txt": "x\n" });
     const r = run([path.relative(process.cwd(), root)], process.cwd());
     expect(r.code).toBe(2);
-    expect(r.stdout).toBe(
-      [
-        "crankpath 0.1.0",
-        "Run status: NOTHING ANALYSED",
-        `path: "${path.relative(process.cwd(), root)}"  found: 0 Applications, 0 ApplicationSets, 0 Kustomizations, 0 HelmReleases, 0 Kustomize roots; 3 files hold no source document`,
-        "exit code 2",
-        "",
-      ].join("\n"),
+    // one statement per line once the 80-column layout is undone (the long path wraps)
+    expect(flat(r.stdout)).toBe(
+      flat(
+        [
+          "crankpath 0.1.0",
+          "Run status: NOTHING ANALYSED",
+          `path: "${path.relative(process.cwd(), root)}"  found: 0 Applications, 0 ApplicationSets, 0 Kustomizations, 0 HelmReleases, 0 Kustomize roots; 3 files hold no source document`,
+          "exit code 2",
+          "",
+        ].join("\n"),
+      ),
     );
     const json = JSON.parse(run([root, "--format", "json"], process.cwd()).stdout);
     expect(json.runStatus).toMatchObject({ state: "NOTHING ANALYSED", reasons: ["no-sources"] });
@@ -81,7 +85,7 @@ describe("flags (C6, FR9.1)", () => {
     );
   });
   it("refuses a flag whose stage arrives in a later build, instead of running without it", () => {
-    for (const args of [["--format", "mermaid"], ["--explain"], ["--rev", "abc"], ["https://example.org/x"]]) {
+    for (const args of [["--rev", "abc"], ["https://example.org/x"]]) {
       const r = run(args[0]?.startsWith("http") ? args : [REPO, ...args], process.cwd());
       expect(r.code, args.join(" ")).toBe(1);
       expect(r.stderr).toMatch(/^error: .*arrives in a later build/);
@@ -121,8 +125,10 @@ describe("flags (C6, FR9.1)", () => {
       "cfg/cm.yaml": "apiVersion: v1\nkind: ConfigMap\nmetadata: {name: c}\n",
     });
     const r = run([root], process.cwd());
-    expect(r.stdout).toContain('scanned: repo "https://example.org/ops/self.git" (from the origin in .git/config)');
-    expect(r.stdout).not.toContain("tok@");
+    expect(unwrapText(r.stdout)).toContain(
+      'scanned: repo "https://example.org/ops/self.git" (from the origin in .git/config)',
+    );
+    expect(unwrapText(r.stdout)).not.toContain("tok@");
     const json = JSON.parse(run([root, "--format", "json"], process.cwd()).stdout);
     expect(json.nodes.map((n: { id: string }) => n.id)).toContain("ConfigMap/a/c");
   });
@@ -164,7 +170,7 @@ describe("flags (C6, FR9.1)", () => {
     const facts = make({ "facts.yaml": "external:\n  github.com: {cold_start: available}\n" });
     const r = run([root, "--config", "facts.yaml"], facts);
     expect(r.code).toBe(0);
-    expect(r.stdout).toContain('  external "github.com"  available (declared, not verified)');
+    expect(unwrapText(r.stdout)).toContain('  external "github.com"  available (declared, not verified)');
     expect(run([root, "--config", "facts.yaml"], root).stderr).toBe(
       "error: invalid crankpath.yaml (not readable: not found)\n",
     );
@@ -172,6 +178,8 @@ describe("flags (C6, FR9.1)", () => {
   it("prints help on --help with exit 0", () => {
     const r = run(["--help"], process.cwd());
     expect(r.code).toBe(0);
-    expect(r.stdout).toContain("--repo-alias");
+    expect(unwrapText(r.stdout)).toContain("--repo-alias");
+    // B6 review n2: the order of the path and --explain [id]
+    expect(r.stdout).toContain("The path comes first: `crankpath ./repo --explain` explains every cycle");
   });
 });

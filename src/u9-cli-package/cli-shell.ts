@@ -1,7 +1,9 @@
 // CliShell (U9, contract C6; BR9.1 to BR9.5, BR9.8, BR9.9, FR9.1, FR9.2): the command line. Every
 // flag of C6 is parsed; an unknown flag is a usage error (exit 1) shown quoted in crankpath's voice;
-// flags whose stage arrives in a later build say so and exit 1 rather than run silently without
-// it. Exit codes: 0 the analysis ran (whatever it found), 1 a tool or usage error, 2 nothing
+// flags whose stage arrives in a later build (a URL and `--rev`) say so and exit 1 rather than run
+// silently without it. `--format mermaid` and `--explain [id]` render the same Report (B6); an
+// `--explain` id that names no cycle and no node is a usage error. Colour (text and --explain only)
+// is decoration, used only on a terminal without `NO_COLOR` or `--no-color`. Exit codes: 0 the analysis ran (whatever it found), 1 a tool or usage error, 2 nothing
 // analysed. Writes only stdout, stderr and the `--out` file, which may not be inside the scanned
 // tree and is never written through a symlink. `--verbose` prints counts only (no repo text, no
 // token, no Secret value).
@@ -12,6 +14,9 @@ import { Command, CommanderError } from "commander";
 import { quote } from "../u1-graph-model/safe-text.js";
 import { writeJson } from "../u8-output/json-renderer.js";
 import { CRANKPATH_VERSION } from "../u8-output/report-assembler.js";
+import { explainTarget, renderExplainLines } from "../u8-output/explain-renderer.js";
+import { renderMermaidLines } from "../u8-output/mermaid-renderer.js";
+import { colourLine, useColour } from "../u8-output/text-layout.js";
 import { renderTextLines } from "../u8-output/text-renderer.js";
 import { runPipeline } from "./pipeline-runner.js";
 
@@ -21,6 +26,10 @@ export interface CliIo {
   readonly cwd: string;
   /** The pipeline to run; tests inject a failing one to reach the top-level guard. */
   readonly run?: typeof runPipeline;
+  /** True when standard output is a terminal (colour is considered only then). */
+  readonly isTTY?: boolean;
+  /** The value of `NO_COLOR`, when set. */
+  readonly noColor?: string;
 }
 
 /** crankpath's one line for any error it did not expect: no stack, no message from the runtime. */
@@ -28,6 +37,10 @@ export const INTERNAL_ERROR =
   "error: crankpath stopped on an internal error (a bug); any report on standard output is incomplete and no --out file was written";
 
 const FORMATS = ["text", "json", "mermaid"] as const;
+
+/** Help's last lines (B6 review n2): `--explain` takes an optional id, so the path comes first. */
+const HELP_ORDER =
+  "\nThe path comes first: `crankpath ./repo --explain` explains every cycle, and\n`crankpath ./repo --explain <id>` one cycle or node; an argument right after\n--explain is read as its id.\n";
 
 /** The `--version` text: crankpath's version and the tools this build detects (none). */
 export function versionText(): string {
@@ -57,7 +70,8 @@ function program(): Command {
       [] as string[],
     )
     .option("--rev <rev>", "revision of a URL to fetch")
-    .option("--explain [id]", "evidence trail for a cycle or node id")
+    .option("--explain [id]", "evidence trail for a cycle or node id (every cycle without an id)")
+    .option("--no-color", "no colour, even on a terminal (NO_COLOR does the same)")
     .option("--no-network", "cache only (this build makes no network call)")
     .option("--cache-dir <dir>", "cache root (this build caches nothing)")
     .option("--verbose", "counts on standard error")
@@ -134,7 +148,7 @@ function mainUnguarded(argv: readonly string[], io: CliIo): number {
   } catch (e) {
     if (e instanceof CommanderError) {
       if (e.code === "commander.helpDisplayed" || e.code === "commander.help") {
-        io.stdout(cmd.helpInformation());
+        io.stdout(`${cmd.helpInformation()}${HELP_ORDER}`);
         return 0;
       }
       io.stderr(`${commanderMessage(e)}\n`);
@@ -150,6 +164,7 @@ function mainUnguarded(argv: readonly string[], io: CliIo): number {
     repoAlias: string[];
     rev?: string;
     explain?: string | boolean;
+    color: boolean;
     network: boolean;
     cacheDir?: string;
     verbose?: boolean;
@@ -164,12 +179,8 @@ function mainUnguarded(argv: readonly string[], io: CliIo): number {
     io.stderr(`${quote("error: unknown format", o.format, "terminal")} (text, json or mermaid)\n`);
     return 1;
   }
-  if (o.format === "mermaid") {
-    io.stderr("error: --format mermaid arrives in a later build\n");
-    return 1;
-  }
-  if (o.explain !== undefined) {
-    io.stderr("error: --explain arrives in a later build\n");
+  if (o.explain !== undefined && cmd.getOptionValueSource("format") === "cli" && o.format !== "text") {
+    io.stderr("error: --explain prints text; it cannot be combined with --format json or mermaid\n");
     return 1;
   }
   if (o.rev !== undefined || /^[A-Za-z][A-Za-z0-9+.-]*:\/\//.test(target)) {
@@ -189,9 +200,23 @@ function mainUnguarded(argv: readonly string[], io: CliIo): number {
   }
   if (o.verbose === true) for (const line of outcome.diagnostics) io.stderr(`crankpath: ${line}\n`);
   const report = outcome.report;
+  const explainId = typeof o.explain === "string" ? o.explain : undefined;
+  const explained = o.explain === undefined ? undefined : explainTarget(report, explainId);
+  if (o.explain !== undefined && explained === undefined && report.runStatus.state !== "NOTHING ANALYSED") {
+    io.stderr(`${quote("error: --explain names no cycle and no node of this report:", explainId ?? "", "terminal")}\n`);
+    return 1;
+  }
+  const colour =
+    o.out === undefined && useColour({ isTTY: io.isTTY === true, noColorEnv: io.noColor, noColorFlag: !o.color });
+  const lines = (all: readonly string[], write: (chunk: string) => void) => {
+    for (const line of all) write(`${colour ? colourLine(line) : line}\n`);
+  };
   const produce = (write: (chunk: string) => void) => {
     if (o.format === "json") writeJson(report, write);
-    else for (const line of renderTextLines(report)) write(`${line}\n`);
+    else if (o.format === "mermaid") for (const line of renderMermaidLines(report)) write(`${line}\n`);
+    else if (explained !== undefined && report.runStatus.state !== "NOTHING ANALYSED")
+      lines(renderExplainLines(report, explained), write);
+    else lines(renderTextLines(report), write);
   };
   if (o.out !== undefined) {
     const failed = writeOut(o.out, produce, outcome.rootReals, io.cwd);

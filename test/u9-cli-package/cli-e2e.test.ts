@@ -47,6 +47,15 @@ describe("the built crankpath binary", () => {
     expect(r.status).toBe(0);
     expect(r.stdout).toBe(fs.readFileSync(path.join(FIXTURE, "expected.json"), "utf8"));
   });
+  it("prints the thin-slice expected --explain and Mermaid outputs and exits 0", () => {
+    const repo = path.join(FIXTURE, "repo");
+    const explain = crankpath([repo, "--repo-url", THIN_SLICE_URL, "--explain", "c-d8197e7d"]);
+    expect(explain.status).toBe(0);
+    expect(explain.stdout).toBe(fs.readFileSync(path.join(FIXTURE, "expected-explain.txt"), "utf8"));
+    const mermaid = crankpath([repo, "--repo-url", THIN_SLICE_URL, "--format", "mermaid"]);
+    expect(mermaid.status).toBe(0);
+    expect(mermaid.stdout).toBe(fs.readFileSync(path.join(FIXTURE, "expected-mermaid.md"), "utf8"));
+  });
   it("exits 1 on an unknown flag and 2 on a tree with no source", () => {
     const bad = crankpath(["--nope"]);
     expect(bad.status).toBe(1);

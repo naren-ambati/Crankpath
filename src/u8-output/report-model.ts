@@ -28,6 +28,7 @@ import type {
   ReasonClass,
 } from "../u7-graph-analysis/analysis.js";
 import type { Cycle } from "../u7-graph-analysis/cycle-finder.js";
+import type { ControllerMatch } from "../u5-extractors-gitops/controller-signatures.js";
 
 export const SCHEMA_VERSION = 1;
 
@@ -130,6 +131,12 @@ export interface Report {
   readonly scannedPathAbsolute: boolean;
   /** Cranks declared in crankpath.yaml. */
   readonly cranksDeclared: number;
+  /**
+   * For --explain only (never in JSON, text or Mermaid): rendered objects that match a GitOps
+   * controller signature, with the source that rendered them (US5.4). Explanatory: nothing else in
+   * the Report depends on it (BR5.13).
+   */
+  readonly controllerMatches: readonly ControllerMatch[];
 }
 
 export interface RepoMappingEntry {

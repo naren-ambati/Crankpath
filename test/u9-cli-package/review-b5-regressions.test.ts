@@ -7,6 +7,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { app, copyThinSlice, estate, run, THIN_SLICE_URL } from "../helpers/scan.js";
+import { unwrapText } from "../helpers/text.js";
 
 const cleanup: string[] = [];
 afterAll(() => {
@@ -24,7 +25,7 @@ function both(repo: string) {
   const t = run([repo, "--repo-url", THIN_SLICE_URL], process.cwd());
   const j = run([repo, "--repo-url", THIN_SLICE_URL, "--format", "json"], process.cwd());
   expect(t.code).toBe(0);
-  return { text: t.stdout, json: JSON.parse(j.stdout) };
+  return { text: unwrapText(t.stdout), json: JSON.parse(j.stdout) };
 }
 function scan(files: Record<string, string>) {
   const d = estate(files);
