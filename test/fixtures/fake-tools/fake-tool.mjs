@@ -136,8 +136,18 @@ function helmTemplate(args) {
     }
     const f = path.join(chartDir, "fake-render.yaml");
     if (!fs.existsSync(f)) {
-      process.stderr.write("Error: fake helm has nothing to render\n");
-      return 1;
+      // a chart whose templates are plain YAML (no template functions): helm renders them as written
+      const templates = path.join(chartDir, "templates");
+      const plain = fs.existsSync(path.join(chartDir, "fake-plain-templates"))
+        ? fs.readdirSync(templates).filter((n) => n.endsWith(".yaml")).sort()
+        : [];
+      if (plain.length === 0) {
+        process.stderr.write("Error: fake helm has nothing to render\n");
+        return 1;
+      }
+      for (const n of plain)
+        process.stdout.write(`---\n# Source: ${n}\n${fs.readFileSync(path.join(templates, n), "utf8")}`);
+      return 0;
     }
     process.stdout.write(fs.readFileSync(f, "utf8").replaceAll("RELEASE", release));
     return 0;

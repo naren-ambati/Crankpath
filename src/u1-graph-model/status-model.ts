@@ -130,6 +130,8 @@ export const SOURCE_KINDS = Object.freeze([
   "Kustomization",
   "HelmRelease",
   "KustomizeRoot",
+  // a Helm chart directory a `render:<path>` crank says is applied by hand at bootstrap (FR7.4)
+  "HandAppliedChart",
 ] as const);
 export type SourceKind = (typeof SOURCE_KINDS)[number];
 

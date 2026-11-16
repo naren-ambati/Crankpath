@@ -4,7 +4,7 @@ This is the reference for crankpath's JSON report, schema version 1, frozen in B
 
 ## Layout and guarantees
 
-- One JSON object, two-space indentation, one trailing newline. Keys are sorted in code-point order at every level; arrays are in the order each field states (sorted by id or key, or file order for crankpath.yaml entries). The same inputs and the same tool versions give byte-identical output, except for a Helm source whose renders vary: two renders are compared, which cannot prove a chart never varies (`docs/limits.md`, "Two renders per chart").
+- One JSON object, two-space indentation, one trailing newline. Keys are sorted in code-point order at every level; arrays are in the order each field states (sorted by id or key, or file order for crankpath.yaml entries). The same inputs and the same tool versions give byte-identical output, except for a Helm source whose renders vary: two renders are compared, which cannot prove a chart never varies, and the floating entry that flags a difference appears only in the runs where the two renders differ (`docs/limits.md`, "Two renders per chart"; observed on khuedoan/homelab, where one such entry comes and goes).
 - No timestamp, no absolute path, no machine name. Files are relative to the scanned root; other roots are labels (`alias:N` for a `--repo-alias`, the `read_from` path of a `repos:` entry).
 - Every field is always present: a value that does not apply is `null` or an empty array, never a missing key.
 - Text from the scanned repository is a JSON string with control, format and separator characters shown as visible codes (`\x1b`, `‮`) and long text cut with a stated marker (`... (cut at 381 of N characters)`), exactly as the text report shows it. Treat it as data, never as instructions. Every URL has its userinfo removed.
@@ -23,7 +23,7 @@ This is the reference for crankpath's JSON report, schema version 1, frozen in B
 
 ## Changes from the design's C7 sketch
 
-The design's C7 is a sketch written before the build. The frozen schema keeps every field it names and adds what the build needed, each recorded in `BUILD-NOTES.md` by the bolt that added it: `repo.urlFrom`; `runStatus.reasons` and the counts `sourcesByKind`, `skippedSources`, `droppedHooks`, `foreignDestination`, `runLimitFiles`, `runLimitJobs`, `runLimitEdges`, `edgesDeclared`, `nodes`, `declaredFacts`, `declaredAssumptions`; nodes' `origin.document` and `syncWave`; opaque `detail`, `field`, `value`, `kustomizeRoot`, and `suggestion` as `{url, readFrom}`; cycle edges as `{from, to, kind, source}` objects, `labelBeforeCranks`, `residualLabel`, `touchedBy`, `introducedBy`; statuses' `reason` and `via`; `statusCounts`; `cranks`; `unusedMatches`; `matchOverrides`; `repoMappings`; `hiddenCycles`; the plan's `assumes.clusterProvided`, `servedBy`, `matchEntries`, `argocdNamespace`, steps' `crank` and `ref`, structured `conflicts`, and `listedUnordered` with `status` and `blockers`; unresolved items' `field`, `candidates`, `candidatesTruncated`, `owner` and `value`; `skipped`, `unreadable`, `notComputed`, `notModelled` and `notVerified`. C7's `guarantees` and `compatibility` lines are this document, not fields. B2 (the render engine, merged after the freeze) adds `toolchain.testedPair`, `toolchain.missing`, `toolchain.unrecognised`, `floating`, `undeployedKustomizeRoots` and `toolMissing`: additive, so `schemaVersion` stays 1. `notComputed` is empty in every run of this version (every part of the analysis is computed since B5); it stays so a consumer can rely on the field.
+The design's C7 is a sketch written before the build. The frozen schema keeps every field it names and adds what the build needed, each recorded in `BUILD-NOTES.md` by the bolt that added it: `repo.urlFrom`; `runStatus.reasons` and the counts `sourcesByKind`, `skippedSources`, `droppedHooks`, `foreignDestination`, `runLimitFiles`, `runLimitJobs`, `runLimitEdges`, `edgesDeclared`, `nodes`, `declaredFacts`, `declaredAssumptions`; nodes' `origin.document` and `syncWave`; opaque `detail`, `field`, `value`, `kustomizeRoot`, and `suggestion` as `{url, readFrom}`; cycle edges as `{from, to, kind, source}` objects, `labelBeforeCranks`, `residualLabel`, `touchedBy`, `introducedBy`; statuses' `reason` and `via`; `statusCounts`; `cranks`; `unusedMatches`; `matchOverrides`; `repoMappings`; `hiddenCycles`; the plan's `assumes.clusterProvided`, `servedBy`, `matchEntries`, `argocdNamespace`, steps' `crank` and `ref`, structured `conflicts`, and `listedUnordered` with `status` and `blockers`; unresolved items' `field`, `candidates`, `candidatesTruncated`, `owner` and `value`; `skipped`, `unreadable`, `notComputed`, `notModelled` and `notVerified`. C7's `guarantees` and `compatibility` lines are this document, not fields. B2 (the render engine, merged after the freeze) adds `toolchain.testedPair`, `toolchain.missing`, `toolchain.unrecognised`, `floating`, `undeployedKustomizeRoots` and `toolMissing`: additive, so `schemaVersion` stays 1. B7 (a `render:<path>` crank of a chart or Kustomize directory applied by hand, FR7.4) adds `runStatus.counts.sourcesByKind.HandAppliedChart`, `opaque[].chartRoot` and `undeployedCharts`: additive, so `schemaVersion` stays 1. `notComputed` is empty in every run of this version (every part of the analysis is computed since B5); it stays so a consumer can rely on the field.
 
 ## Fields
 
@@ -150,6 +150,7 @@ Paths use `.` for an object's field and `[]` for each element of an array. "Word
 | `notVerified[].item` | string | What is not verified. Words: `opaque-sources`, `unreadable-files`, `skipped-objects`, `foreign-destination-objects`, `run-limit`, `unresolved-items`, `timeouts`, `uncranked-cycles`, `unverified-nodes`, `unspecified-externals`, `externals-declared`, `cranks-documented`, `match-entries-relied`, `repo-mappings`, `match-unused`, `cluster-provided`, `clusters-not-used`, `fetch-not-used`, `not-computed`, `declared-edges`. |
 | `opaque` | array | Opaque sources, sorted by node (or Kustomize root). |
 | `opaque[]` | object | An opaque source. |
+| `opaque[].chartRoot` | null or string | The Helm chart directory applied by hand (a `render:<path>` crank), or null. |
 | `opaque[].detail` | null or string | crankpath's fixed wording, or null. |
 | `opaque[].field` | null or string | The field crankpath could not use, or null. |
 | `opaque[].kustomizeRoot` | null or string | The Kustomize root directory, or null. |
@@ -238,6 +239,7 @@ Paths use `.` for an object's field and `[]` for each element of an array. "Word
 | `runStatus.counts.sourcesByKind` | object | Sources found, per kind. |
 | `runStatus.counts.sourcesByKind.Application` | integer | Applications. |
 | `runStatus.counts.sourcesByKind.ApplicationSet` | integer | ApplicationSets. |
+| `runStatus.counts.sourcesByKind.HandAppliedChart` | integer | Helm chart directories a `creates: render:<path>` crank says are applied by hand (FR7.4). |
 | `runStatus.counts.sourcesByKind.HelmRelease` | integer | Flux HelmReleases. |
 | `runStatus.counts.sourcesByKind.Kustomization` | integer | Flux Kustomizations. |
 | `runStatus.counts.sourcesByKind.KustomizeRoot` | integer | Kustomize roots (directories with a kustomization file). |
@@ -288,6 +290,8 @@ Paths use `.` for an object's field and `[]` for each element of an array. "Word
 | `toolchain.testedPair.kustomize` | string | The tested kustomize version. |
 | `toolchain.unrecognised` | array | Tools found whose version could not be read, sorted. |
 | `toolchain.unrecognised[]` | string | one entry Words: `helm`, `kustomize`. |
+| `undeployedCharts` | array | Helm chart directories of the scanned root that nothing read deploys and no crank applies by hand (FR7.4; their objects are not in the graph), sorted. |
+| `undeployedCharts[]` | string | one entry |
 | `undeployedKustomizeRoots` | array | Kustomize roots no Application or Flux Kustomization renders (built on their own; their objects are not in the graph), sorted. |
 | `undeployedKustomizeRoots[]` | string | one entry |
 | `unreadable` | array | Unreadable files, sorted by path. |

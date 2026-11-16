@@ -1,0 +1,17 @@
+crankpath golden summary (crankpath-golden-reduced/1: node ids and counts only)
+run status: NOTHING ANALYSED  reasons: no-sources  floor: yes
+toolchain: helm v4.3.2, kustomize v5.8.1
+nodes: 0 (none)
+edges: 0 (none); by kind: none
+cycles: 0 (uncranked 0, cranked 0); hidden: 0
+externals: 0
+opaque: 0 (none)
+unreadable files: 1 (parse-error 1)
+skipped objects: 0 (none)
+unresolved: 0 (none)
+floating revisions: 0; repository mappings: 1 (0 used)
+not deployed by anything read: 31 chart directories, 0 Kustomize roots
+statuses: blocked 0, startable 0, unverified 0; by reason: none
+plan: 0 steps; listed unordered 0; conflicts 0
+plan assumes: externals none; cranks none; cluster-provided 0
+not computed: none

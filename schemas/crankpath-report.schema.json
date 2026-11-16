@@ -28,6 +28,7 @@
     "statuses",
     "toolMissing",
     "toolchain",
+    "undeployedCharts",
     "undeployedKustomizeRoots",
     "unreadable",
     "unresolved",
@@ -350,6 +351,13 @@
       },
       "description": "Kustomize roots no Application or Flux Kustomization renders (built on their own; their objects are not in the graph), sorted."
     },
+    "undeployedCharts": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Helm chart directories of the scanned root that nothing read deploys and no crank applies by hand (FR7.4; their objects are not in the graph), sorted."
+    },
     "toolMissing": {
       "type": "object",
       "description": "Sources opaque `tool-missing`, by the tool they need.",
@@ -457,7 +465,8 @@
                 "ApplicationSet",
                 "HelmRelease",
                 "Kustomization",
-                "KustomizeRoot"
+                "KustomizeRoot",
+                "HandAppliedChart"
               ],
               "properties": {
                 "Application": {
@@ -484,6 +493,11 @@
                   "type": "integer",
                   "minimum": 0,
                   "description": "Kustomize roots (directories with a kustomization file)."
+                },
+                "HandAppliedChart": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "description": "Helm chart directories a `creates: render:<path>` crank says are applied by hand (FR7.4)."
                 }
               }
             },
@@ -814,6 +828,7 @@
         "description": "An opaque source.",
         "additionalProperties": false,
         "required": [
+          "chartRoot",
           "detail",
           "field",
           "kustomizeRoot",
@@ -842,6 +857,13 @@
               "null"
             ],
             "description": "The Kustomize root directory, or null."
+          },
+          "chartRoot": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The Helm chart directory applied by hand (a `render:<path>` crank), or null."
           },
           "reason": {
             "$ref": "#/$defs/opaqueReason",

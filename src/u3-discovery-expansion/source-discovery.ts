@@ -66,6 +66,12 @@ export interface Discovery {
   readonly sourceFiles: readonly DiscoveredFile[];
   /** Kustomize root directories (canonical, `""` is the root), in code-point order. */
   readonly kustomizeRoots: readonly string[];
+  /**
+   * Helm chart directories (a `Chart.yaml`; canonical, `""` is the root), in code-point order, except
+   * charts vendored inside another chart's `charts/` or `templates/` (FR7.4: a chart nothing deploys
+   * is listed, and is rendered only when a crank says it is applied by hand).
+   */
+  readonly chartDirs: readonly string[];
   /** Files with no source: not YAML, or YAML with no source document. */
   readonly ignoredFiles: number;
   /** Refusals of the walk and of the reader (symlinks, limits, parse errors), canonical paths. */
@@ -131,9 +137,11 @@ export function discover(io: DiscoveryIo): Discovery | { readonly failed: true }
     else ignoredFiles += 1;
   }
   unreadable.sort((a, b) => compareCodePoints(a.path, b.path));
+  const charts = walk.files.filter((f) => basename(f) === "Chart.yaml" && !inChartInternals(f)).map(dirname);
   return {
     sourceFiles,
     kustomizeRoots: [...roots].sort(compareCodePoints),
+    chartDirs: [...new Set(charts)].sort(compareCodePoints),
     ignoredFiles,
     unreadable,
   };

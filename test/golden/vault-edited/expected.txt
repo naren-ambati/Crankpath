@@ -1,0 +1,125 @@
+crankpath 0.1.0
+toolchain: helm v4.3.2, kustomize v5.8.1
+scanned: repo "https://github.com/acme/platform-gitops" (from --repo-url)
+    commit: not read in this build  floating: no
+Run status: ANALYSED WITH GAPS
+  gaps: 1 unresolved item
+
+Opacity: 0 of 5 sources opaque (0%); sources are Applications, ApplicationSets,
+    Kustomizations, HelmReleases and Kustomize roots; 0 files unreadable.
+  found: 5 Applications, 0 ApplicationSets, 0 Kustomizations, 0 HelmReleases, 0
+      Kustomize roots; 3 files hold no source document
+  read through a mapping: repo "github.com:acme/platform.git"  root: "alias:1"
+      (--repo-alias, your input)
+  read through a
+      mapping: repo "https://github.com/external-secrets/external-secrets"
+      root: "alias:3"  (--repo-alias, your input)
+  read through a mapping: repo "https://github.com/hashicorp/vault-helm"
+      root: "alias:2"  (--repo-alias, your input)
+  dropped: 2 Helm test hooks (not deployed by a GitOps controller)
+
+Floating revisions: 5 (a branch, tag, HEAD or version range: a rerun may read or
+    render other content)
+  floating 1 of 5  node: Application "argocd/external-secrets"
+      field: "spec.sources[0].targetRevision"  value: "helm-chart-2.9.0"
+  floating 2 of 5  node: Application "argocd/platform"
+      field: "spec.source.targetRevision"  value: "main"
+  floating 3 of 5  node: Application "argocd/platform-secrets"
+      field: "spec.source.targetRevision"  value: "v0.34.1"
+  floating 4 of 5  node: Application "argocd/root"
+      field: "spec.source.targetRevision"  value: "main"
+  floating 5 of 5  node: Application "argocd/vault"
+      field: "spec.sources[0].targetRevision"  value: "v0.34.1"
+
+Cycles: 0 uncranked, 1 cranked
+  cycle c-35505771  label: cranked (was extracted)  nodes: 3  edges: 3
+    cranked by: crank 1
+        by: "kubectl create secret from the offline key backup, runbook DR-3"
+        (documented, not verified)
+    Application "argocd/platform" needs credential Secret "argocd/repo-platform"
+        [field: "spec.source.repoURL"]
+    Secret "argocd/repo-platform" produced by
+        ExternalSecret "argocd/repo-platform"  [field: "spec.target.name"]
+    ExternalSecret "argocd/repo-platform" deployed by
+        Application "argocd/platform"  [field: "spec.source.path"]
+
+Not startable from a cold start: 0 of 46 nodes; 46 startable, relative to the
+    assumptions under the plan
+  unresolved items: 1
+  unresolved 1 of 1  why: argocd-namespace-assumed  subject: Namespace "argocd"
+    where: "apps/external-secrets.yaml#1"
+
+External preconditions (declared cold-start availability):
+  external "aws-kms/us-east-1"  available (declared, not verified)
+  external "aws-sts"  available (declared, not verified)
+  external "github.com"  available (declared, not verified)
+
+Plan (an order, not a schedule; cold-load pickup is not modelled): 15 steps
+  step 1  manual  crank 1
+      by: "kubectl create secret from the offline key backup, runbook DR-3"
+      ref: "runbooks/dr-3.md"
+    creates: Secret "argocd/repo-platform"
+  step 2  start   Application "argocd/root"
+  step 3  start   Application "argocd/external-secrets",
+      Application "argocd/platform", Application "argocd/platform-secrets",
+      Application "argocd/vault"
+  step 4  start   ClusterRole "external-secrets-cert-controller",
+      ClusterRole "external-secrets-controller",
+      ClusterRole "external-secrets-edit",
+      ClusterRole "external-secrets-servicebindings",
+      ClusterRole "external-secrets-view",
+      ClusterRoleBinding "external-secrets-cert-controller",
+      ClusterRoleBinding "external-secrets-controller",
+      ClusterRoleBinding "platform-secrets-vault-server-binding",
+      ClusterRoleBinding "vault-server-binding",
+      ConfigMap "platform-secrets/platform-secrets-vault-config",
+      ConfigMap "vault/vault-config",
+      Role "external-secrets/external-secrets-leaderelection",
+      RoleBinding "external-secrets/external-secrets-leaderelection",
+      Secret "external-secrets/external-secrets-webhook",
+      ServiceAccount "cert-manager/vault-issuer",
+      ServiceAccount "external-secrets/external-secrets",
+      ServiceAccount "external-secrets/external-secrets-cert-controller",
+      ServiceAccount "external-secrets/external-secrets-webhook",
+      ServiceAccount "platform-secrets/platform-secrets-vault",
+      ServiceAccount "vault/vault",
+      object "ValidatingWebhookConfiguration/externalsecret-validate",
+      object "ValidatingWebhookConfiguration/secretstore-validate"
+  step 5  start   Deployment "external-secrets/external-secrets",
+      Deployment "external-secrets/external-secrets-cert-controller",
+      Deployment "external-secrets/external-secrets-webhook",
+      StatefulSet "platform-secrets/platform-secrets-vault"
+  step 6  start   Service "external-secrets/external-secrets-webhook",
+      Service "platform-secrets/platform-secrets-vault",
+      Service "platform-secrets/platform-secrets-vault-internal"
+  step 7  start   ClusterSecretStore "platform-secrets"
+  step 8  start   ExternalSecret "argocd/repo-platform",
+      ExternalSecret "cert-manager/bootstrap-ca"
+  step 9  start   Secret "cert-manager/bootstrap-ca"
+  step 10  start   ClusterIssuer "bootstrap-ca"
+  step 11  start   Certificate "vault/vault-tls"
+  step 12  start   Secret "vault/vault-tls"
+  step 13  start   StatefulSet "vault/vault"
+  step 14  start   Service "vault/vault", Service "vault/vault-internal"
+  step 15  start   ClusterIssuer "vault-pki"
+  Assumed, not verified by crankpath: 3 externals declared available; 0
+      externals served by an in-estate node; 1 crank (documented); 0 match
+      entries; 0 objects every cluster provides; 3 repositories read through
+      --repo-alias; Argo CD's namespace taken to be Namespace "argocd"; and the
+      5 not-modelled items below. Every start step is relative to these and to
+      the edges read.
+
+Not verified: 1 unresolved item; 3 externals declared in crankpath.yaml (not
+    verified); 1 crank documented (not verified). Declared edges: 0 (unverified
+    when present).
+Not modelled (6 items): a running Argo CD or Flux controller is assumed;
+    dependencies only visible at runtime are not seen; the content of opaque
+    nodes is not seen; the revision each Application names is taken to be the
+    files as read; repository credentials not defined in the estate are not
+    seen; helm renders with no cluster: `lookup` is empty, only helm's default
+    API versions are seen, values are not checked against a chart's
+    values.schema.json (its `$ref`s would be fetched), a template may resolve
+    host names (`getHostByName`) even under --no-network, helm follows a chart
+    repository's redirects, a chart host is checked by name, not by the address
+    it resolves to, each chart is rendered twice and compared, which cannot
+    prove its output never varies, and a controller's bundled helm may differ.

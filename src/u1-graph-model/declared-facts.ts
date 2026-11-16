@@ -59,6 +59,14 @@ export interface CrankDecl {
   readonly reroutes: readonly CrankReroute[];
   readonly by: string;
   readonly ref: string | null;
+  /**
+   * For a `render:<path>` target naming a chart or Kustomize directory applied by hand (FR7.4): the
+   * namespace it is applied in (helm `--namespace`, and the namespace of its objects that name none),
+   * or null (absent) for none.
+   */
+  readonly namespace?: string | null;
+  /** For a hand-applied chart: the Helm release name, or null (absent) for the directory's last segment. */
+  readonly release?: string | null;
   readonly keyPath: string;
 }
 

@@ -12,7 +12,14 @@ import {
 
 const CLEAN: RunCounts = {
   sourcesFound: 2,
-  sourcesByKind: { Application: 2, ApplicationSet: 0, Kustomization: 0, HelmRelease: 0, KustomizeRoot: 0 },
+  sourcesByKind: {
+    Application: 2,
+    ApplicationSet: 0,
+    Kustomization: 0,
+    HelmRelease: 0,
+    KustomizeRoot: 0,
+    HandAppliedChart: 0,
+  },
   rendered: 2,
   opaque: 0,
   opaqueApplicationSets: 0,

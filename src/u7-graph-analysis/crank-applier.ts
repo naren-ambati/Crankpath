@@ -14,7 +14,10 @@
 // mapped by `--repo-alias` carry an `alias:N/` origin (a fetched `repos:` entry `fetch:N/`) and
 // never match, so a path of another repository cannot crank this one's objects. An Application an
 // ApplicationSet generates (origin render job `generator:<id>`, B3) is made by the ApplicationSet
-// controller, not by applying a file, so a `render:` crank never creates it.
+// controller, not by applying a file, so a `render:` crank never creates it. A path that names a
+// Helm chart or Kustomize directory applied by hand (FR7.4; the pipeline renders it as a
+// hand-applied root) also matches every object that root rendered, whatever origin the graph keeps
+// for an object several renders produce.
 
 import type { CrankDecl } from "../u1-graph-model/declared-facts.js";
 import { type Edge, externalId, type GraphNode, makeEdge, type NodeId } from "../u1-graph-model/graph-model.js";
@@ -145,6 +148,7 @@ export function applyCranks(
   edges: readonly Edge[],
   cranks: readonly CrankDecl[],
   configFile: string,
+  handApplied: ReadonlyMap<string, readonly NodeId[]> = new Map(),
 ): CrankApplied {
   const byId = new Map(nodes.map((n) => [n.id, n]));
   const index = new PathIndex(nodes);
@@ -180,12 +184,21 @@ export function applyCranks(
         return;
       }
       let fresh = 0;
-      const named = index.take(t.path, (id) => {
+      const seen = new Set<NodeId>();
+      const claim = (id: NodeId) => {
+        seen.add(id);
         if (creatorOf.has(id)) return; // taken by a node target of an earlier crank
         creatorOf.set(id, c.id);
         made.push(id);
         fresh += 1;
-      });
+      };
+      let named = index.take(t.path, claim);
+      // a hand-applied root's objects that the path index did not name already
+      for (const id of handApplied.get(t.path) ?? []) {
+        if (!byId.has(id) || seen.has(id)) continue;
+        named += 1;
+        claim(id);
+      }
       if (named === 0) misses.push(at);
       already += named - fresh;
     });

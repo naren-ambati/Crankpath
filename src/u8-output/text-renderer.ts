@@ -149,11 +149,16 @@ const KIND_WORDS: Readonly<Record<SourceKind, [string, string]>> = Object.freeze
   Kustomization: ["Kustomization", "Kustomizations"],
   HelmRelease: ["HelmRelease", "HelmReleases"],
   KustomizeRoot: ["Kustomize root", "Kustomize roots"],
+  HandAppliedChart: ["Helm chart applied by hand", "Helm charts applied by hand"],
 });
 
 function foundLine(r: Report): string {
   const k = r.runStatus.counts.sourcesByKind;
-  const parts = (Object.keys(KIND_WORDS) as SourceKind[]).map((kind) => {
+  // a chart applied by hand is named only when a crank says there is one (FR7.4)
+  const kinds = (Object.keys(KIND_WORDS) as SourceKind[]).filter(
+    (kind) => kind !== "HandAppliedChart" || (k[kind] ?? 0) > 0,
+  );
+  const parts = kinds.map((kind) => {
     const [one, many] = KIND_WORDS[kind];
     return plural(k[kind], one, many);
   });
@@ -237,7 +242,12 @@ export function statusLines(r: Report, out: string[]): void {
 }
 
 function opaqueLines(o: OpaqueEntry, i: number, n: number, out: string[]): void {
-  const subject = o.node !== null ? `node: ${nodeRef(o.node)}` : quote("Kustomize root:", o.kustomizeRoot ?? "", T);
+  const subject =
+    o.node !== null
+      ? `node: ${nodeRef(o.node)}`
+      : (o.chartRoot ?? null) !== null
+        ? quote("Helm chart applied by hand:", o.chartRoot ?? "", T)
+        : quote("Kustomize root:", o.kustomizeRoot ?? "", T);
   out.push(`  opaque ${i} of ${n}  ${subject}  reason: ${o.reason}`);
   out.push(`    could not see: ${o.lostEdges.join("; ")}`);
   const detail = o.detail === null ? "" : `  (${o.detail})`;
@@ -272,18 +282,10 @@ function opacity(r: Report, out: string[]): void {
   if (c.skippedSources > 0)
     extra.push(`${plural(c.skippedSources, "source document was", "source documents were")} skipped and not counted`);
   out.push(
-    `Opacity: ${least}${c.opaque} of ${plural(c.sourcesFound, "source", "sources")} opaque${shareText}; sources are Applications, ApplicationSets, Kustomizations, HelmReleases and Kustomize roots; ${extra.map((e) => `${e}; `).join("")}${plural(c.unreadableFiles, "file", "files")} unreadable.`,
+    `Opacity: ${least}${c.opaque} of ${plural(c.sourcesFound, "source", "sources")} opaque${shareText}; sources are ${(c.sourcesByKind.HandAppliedChart ?? 0) > 0 ? "Applications, ApplicationSets, Kustomizations, HelmReleases, Kustomize roots and Helm charts applied by hand" : "Applications, ApplicationSets, Kustomizations, HelmReleases and Kustomize roots"}; ${extra.map((e) => `${e}; `).join("")}${plural(c.unreadableFiles, "file", "files")} unreadable.`,
   );
   out.push(`  ${foundLine(r)}`);
-  const u = r.undeployedKustomizeRoots;
-  if (u.length > 0) {
-    out.push(
-      `  ${plural(u.length, "Kustomize root", "Kustomize roots")} no source deploys: ${u.length === 1 ? "its" : "their"} objects are not in the graph (each is built on its own unless it is a component)`,
-    );
-    u.forEach((d, i) => {
-      out.push(`    undeployed ${i + 1} of ${u.length}  ${quote("Kustomize root:", d, T)}`);
-    });
-  }
+  undeployedLines(r, out);
   for (const m of r.repoMappings) {
     const how =
       m.from === "crankpath.yaml"
@@ -632,6 +634,28 @@ export function closing(r: Report, out: string[]): void {
   out.push(`Not modelled (${r.notModelled.length} items): ${r.notModelled.join("; ")}.`);
 }
 
+/**
+ * Chart and Kustomize directories nothing read deploys (FR7.4; lead decision for B7): never in the
+ * graph; a Kustomize root is still built on its own (B2), unless it is a component.
+ */
+function undeployedLines(r: Report, out: string[]): void {
+  const charts = r.undeployedCharts ?? [];
+  const roots = r.undeployedKustomizeRoots;
+  const n = charts.length + roots.length;
+  if (n === 0) return;
+  out.push(
+    `  not deployed by anything read: ${plural(charts.length, "chart directory", "chart directories")}, ${plural(roots.length, "Kustomize root", "Kustomize roots")}; their objects are not in the graph; if one is applied by hand at bootstrap, declare it as a crank: creates: render:<path>`,
+  );
+  charts.forEach((d, i) => {
+    out.push(`    undeployed ${i + 1} of ${n}  ${quote("chart directory:", d, T)}`);
+  });
+  roots.forEach((d, i) => {
+    out.push(
+      `    undeployed ${charts.length + i + 1} of ${n}  ${quote("Kustomize root:", d, T)}  (built on its own unless it is a component)`,
+    );
+  });
+}
+
 function nothingAnalysed(r: Report, out: string[]): void {
   out.push(`Run status: ${r.runStatus.state}`);
   const u = r.runStatus.counts.unreadableFiles;
@@ -647,6 +671,7 @@ function nothingAnalysed(r: Report, out: string[]): void {
       `  skipped ${i + 1} of ${r.skipped.length}  reason: ${s.reason}${name}  ${quote("file:", s.file, T)}  document: ${s.document}`,
     );
   });
+  undeployedLines(r, out);
   out.push("exit code 2");
 }
 

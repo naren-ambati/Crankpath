@@ -327,6 +327,7 @@
   ],
   "opaque": [
     {
+      "chartRoot": null,
       "detail": "not found",
       "field": "spec.source.path",
       "kustomizeRoot": null,
@@ -437,6 +438,7 @@
       "sourcesByKind": {
         "Application": 2,
         "ApplicationSet": 0,
+        "HandAppliedChart": 0,
         "HelmRelease": 0,
         "Kustomization": 0,
         "KustomizeRoot": 0
@@ -558,6 +560,7 @@
     },
     "unrecognised": []
   },
+  "undeployedCharts": [],
   "undeployedKustomizeRoots": [],
   "unreadable": [],
   "unresolved": [],

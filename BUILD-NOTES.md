@@ -1825,3 +1825,178 @@ The review file is committed with one phrase reworded: it named the design works
   Lines        : 96.23% ( 6790/7056 )
   check-tree: 462 files read, 0 finding(s)
   ```
+
+## B7 (goldens, the adversarial suite and mutation checks)
+
+Branch `bolt/b7`, started at `main` b735eb6 (B0, B1, B2, B4, B5, B6). B3 had not landed when this section was written; the homelab goldens wait for it (see "Not done yet").
+
+### Built
+- **GoldenHarness (C11, US11.2, US11.3)** `scripts/golden-lib.mjs` and the lane `scripts/golden.mjs`, `npm run verify:golden` (build, then the lane). A case is `test/golden/<case>/` with `input.json` (a committed fixture with named parts and overlays, or a pinned fetch with a full 40-hex sha; the crankpath arguments with `{tree}`, `{src:<id>}` and `{case}` placeholders; `needs` among helm, kustomize, git, network; the helm and kustomize versions the output was reviewed with; `form` full or reduced; the declared mutations), `expected.json`, `expected.txt` and `reviewed.md`. The lane runs the built crankpath as a child process with only the tools the case needs on PATH (node alone otherwise), `--cache-dir` in the golden cache and `--no-color`, once for JSON and once for text, and compares both byte for byte. A case whose needs are missing, or whose helm or kustomize version differs from the reviewed one, is SKIPPED with the reason, its mutations too; exit 1 on any failure, 2 when anything was skipped or only observed, 0 only when every check ran and passed. `--observe` writes the outputs to the cache and prints the reduced summary (compares nothing, exit 2); `--pin <case>` writes the expected files from a run and is refused while `reviewed.md` is missing or records the review as `Pending.`.
+- **The golden cache** (`CRANKPATH_GOLDEN_CACHE`, default `<home>/.cache/crankpath-golden`, refused inside the checkout): `src/<id>@<sha>/` (read-only `git clone --filter=blob:none --no-checkout`, the tag checked to resolve to the pinned sha, optional sparse paths, `checkout --detach <sha>`, HEAD checked; fixed `-c` options: no hooks, no fsmonitor, https only, no submodules, no redirects, no credential helper; `GIT_TERMINAL_PROMPT=0`), `work/<case>/<base|mutation>/tree/` (a fresh copy per run, `.git` left out), `crankpath-cache/`, `runs/<case>/` (every observed output: full JSON and text, the reduced form and its summary, for the base run and each mutation).
+- **The reduced form** (`crankpath-golden-reduced/1`, `reduce` and `summaryText`), for estates whose text may not be committed (m11): run state, reasons, floor and counts; tool versions; node counts by kind; edge counts by kind and source; each cycle's id, label, label before cranks, node ids, edge count and edges as (from, kind, to) node ids, cranks that cranked or introduced it; externals by id, cold start and serving node; opaque, unreadable and skipped counts by reason; unresolved counts by reason; floating and mapping counts; cranks by id with counts and rerouted (from, to) ids; status counts; plan steps (number, kind, manual, crank id, node ids), unordered and conflict counts, assumed externals and cranks; not-computed words. A test shows every string in it is a node id, a node kind, a cycle or crank id, a tool version, a word of the frozen schema's vocabulary or one of its own keys, and that a planted repo string is caught.
+- **MutationChecker (US11.6, BR11.14)** in the same `checkCase`: each declared mutation (`remove` a path, `replace` text that must match exactly once, `drop-arg` a flag and its value, `drop-overlay`) runs on a fresh copy of the input; it fails when the reduced result is unchanged, when an edit does not apply, or when the result misses what the mutation declares (`expect`, matched against a headline: state, cycle counts and labels, opaque and external counts, plan steps and first step kind, startable count).
+- **Cases.** `thin-slice` (needs nothing, so `npm run verify` runs it through the same code in `test/u11-validation-harness/golden-harness.test.ts`; its expected files stay at `test/fixtures/thin-slice/`, `expectedDir`, because the B1 to B6 tests read them there), `vault` and `vault-edited` (helm, kustomize, git, network; observed, not pinned), `homelab` and `homelab-cranked` (manifests and the crank file `test/golden/homelab-cranked/crankpath.yaml`, crankpath's own words; waiting for B3 and a lead decision, below).
+- **Adversarial suite (US11.5)** `test/adversarial/`: `suite.ts` indexes 15 failure classes with the hostile input, the expected outcome and the tests (file, describe title, test title, exactly as written); `suite.test.ts` fails when a reference no longer matches a test, a class has no test or the README misses a class; `README.md` is the one-page map; `gaps.test.ts` holds the cases no earlier bolt tested through the whole command: a Flux dependsOn cycle closed by one patch (none before, the extracted 2-node cycle after), a scanned-repo crankpath.yaml that cranks every path and declares externals available (the cycle stays, `cranked`; every crank documented and every external declared, not verified; the repo's words quoted; no claim word in crankpath's voice), an alias bomb and 20,000-deep nesting in a scanned file (named unreadable, counted, `at least`, the run finishes), an Application path climbing out of the root (opaque `unreadable-file`, nothing outside read), nine look-alike repo URLs (other host, host prefix, longer name, prefix path, sub-path, path case, port, punycode; each `unreadable-repo`, the exact one read), and 403/404/429 from a chart repository (`private-chart` or `render-failed` with "unknown whether the chart exists", never gone).
+- `docs/lookups.md`: the B7 rows. `biome.json`: `test/golden/*/expected.json` excluded from formatting (byte-for-byte files). `package.json`: `verify:golden`.
+
+### Verified
+- `npm run verify` on 2026-11-16 (Node v22.23.2, macOS arm64), exit 0:
+  ```
+  Checked 195 files in 178ms. No fixes applied.
+   Test Files  82 passed (82)
+        Tests  1458 passed | 4 skipped (1462)
+  Statements   : 94.64% ( 5731/6055 )
+  Branches     : 87.55% ( 4180/4774 )
+  Functions    : 98.16% ( 804/819 )
+  Lines        : 96.22% ( 4894/5086 )
+  check-tree: 388 files read, 0 finding(s)
+  ```
+  The 4 skipped are the goldens that need helm and the network (`vault`, `vault-edited`, `homelab`, `homelab-cranked`), each named with its reason; vitest reports them as skipped, never passed.
+- `CRANKPATH_GOLDEN_CACHE=<cache> npm run verify:golden` on 2026-11-16 with helm v4.3.2, kustomize v5.8.1, git 2.55.0 and the network, exit 1 (as it must be before pinning):
+  ```
+  FAIL  homelab: run  (crankpath exited 2 and 2, expected 0)
+  FAIL  homelab-cranked: run  (crankpath exited 2 and 2, expected 0)
+  PASS  thin-slice: expected output  (expected.json and expected.txt match the run (full form))
+  PASS  thin-slice mutation remove-service  (...)
+  PASS  thin-slice mutation rename-service  (...)
+  PASS  thin-slice mutation other-repo-url  (...)
+  FAIL  vault: expected output  (not pinned: the expected files are missing)
+  PASS  vault mutation drop-platform-alias  (...)
+  PASS  vault mutation remove-credential-label  (...)
+  PASS  vault mutation rename-vault-service  (...)
+  FAIL  vault-edited: expected output  (not pinned: the expected files are missing)
+  PASS  vault-edited mutation remove-crank  (...)
+  PASS  vault-edited mutation undo-ca-issuer  (...)
+  PASS  vault-edited mutation drop-platform-alias  (...)
+  golden lane: 10 passed, 4 failed, 0 skipped
+  ```
+- **The Vault goldens ran for real** (not SKIPPED), `node scripts/golden.mjs --observe`, 2026-11-16, about 25 s for all cases and mutations; two runs byte-identical; no machine path in any output. Observed: `vault` cycle A 3 nodes/3 edges and cycle B 5 nodes/5 edges, both extracted, the three externals unspecified, 0 opaque, 46 nodes, 73 edges, `ANALYSED WITH GAPS` (4 unresolved: 3 externals, the assumed Argo CD namespace); `vault-edited` A cranked by `crank:1`, B gone, 15 plan steps with step 1 the one manual crank step, 46 of 46 objects startable, 0 unordered. Each difference from the research is explained in `test/golden/vault*/reviewed.md` (B is 5 edges per OD-3; 10 objects are blocked by unspecified externals as well as the cycles' 33).
+- The offline lane, `PATH=<node dir> node scripts/golden.mjs --offline` (a test runs it): the thin slice passes, every other case and mutation SKIPPED with its reason, exit 2.
+- Falsifiability, each a test: a changed expected text fails naming the line; a missing pin fails; pinning is refused without a review and with a pending one; a no-op mutation, an unmet expectation and an edit that does not apply each fail; a tool version mismatch skips; abbreviated shas, http or userinfo URLs and paths that climb out are refused before anything runs; a planted repo string in the reduced form is caught; a reference to a test that does not exist is caught.
+
+### Deviations from the design and why
+1. **The Vault fixture's charts are read through `--repo-alias`** to read-only clones at their pinned commits (B2's renderer reads a git chart source only under the repo-identity rule; B3's `repos: {fetch: true}` may replace the two aliases once it lands). The fixture was not changed: its git sources render as written, so github.com stays the only chart host.
+2. **`vault-edited` carries a third declaration**: the `both-edits` variant also declares the three externals available (as the research's crankpath.yaml does), without which the plan stops at what needs them; the two documented edits alone are the `crank-a` and `ca-issuer` variants, tested offline by B5.
+3. **The thin slice's expected files stay beside its fixture** (`expectedDir`), not in `test/golden/thin-slice/` (C11), because eight earlier tests read them there.
+4. **The Vault goldens are full form**: `expected.json` and `expected.txt` will hold crankpath's report, which names objects the vault-helm chart renders (ids such as `Service/vault/vault-internal`), edge kinds and field paths, but no template text and no rendered manifest. I read that as within OD-6 (no copy of the chart's templates or rendered output); the lead may prefer the reduced form for them too, which is one word in each `input.json`.
+5. **Mutations compare the reduced form**, not the bytes: a change of wording or order would not count as the result changing.
+6. **The golden lane needs kustomize too** for the Vault cases (crankpath prints its version in the report), and git for the fetches; `needs` lists all four.
+
+### Decisions taken for the owner
+- `--observe` and `--pin` exit 2, never 0: neither is a pass.
+- A helm or kustomize version other than the reviewed one makes a case SKIPPED, not FAIL (its output may legitimately differ; a skip is never a pass).
+- The golden cache defaults to a user cache directory and is refused inside the checkout.
+
+### Not done yet (lead to decide or schedule)
+- **The homelab goldens cannot show the research's cycles with the current design, with or without B3.** At 8b9d40f the repository holds no plain Application, ApplicationSet, Kustomization or HelmRelease document (dated lookup); the root ApplicationSet exists only in what `system/argocd`'s chart renders, and nothing in the estate deploys `system/argocd` (the bootstrap play applies it by hand). Today's run is `NOTHING ANALYSED` (exit 2) with and without the crank: discovery has no source to start from, and a `render:<path>` crank names objects some render already produced (BR7.7), so it adds none. B3's generator expansion, as its notes describe it, expands ApplicationSets that discovery finds, so I expect it not to change this; to be confirmed by a run after the merge. Options for the owner: (a) treat a `creates: render:<path>` crank of a Helm chart (or Kustomize) directory as a hand-applied root that crankpath renders and graphs (then the uncranked run stays `NOTHING ANALYSED`, against the research's "without the crank, both cycles extracted"); (b) render every Helm chart directory nothing deploys as a root, as B2 builds undeployed Kustomize roots, and graph its objects (B2 chose not to graph those: nothing applies them); (c) keep the design and record that the homelab golden shows `NOTHING ANALYSED`, a research hand-trace error (the research rendered `system/argocd` itself). The manifests in `test/golden/homelab*/` are ready for whichever is chosen; pinning waits for the run and the lead's review.
+- Pinning `vault` and `vault-edited` waits for the lead's review of the observed summary.
+- AC11.5.3 (no token for another host is read or sent) is B3's fetcher; the index gets its reference when B3 lands.
+
+### Unverified
+- One macOS arm64 machine, Node 22.23.2, helm v4.3.2, kustomize v5.8.1; Linux not run.
+- The golden lane's own git fetches run with the parent's PATH and the fixed options above, not through crankpath's runner; their token handling is not crankpath's (they send none).
+- The dormant-cycle case uses a one-line patch applied to a copy, not a kustomize `patches` entry rendered by kustomize (Flux Kustomization `patches` is `unsupported-field` in B2).
+
+## B7: the Vault goldens pinned, and directories applied by hand (lead decision, option (a), 2026-11-16)
+
+### Pinned
+- `vault` and `vault-edited`: reviewed by the build lead for the owner on 2026-11-16 (the observed summary in "B7" above, the five differences accepted as explained), pinned with `node scripts/golden.mjs --pin <case>` from a run byte-identical to the reviewed one (`0b3ebbc`). After the change below they were re-pinned: the JSON gains exactly two keys (`runStatus.counts.sourcesByKind.HandAppliedChart: 0`, `undeployedCharts: []`), the text is byte-identical; `reviewed.md` records the edit.
+
+### Built (FR7.4, BR7.7: a `render:<path>` crank of a directory applied by hand)
+- **The rule.** A `creates: render:<path>` crank whose path is a Helm chart directory (a `Chart.yaml`, not vendored inside another chart's `charts/` or `templates/`) or a Kustomize root of the scanned root names a directory applied by hand at bootstrap. crankpath renders it once, through the normal Helm or Kustomize job and every guard (`planHandAppliedRoot` in `src/u3-discovery-expansion/render-planner.ts`, job id `HandApplied:<path>`, no owner), before the source queue; the crank creates every object that render produced (`applyCranks` takes the rendered ids per path, so the match does not depend on which origin the graph keeps for an object two renders produce); every source among those objects is planned and rendered as usual (an ApplicationSet among them is expanded once B3 lands). A chart's release name is the crank's `release:` or the directory's last segment, its namespace the crank's `namespace:` (both new optional crank keys, refused on a crank with no `render:` target; a namespace must be a namespace name; a release helm would refuse makes the root opaque `unsupported-field`).
+- **Counted as a source.** A hand-applied chart is a source of the new kind `HandAppliedChart` (`runStatus.counts.sourcesByKind`), so a failed render is an opaque source (`opaque[].chartRoot`, text `Helm chart applied by hand: "<path>"`), counted in the opacity statement, and the crank then creates nothing; a hand-applied Kustomize root keeps its kind `KustomizeRoot` and its render now covers it (graphed, created by the crank, no longer listed undeployed). The text names the kind only when one is present (the found line and the opacity statement's list of source kinds), so every other output is unchanged.
+- **Undeployed directories are listed, never graphed.** `undeployedCharts` (new, sorted): chart directories of the scanned root that no render read (compared by real path, so an alias that maps the scanned checkout itself counts) and no crank applies. The text block now names both kinds, in the normal report and in the NOTHING ANALYSED shape: `not deployed by anything read: N chart directories, M Kustomize roots; their objects are not in the graph; if one is applied by hand at bootstrap, declare it as a crank: creates: render:<path>`, then `undeployed i of n  chart directory: "<path>"` or `... Kustomize root: "<path>"  (built on its own unless it is a component)`. This replaces B2's Kustomize-only line (one test updated to the new words; B2's behaviour, built but not graphed, is unchanged).
+- **Schema** additive (`schemaVersion` stays 1): `runStatus.counts.sourcesByKind.HandAppliedChart`, `opaque[].chartRoot`, `undeployedCharts`; the field golden, `docs/json-output.md` (regenerated table and the additions sentence) and `test/fixtures/thin-slice/expected.json` (exactly those three lines) updated. The golden reduced form gains `undeployed` counts.
+- **Fixture** `test/fixtures/hand-applied/` (crankpath's own): a chart `system/argocd` nothing deploys whose plain-YAML templates render the Applications `argocd` (this chart) and `gitea` (`platform/gitea`) and a Deployment with no namespace; `platform/gitea` plain manifests; a second chart nothing deploys. The tests' fake helm gains one fallback: a chart marked `fake-plain-templates` renders its `templates/*.yaml` as written (what real helm does with plain YAML), so the fixture's real and fake renders agree.
+
+### Verified
+- Tests first: `test/u9-cli-package/hand-applied-root.test.ts` was written before the code and failed (the crank's `namespace:` key was refused, so the suite could not even load); 14 tests now: uncranked NOTHING ANALYSED (exit 2) with the two chart directories and the suggestion; a Kustomize root listed in the same block and not graphed; with the crank, the chart rendered in the crank's namespace, its Applications planned and rendered, the cycle through Gitea `cranked` (was `extracted`) by `crank:1`, which creates the chart's three objects, plan step 1 the crank; a crank of a path that is neither kind is unused; a failed render and a missing helm make the hand-applied chart an opaque source and the crank creates nothing; a cranked Kustomize root graphed and created; namespace and release refusals; a chart an Application deploys, directly or through an alias of the same checkout, not listed.
+- Hand mutations, each turning tests red, then restored: the crank applier ignoring the rendered ids (3 red); the undeployed filter ignoring deployed charts (2 red, after the two "deployed" tests were added because the first version of the suite did not catch it).
+- `npm run verify` on 2026-11-16, exit 0:
+  ```
+  Checked 196 files in 67ms. No fixes applied.
+   Test Files  83 passed (83)
+        Tests  1472 passed | 4 skipped (1476)
+  Statements   : 94.65% ( 5769/6095 )
+  Branches     : 87.47% ( 4226/4831 )
+  Functions    : 98.18% ( 811/826 )
+  Lines        : 96.23% ( 4928/5121 )
+  check-tree: 403 files read, 0 finding(s)
+  ```
+- `npm run verify:golden` (helm v4.3.2, kustomize v5.8.1, network): `thin-slice`, `vault`, `vault-edited` and their 9 mutations PASS; `homelab` and `homelab-cranked` not pinned (FAIL), waiting for B3.
+- A first real homelab run on the current code (before B3; observed only, not reviewed, not pinned; full output in the golden cache): uncranked, NOTHING ANALYSED, 31 chart directories nothing deploys, 1 unreadable file; cranked (`render:system/argocd`, namespace and release `argocd`, the reroute of the root ApplicationSet to github.com), the chart renders 54 objects created by the crank, the root ApplicationSet is opaque `not-in-this-build` until B3 expands it, so no cycle yet.
+
+### Deviations and decisions (for the review pass)
+1. **Two new optional crank keys, `namespace:` and `release:`**, beyond C2: a hand-applied chart needs the namespace it is applied in (homelab's play renders release `argocd` in namespace `argocd`; without `--namespace` helm puts Argo CD's controllers in `default`, and they would be different nodes from the ones the generated Application renders). Release defaults to the directory's last segment.
+2. **A hand-applied chart is a new source kind**, named in the text only when present, so no output without such a crank changes except the three JSON keys.
+3. **A hand-applied root is rendered even when some source also deploys the same directory** (homelab's `system/argocd` is both: applied by hand, then managed by the Application it generates); the objects of the two renders merge by id as any duplicate does (`conflicting-definitions` when they differ).
+4. Kustomize roots keep B2's coverage rule (a render of the scanned root's label covers them); only chart coverage compares real paths. An alias of the scanned checkout therefore still lists a Kustomize root it renders as undeployed (B2's behaviour, not changed here).
+5. The homelab crank file now carries `namespace: argocd` and `release: argocd` (facts of the repository's bootstrap play, in crankpath's words), and the uncranked homelab case expects exit 2.
+
+## B7: the homelab goldens after B3 (observed, awaiting review), 2026-11-16
+
+- **Merge of `main` (B3, `ede1900`)** as `0dcd591`: conflicts only where both sides added (the crank applier's comment, the pipeline's hand-applied roots beside B3's generator expansion, `package.json` scripts, BUILD-NOTES and `docs/lookups.md` sections). `npm run verify` green after the merge with no further change.
+- **Vault goldens re-pinned** for B3's additive JSON keys (`clustersUsed`; `commit`, `failure`, `floating` on each repository mapping): the diff adds exactly those lines, the text is byte-identical; recorded in each `reviewed.md`.
+- **The homelab goldens ran for real** (helm v4.3.2, kustomize v5.8.1, network; 8b9d40f fetched read-only into the golden cache; the one alias; observed with `--observe`, full output in the cache only). Uncranked: `NOTHING ANALYSED` (exit 2), 31 chart directories nothing deploys. Cranked: 614 nodes, 793 edges, one uncranked extracted cycle of 12 nodes and 22 edges through Gitea; the self-management cycle is cranked (shown alone by the `remove-gitea` mutation, 2 nodes, 2 edges); plan step 1 the crank. The research expected both cycles cranked: its single reroute of the root ApplicationSet does not reroute the 31 Applications the ApplicationSet generates, which read their source from the Gitea Service through its template (the repository's first-install values change both repoURLs). Explained in `test/golden/homelab-cranked/reviewed.md`; for the lead to decide (below). Not pinned.
+- **Mutations strengthened**: a `write` edit (a new file of the harness's own, refused over an existing file) lets `add-entry-application` add one Application that deploys `system/argocd`: the uncranked estate then shows both research cycles, extracted, in one component of 13 nodes and 24 edges. Every homelab mutation now declares what it changes (`expect`), and the headline gains the count of undeployed chart directories. The weak uncranked `drop-alias` (it changed only a mapping count) is gone.
+- **AC11.5.3** in the adversarial index (`token-host`): B3's fetcher tests (the token reaches its own host only, never another, never an output or cache).
+- **Open for the lead (homelab cycle 1):** (a) the crank file also reroutes the generated Applications that read Gitea (32 reroutes, node ids only; tried in the cache: the cycle becomes `cranked`, 538 objects then wait on `github.com`, whose cold start the file does not declare); (b) a crankpath rule that a reroute of an ApplicationSet also reroutes the Applications it generates (a semantic change, for review); (c) pin as observed, the cycle uncranked, and record the research's crank as incomplete. Separately: whether the crank file declares `github.com: {cold_start: available}`, as the research's crankpath.yaml does, so the plan orders the rest.
+
+## B7: the homelab goldens pinned (lead decisions of 2026-11-16, for the owner)
+
+### Decisions applied
+- **Cycle 1, option (a):** `test/golden/homelab-cranked/crankpath.yaml` (crankpath's own text) declares `github.com: {cold_start: available}` (as the research's crankpath.yaml does) and its one crank reroutes the root ApplicationSet and each of the 31 Applications it generates to `github.com` (32 reroutes in one entry, one `by` and `ref`): the repository's first-install values set the generator's and the template's repoURL to github.com alike, so this is the same bootstrap step stated explicitly. The research's single reroute is recorded as incomplete in `reviewed.md`.
+- **Owner item for v1.1 (option (b)):** a reroute of an ApplicationSet could carry over to the Applications it generates, so the research's one-line crank would suffice.
+- **Pinned** (reduced form, node ids and counts only): `homelab` as observed (NOTHING ANALYSED, exit 2, 31 chart directories listed) and `homelab-cranked` under the lead's pre-approval: the one strongly connected component holding both research cycles (`c-35843cd4`, 12 nodes, 22 edges) `cranked` (was `extracted`) by `crank:1`, plan step 1 the manual crank creating the chart's 54 objects, then 7 start steps (549 objects startable) and 63 listed unordered with reasons (60 behind objects the estate does not define, 2 opaque, 1 behind an external with no declared cold start). The two research cycles are one component in crankpath's output, not two cycles; the mutation `remove-gitea` shows the self-management cycle alone (`c-8feec3e8`, 2 nodes, 2 edges, cranked).
+
+### A finding: the JSON is not byte-identical on this estate
+The first `npm run verify:golden` after pinning failed on `homelab-cranked`: `floating` 34 against 33. Three charts of the estate render different content on different renders (Go map iteration: `Application/argocd/kanidm`'s chart dependency picks one of two Service ports; 3 of 8 direct `helm template` runs differed), and crankpath adds `helm template: content differs between two renders` only when its own two renders happen to differ: `grafana` and `rook-ceph` in every run seen, `kanidm` in 3 of 5. B2 recorded the limit (two renders cannot prove determinism); it means the full JSON for this estate differs from run to run by that note. The golden's reduced form now counts floating revisions only (the render note is left out, `scripts/golden-lib.mjs`), and `homelab-cranked` was re-pinned with 31 (nothing else changed; recorded in its `reviewed.md`). For the lead: whether crankpath should make that note deterministic (for example by never emitting it for content-only differences, or by a fixed number of extra renders), or state the limit in the README's determinism claim.
+
+### Verified
+- `npm run verify` on 2026-11-16, exit 0:
+  ```
+  Checked 219 files in 339ms. No fixes applied.
+   Test Files  95 passed (95)
+        Tests  1684 passed | 4 skipped (1688)
+  Statements   : 94.37% ( 7065/7486 )
+  Branches     : 87.94% ( 5287/6012 )
+  Functions    : 97.98% ( 922/941 )
+  Lines        : 96.41% ( 6030/6254 )
+  check-tree: 443 files read, 0 finding(s)
+  ```
+  The 4 skipped are the four goldens that need helm and the network (run by the lane below).
+- `CRANKPATH_GOLDEN_CACHE=<cache> npm run verify:golden` on 2026-11-16 (helm v4.3.2, kustomize v5.8.1, git 2.55.0, network reachable), run twice, exit 0 both times: `golden lane: 19 passed, 0 failed, 0 skipped` (5 goldens, 14 mutations; none skipped).
+
+### Note for the README writers (lead decision, 2026-11-16)
+State determinism as it is: the output is byte-identical for the same inputs and the same helm and kustomize versions, except where a chart's own rendering is nondeterministic. crankpath renders every Helm source twice and flags the differences it sees (a floating entry, or `render-failed` when object names differ), which cannot catch every case; khuedoan/homelab at 8b9d40f is such a case (one floating entry varies between runs). `docs/limits.md` ("Two renders per chart") and `docs/json-output.md` say the same. crankpath's detector is unchanged.
+
+## B7 review fixes (review `reviews/bolt-7-review.md`: 0 Major, 8 Minor, 4 Nit; lead decisions of 2026-11-16)
+
+### Built (each with a test seen failing first)
+- **m1** `foreignStrings` (`scripts/golden-lib.mjs`): every key of the reduced form must be one of its own keys (`REDUCED_KEYS`), a count field of the schema, an enumerated word of the schema, a refusal outcome or a node kind; every value a node id, a cycle or crank id, the assumed Argo CD namespace's id, a tool version or an enumerated word. A planted one-word value (`spec`) and key (`metadata`) are caught. The lane refuses to compare or pin a reduced form that holds anything else (the strings are not printed). Unreadable files are now counted by outcome (`parse-error`), not by wording.
+- **m2** the adversarial index asks vitest itself: `test/adversarial/vitest-results.ts` runs vitest with its JSON reporter on the referenced files, and each reference must match at least one test, inside the referenced describe, every match `passed`. Shown to fail with `it.skip` on a referenced test (`-> skipped`), and on todo, missing and other-describe results. It adds about 45 s to `npm run verify`.
+- **m3** tests for both exclusions of the undeployed list (a chart under another chart's `charts/` or `templates/`; a chart a crank applies by hand that no render deploys); both mutants now turn the suite red.
+- **m4** (choice recorded) two cranks may name the same `render:` path only when they apply it the same way: a later crank with another `namespace:` or `release:` is refused at read (exit 1) naming its key path (`cranks[1].creates`, "names a render: path an earlier crank applies with another namespace or release"); the same way is accepted (the later one names objects already created).
+- **m5** `--pin` is bound to the reviewed output: `reviewed.md` records `expected.json sha-256:` and `expected.txt sha-256:` (printed by `--observe`), and `--pin` refuses when they are missing or when the run's output has other digests. All five `reviewed.md` carry them.
+- **m6** the headline gains `cycleIds` and `opaqueNodes` (the reduced form gains `opaque.nodes`), and every mutation expects them: the two Vault mutations now name the surviving cycle (`c-ba4047ac` and `c-35505771`), `homelab-cranked drop-alias` names `ApplicationSet/argocd/root` as the opaque source, `thin-slice other-repo-url` names its two opaque Applications.
+- **m7** investigated: 20 runs of `homelab-cranked` under 12 busy loops on 10 cores (2026-11-16, every full output and `--verbose` counts kept in the golden cache under `m7/`) gave 793 edges, 614 nodes, 0 timeouts and the same 2 opaque sources every time; the reviewer's single failure was not reproduced. The likely causes are both named crankpath outcomes (a render past `renderWallClock`, or a network failure in the `helm dependency build` each run makes in a fresh helm home), so the lane now says what differs on any failure: the counts that differ, the run's timeouts and opaque outcomes, and the failed output kept as `runs/<case>/failed-<n>.{json,txt}`; `scripts/golden.mjs` and `docs/limits.md` say to run the lane on an idle machine with a steady network.
+- **n1** a case that needs helm or kustomize must name the reviewed version (`tools`). **n2** a cached checkout whose working tree differs (changed, untracked or ignored files) is refused (`git status --porcelain --untracked-files=all --ignored`); the harness keeps its own fetch (read-only clone, sha checked), not B3's fetcher, which is crankpath's runtime path. **n3** the homelab cases' descriptions name the reduced form's floating rule. **n4** (tracked design-workspace files on `main`) is the lead's.
+- **Re-pins**: `homelab` and `homelab-cranked`, because the reduced form changed (outcome words, `opaque.nodes`); a real run's diff against the pinned files was exactly those lines, recorded in each `reviewed.md`. The full-form goldens are unchanged.
+
+### Verified
+- `npm run verify` on 2026-11-16, exit 0:
+  ```
+  Checked 235 files in 141ms. No fixes applied.
+   Test Files  103 passed (103)
+        Tests  1878 passed | 4 skipped (1882)
+  Statements   : 94.28% ( 8005/8490 )
+  Branches     : 87.68% ( 5940/6774 )
+  Functions    : 97.83% ( 1086/1110 )
+  Lines        : 96.25% ( 6836/7102 )
+  check-tree: 501 files read, 0 finding(s)
+  ```
+- `npm run verify:golden` (helm v4.3.2, kustomize v5.8.1, git 2.55.0, network), exit 0: `golden lane: 19 passed, 0 failed, 0 skipped`.
+
+### What changes in meaning
+- crankpath: a crankpath.yaml with two cranks that apply one `render:` path differently, accepted before (the first won silently), is now refused (exit 1). Nothing else in crankpath's output changes.
+- The golden harness: a reduced form with a foreign string fails; a pin needs the reviewed digests; mutations must hit named cycles and opaque nodes; the homelab expected files changed form (not content).

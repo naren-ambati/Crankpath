@@ -1,0 +1,102 @@
+{
+  "case": "vault-edited",
+  "description": "The Vault fixture with its two documented edits (US11.3, AC11.3.2): the creates: crank for cycle A and Vault's Certificate from a ca ClusterIssuer seeded at bootstrap, plus the three externals declared available (variants/both-edits). Expected: A cranked as plan step 1, B gone, every node in an ordered plan with one marked manual step.",
+  "form": "full",
+  "needs": ["helm", "kustomize", "git", "network"],
+  "tools": {
+    "helm": "v4.3.2",
+    "kustomize": "v5.8.1"
+  },
+  "input": {
+    "fixture": "test/fixtures/vault",
+    "parts": ["gitops", "platform"],
+    "overlays": ["test/fixtures/vault/variants/ca-issuer", "test/fixtures/vault/variants/both-edits"],
+    "scan": "gitops"
+  },
+  "fetch": [
+    {
+      "id": "vault-helm",
+      "url": "https://github.com/hashicorp/vault-helm",
+      "rev": "v0.34.1",
+      "sha": "aa1c92e4adddbce9660e536dfe5222a88eda6d52"
+    },
+    {
+      "id": "external-secrets",
+      "url": "https://github.com/external-secrets/external-secrets",
+      "rev": "helm-chart-2.9.0",
+      "sha": "cc5bfbc2234ace9cb0caff4ea89c435cf517b27b",
+      "sparse": ["deploy/charts/external-secrets"]
+    }
+  ],
+  "args": [
+    "--repo-url",
+    "https://github.com/acme/platform-gitops",
+    "--repo-alias",
+    "git@github.com:acme/platform.git={tree}/platform",
+    "--repo-alias",
+    "https://github.com/hashicorp/vault-helm={src:vault-helm}",
+    "--repo-alias",
+    "https://github.com/external-secrets/external-secrets={src:external-secrets}"
+  ],
+  "mutations": [
+    {
+      "id": "remove-crank",
+      "kind": "remove the crank",
+      "why": "without the documented step, cycle A is extracted and uncranked again and nothing behind it is startable",
+      "edits": [
+        {
+          "op": "replace",
+          "path": "gitops/crankpath.yaml",
+          "from": "cranks:\n  - creates: Secret/argocd/repo-platform\n    by: \"kubectl create secret from the offline key backup, runbook DR-3\"\n    ref: runbooks/dr-3.md\n",
+          "to": "cranks: []\n"
+        }
+      ],
+      "expect": {
+        "labels": ["extracted"],
+        "uncranked": 1,
+        "cycleIds": ["c-35505771"],
+        "opaqueNodes": []
+      }
+    },
+    {
+      "id": "undo-ca-issuer",
+      "kind": "remove an edit",
+      "why": "with Vault's Certificate issued through Vault's own PKI again, cycle B comes back",
+      "edits": [
+        {
+          "op": "drop-overlay",
+          "overlay": "test/fixtures/vault/variants/ca-issuer"
+        }
+      ],
+      "expect": {
+        "cycles": 2,
+        "uncranked": 1,
+        "cranked": 1,
+        "cycleIds": ["c-35505771", "c-ba4047ac"],
+        "opaqueNodes": [],
+        "labels": ["cranked", "extracted"]
+      }
+    },
+    {
+      "id": "drop-platform-alias",
+      "kind": "drop an alias",
+      "why": "without the platform repository nothing of it is read: the crank matches no object and three sources are opaque",
+      "edits": [
+        {
+          "op": "drop-arg",
+          "flag": "--repo-alias",
+          "startsWith": "git@github.com:acme/platform.git="
+        }
+      ],
+      "expect": {
+        "opaque": 3,
+        "cycleIds": [],
+        "opaqueNodes": [
+          "Application/argocd/external-secrets",
+          "Application/argocd/platform",
+          "Application/argocd/vault"
+        ]
+      }
+    }
+  ]
+}

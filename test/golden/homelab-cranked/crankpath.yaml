@@ -1,0 +1,48 @@
+# The one bootstrap step khuedoan/homelab performs by hand, in crankpath's own words (research
+# section 4, completed): its bootstrap play renders system/argocd and applies it as release argocd in
+# namespace argocd, creating Argo CD and the root ApplicationSet outside Argo CD. On a first install
+# it renders the chart with first-install values that set both the ApplicationSet generator's and
+# its template's repoURL to github.com instead of the in-cluster Git server, so the root and every
+# Application it generates read github.com at a cold start: one reroute per such node. No text of
+# the repository is copied here; the node ids and paths name its objects and directories.
+external:
+  github.com: { cold_start: available }
+cranks:
+  - creates: render:system/argocd
+    namespace: argocd
+    release: argocd
+    reroutes:
+      - { node: Application/argocd/actualbudget, to: github.com }
+      - { node: Application/argocd/argocd, to: github.com }
+      - { node: Application/argocd/blog, to: github.com }
+      - { node: Application/argocd/cert-manager, to: github.com }
+      - { node: Application/argocd/cloudflared, to: github.com }
+      - { node: Application/argocd/dex, to: github.com }
+      - { node: Application/argocd/excalidraw, to: github.com }
+      - { node: Application/argocd/external-dns, to: github.com }
+      - { node: Application/argocd/external-secrets, to: github.com }
+      - { node: Application/argocd/gitea, to: github.com }
+      - { node: Application/argocd/global-secrets, to: github.com }
+      - { node: Application/argocd/grafana, to: github.com }
+      - { node: Application/argocd/homepage, to: github.com }
+      - { node: Application/argocd/ingress-nginx, to: github.com }
+      - { node: Application/argocd/jellyfin, to: github.com }
+      - { node: Application/argocd/kanidm, to: github.com }
+      - { node: Application/argocd/kured, to: github.com }
+      - { node: Application/argocd/loki, to: github.com }
+      - { node: Application/argocd/matrix, to: github.com }
+      - { node: Application/argocd/monitoring-system, to: github.com }
+      - { node: Application/argocd/ollama, to: github.com }
+      - { node: Application/argocd/pairdrop, to: github.com }
+      - { node: Application/argocd/paperless, to: github.com }
+      - { node: Application/argocd/renovate, to: github.com }
+      - { node: Application/argocd/rook-ceph, to: github.com }
+      - { node: Application/argocd/speedtest, to: github.com }
+      - { node: Application/argocd/tailscale, to: github.com }
+      - { node: Application/argocd/volsync-system, to: github.com }
+      - { node: Application/argocd/wireguard, to: github.com }
+      - { node: Application/argocd/woodpecker, to: github.com }
+      - { node: Application/argocd/zot, to: github.com }
+      - { node: ApplicationSet/argocd/root, to: github.com }
+    by: "render system/argocd with the github.com seed and apply it"
+    ref: system/bootstrap.yml

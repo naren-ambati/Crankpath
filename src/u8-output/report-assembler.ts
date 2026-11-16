@@ -38,6 +38,8 @@ export interface SourceOutcome {
   readonly kind: SourceKind;
   readonly node: NodeId | null;
   readonly kustomizeRoot: string | null;
+  /** A Helm chart directory applied by hand (FR7.4), else absent. */
+  readonly chartRoot?: string | null;
   readonly mark: OpaqueMark | null;
 }
 
@@ -64,6 +66,7 @@ export interface AssemblyInput {
   readonly toolchain?: Toolchain;
   readonly floating?: readonly FloatingEntry[];
   readonly undeployedKustomizeRoots?: readonly string[];
+  readonly undeployedCharts?: readonly string[];
   /** True when helm rendered at least one chart: its cluster-free rendering is then a stated limit (FR3.8). */
   readonly helmRendered?: boolean;
   /** What the run's memory budget refused (all zero when it was not reached). */
@@ -104,6 +107,7 @@ export function assembleReport(given: AssemblyInput): Report {
     toolchain: given.toolchain ?? NO_TOOLS,
     floating: given.floating ?? [],
     undeployedKustomizeRoots: given.undeployedKustomizeRoots ?? [],
+    undeployedCharts: given.undeployedCharts ?? [],
     helmRendered: given.helmRendered ?? false,
   };
   const { graph, analysis, config } = input;
@@ -111,8 +115,18 @@ export function assembleReport(given: AssemblyInput): Report {
   for (const s of input.sources) byKind[s.kind] += 1;
   const opaque: OpaqueEntry[] = input.sources
     .filter((s): s is SourceOutcome & { mark: OpaqueMark } => s.mark !== null)
-    .map((s) => Object.freeze({ ...s.mark, node: s.node, kustomizeRoot: s.kustomizeRoot, sourceKind: s.kind }))
-    .sort((a, b) => compareCodePoints(a.node ?? a.kustomizeRoot ?? "", b.node ?? b.kustomizeRoot ?? ""));
+    .map((s) =>
+      Object.freeze({
+        ...s.mark,
+        node: s.node,
+        kustomizeRoot: s.kustomizeRoot,
+        chartRoot: s.chartRoot ?? null,
+        sourceKind: s.kind,
+      }),
+    )
+    .sort((a, b) =>
+      compareCodePoints(a.node ?? a.kustomizeRoot ?? a.chartRoot ?? "", b.node ?? b.kustomizeRoot ?? b.chartRoot ?? ""),
+    );
   // The analysis's list is the final one (it drops stubs a crank creates and adds crank items).
   const unresolved = analysis.unresolved;
   const skipped = [...input.skipped].sort(compareSkipped);
@@ -291,6 +305,7 @@ export function assembleReport(given: AssemblyInput): Report {
         .map((f) => Object.freeze({ ...f })),
     ),
     undeployedKustomizeRoots: Object.freeze([...input.undeployedKustomizeRoots].sort(compareCodePoints)),
+    undeployedCharts: Object.freeze([...input.undeployedCharts].sort(compareCodePoints)),
     toolMissing: Object.freeze({
       helm: opaque.filter((o) => o.reason === "tool-missing" && o.detail === "helm not found on PATH").length,
       kustomize: opaque.filter((o) => o.reason === "tool-missing" && o.detail === "kustomize not found on PATH").length,

@@ -1,0 +1,86 @@
+{
+  "case": "homelab-cranked",
+  "description": "khuedoan/homelab at 8b9d40f with the one crank the repository performs by hand (system/bootstrap.yml renders and applies system/argocd, first with the github.com seed): creates render:system/argocd, rerouting ApplicationSet argocd/root to github.com, from test/golden/homelab-cranked/crankpath.yaml (crankpath's own text). Reduced form, node ids and counts only. The reduced form counts floating revisions without the note that a chart's two renders differed (three charts of this estate render varying content; docs/limits.md).",
+  "form": "reduced",
+  "needs": ["helm", "kustomize", "git", "network"],
+  "tools": {
+    "helm": "v4.3.2",
+    "kustomize": "v5.8.1"
+  },
+  "input": {
+    "fetched": "homelab",
+    "scan": "."
+  },
+  "fetch": [
+    {
+      "id": "homelab",
+      "url": "https://github.com/khuedoan/homelab",
+      "rev": "8b9d40f51e528bcc642ea9d052eecfc7c23b5cda",
+      "sha": "8b9d40f51e528bcc642ea9d052eecfc7c23b5cda"
+    }
+  ],
+  "args": [
+    "--repo-url",
+    "https://github.com/khuedoan/homelab",
+    "--repo-alias",
+    "http://gitea-http.gitea:3000/ops/homelab={tree}",
+    "--config",
+    "{case}/crankpath.yaml"
+  ],
+  "mutations": [
+    {
+      "id": "remove-crank",
+      "kind": "remove the crank",
+      "why": "without the crank nothing deploys system/argocd: nothing is analysed",
+      "edits": [
+        {
+          "op": "drop-arg",
+          "flag": "--config",
+          "startsWith": "{case}/"
+        }
+      ],
+      "expect": {
+        "state": "NOTHING ANALYSED",
+        "cycles": 0,
+        "cycleIds": [],
+        "opaqueNodes": [],
+        "undeployedCharts": 31
+      }
+    },
+    {
+      "id": "drop-alias",
+      "kind": "drop an alias",
+      "why": "without the alias the root ApplicationSet's git generator reads an unreadable repo: it generates nothing, so no cycle",
+      "edits": [
+        {
+          "op": "drop-arg",
+          "flag": "--repo-alias",
+          "startsWith": "http://gitea-http.gitea:3000/ops/homelab="
+        }
+      ],
+      "expect": {
+        "cycles": 0,
+        "cycleIds": [],
+        "opaqueNodes": ["ApplicationSet/argocd/root"]
+      }
+    },
+    {
+      "id": "remove-gitea",
+      "kind": "remove an edge source",
+      "why": "without platform/gitea nothing serves the in-cluster Git host the generated Applications read: the cycle through Gitea goes, and the self-management cycle (root and the Application argocd) is left, cranked",
+      "edits": [
+        {
+          "op": "remove",
+          "path": "platform/gitea"
+        }
+      ],
+      "expect": {
+        "cycles": 1,
+        "uncranked": 0,
+        "labels": ["cranked"],
+        "cycleIds": ["c-8feec3e8"],
+        "opaqueNodes": ["Application/argocd/renovate", "Application/argocd/zot"]
+      }
+    }
+  ]
+}

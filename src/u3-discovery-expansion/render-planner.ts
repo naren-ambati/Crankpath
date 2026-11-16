@@ -613,6 +613,77 @@ function planKustomizeRoot(dir: string): PlanResult {
   return { jobs: [job], opaque: null, references: [] };
 }
 
+/** A directory a `render:<path>` crank says is applied by hand at bootstrap (FR7.4). */
+export interface HandAppliedRoot {
+  /** The crank's canonical path in the scanned root (`""` is the root). */
+  readonly dir: string;
+  readonly kind: "helm" | "kustomize";
+  /** The crank (`crank:<n>`), its key path and the target's key path (evidence). */
+  readonly crank: string;
+  readonly field: string;
+  /** The crank's `namespace:` (or null) and, for a chart, its `release:` (or null: the directory's last segment). */
+  readonly namespace: string | null;
+  readonly release: string | null;
+}
+
+/** The job id of a hand-applied root. */
+export function handAppliedJobId(dir: string): string {
+  return `HandApplied:${dir === "" ? "." : dir}`;
+}
+
+/**
+ * Plans a directory applied by hand as a root (FR7.4; lead decision for B7): the normal Helm or
+ * Kustomize job of the scanned root, with no owner (nothing in the estate deploys it: the crank
+ * creates what it renders) and the crank's namespace. A chart's release name is the crank's
+ * `release:` or the directory's last segment, and must be one helm accepts.
+ */
+export function planHandAppliedRoot(root: HandAppliedRoot): PlanResult {
+  const display = root.dir === "" ? "." : root.dir;
+  const common = {
+    jobId: handAppliedJobId(root.dir),
+    owner: null,
+    ownerFile: display,
+    ownerField: root.field,
+    ownerRenderedPath: display,
+    destination: IN_CLUSTER,
+    namespace: root.namespace,
+    namespaceOverride: null,
+    generatedBy: null,
+    substitute: null,
+  } as const;
+  if (root.kind === "kustomize") {
+    const job: KustomizeJob = Object.freeze({
+      ...common,
+      kind: "kustomize",
+      releaseName: null,
+      valuesInputs: Object.freeze([]),
+      source: Object.freeze({ repo: null, path: root.dir, chart: null, version: null, floating: false }),
+      floating: Object.freeze([]),
+      root: ".",
+      dir: root.dir,
+    });
+    return { jobs: [job], opaque: null, references: [] };
+  }
+  const release = root.release ?? (root.dir.split("/").at(-1) || "release");
+  if (!isValidReleaseName(release)) {
+    return opaque("unsupported-field", RENDERS, {
+      field: `${root.field.replace(/\.creates(\[\d+\])?$/, "")}.release`,
+      value: release,
+      detail: "not a release name helm accepts",
+    });
+  }
+  const job = helmJob(common, {
+    chart: { from: "repo", root: ".", dir: root.dir },
+    releaseName: release,
+    values: [],
+    includeCrds: true,
+    skipSchemaValidation: true,
+    floating: [],
+    repo: null,
+  });
+  return { jobs: [job], opaque: null, references: [] };
+}
+
 /** Plans one source: its jobs, or one opaque mark naming what could not be seen. */
 export function planSource(source: PlanSource, ctx: PlanContext): PlanResult {
   switch (source.kind) {
@@ -627,5 +698,8 @@ export function planSource(source: PlanSource, ctx: PlanContext): PlanResult {
       return planHelmRelease(source.object, ctx);
     case "KustomizeRoot":
       return planKustomizeRoot(source.dir);
+    case "HandAppliedChart":
+      // a hand-applied chart is planned from its crank (planHandAppliedRoot), never as a document
+      throw new Error("RenderPlanner: a hand-applied chart is planned from its crank (a bug)");
   }
 }

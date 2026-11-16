@@ -42,12 +42,20 @@ export interface AnalyseOptions {
   readonly matchEntries?: readonly string[];
   /** Cycles a `match:` entry hides: their nodes are unverified (B5 review pass 2, m1). */
   readonly hiddenCycles?: readonly { readonly id: string; readonly nodeIds: readonly string[] }[];
+  /** The objects each hand-applied root rendered, by the crank path that named it (FR7.4). */
+  readonly handApplied?: ReadonlyMap<string, readonly string[]>;
 }
 
 export function analyse(graph: EstateGraph, facts: ConfigDocument, options: AnalyseOptions = {}): AnalysisResult {
   const ids = graph.nodes.map((n) => n.id);
   const found = findCycles(ids, graph.edges);
-  const cranked = applyCranks(graph.nodes, graph.edges, facts.cranks, facts.file ?? "crankpath.yaml");
+  const cranked = applyCranks(
+    graph.nodes,
+    graph.edges,
+    facts.cranks,
+    facts.file ?? "crankpath.yaml",
+    options.handApplied,
+  );
   const relabelled = relabelAfterCranks(found, {
     nodeIds: ids,
     edges: graph.edges,

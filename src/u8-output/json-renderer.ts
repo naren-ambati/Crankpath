@@ -28,6 +28,7 @@ function project(report: Report): Json {
     },
     floating: r.floating.map((f) => ({ node: f.node, field: f.field, value: f.value, resolved: f.resolved })),
     undeployedKustomizeRoots: [...r.undeployedKustomizeRoots],
+    undeployedCharts: [...(r.undeployedCharts ?? [])],
     toolMissing: { ...r.toolMissing },
     runStatus: {
       state: r.runStatus.state,
@@ -66,6 +67,7 @@ function project(report: Report): Json {
     opaque: r.opaque.map((o) => ({
       node: o.node,
       kustomizeRoot: o.kustomizeRoot,
+      chartRoot: o.chartRoot ?? null,
       reason: o.reason,
       detail: o.detail,
       field: o.field,

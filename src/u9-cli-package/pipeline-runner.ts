@@ -57,6 +57,7 @@ import type { RenderedSet, RenderJob } from "../u3-discovery-expansion/render-jo
 import {
   type PlanContext,
   type PlanSource,
+  planHandAppliedRoot,
   planSource,
   type RepoObject,
 } from "../u3-discovery-expansion/render-planner.js";
@@ -671,6 +672,58 @@ function runWith(options: RunOptions, prepared: Prepared): RunOutcome {
     return set;
   };
 
+  // Directories applied by hand at bootstrap (FR7.4; lead decision for B7): a `render:<path>`
+  // crank that names a Helm chart or Kustomize directory of the scanned root makes it a root,
+  // rendered through the normal job (all guards) with no owner; the crank creates what it renders,
+  // and the sources among its objects are planned like any other. Each path is rendered once.
+  const chartDirs = new Set(discovery.chartDirs);
+  const kustomizeRoots = new Set(discovery.kustomizeRoots);
+  const handApplied = new Map<string, NodeId[]>();
+  const handOutcomes: SourceOutcome[] = [];
+  const handCharts = new Set<string>();
+  for (const crank of config.cranks) {
+    crank.creates.forEach((target, j) => {
+      if (target.kind !== "render" || handApplied.has(target.path)) return;
+      const kind = chartDirs.has(target.path) ? "helm" : kustomizeRoots.has(target.path) ? "kustomize" : null;
+      if (kind === null) return;
+      const field = crank.creates.length === 1 ? `${crank.keyPath}.creates` : `${crank.keyPath}.creates[${j}]`;
+      const planned = planHandAppliedRoot({
+        dir: target.path,
+        kind,
+        crank: crank.id,
+        field,
+        namespace: crank.namespace ?? null,
+        release: crank.release ?? null,
+      });
+      let mark: OpaqueMark | null = planned.opaque;
+      const ids: NodeId[] = [];
+      for (const job of planned.jobs) {
+        const set = runJob(job);
+        mark ??= set.opaque;
+        rendered.push(...set.objects);
+        skipped.push(...set.skipped);
+        for (const o of set.objects) {
+          ids.push(o.id);
+          enqueue(o);
+        }
+      }
+      handApplied.set(target.path, ids);
+      if (kind === "helm") {
+        handCharts.add(target.path);
+        const shown = target.path === "" ? "." : target.path;
+        handOutcomes.push({ kind: "HandAppliedChart", node: null, kustomizeRoot: null, chartRoot: shown, mark });
+      }
+      // a Kustomize root's outcome is its own (it is a discovered root): its render covers it below
+    });
+  }
+
+  // Chart directories of the scanned root some render read, by real path (an alias may name the
+  // scanned checkout itself): the others are listed, never graphed, unless a crank applies them.
+  const deployedCharts = new Set<string>();
+  const realDir = (label: string, dir: string): string => {
+    const r = roots.get(label);
+    return r === undefined ? `\u0000${label}` : path.join(r.real, ...dir.split("/").filter((s) => s !== ""));
+  };
   const clustersUsed = new Set<string>();
   const expansionLimits = {
     applications: LIMITS.generatedApplicationsPerApplicationSet.value,
@@ -746,6 +799,7 @@ function runWith(options: RunOptions, prepared: Prepared): RunOutcome {
     }
     for (const job of planned.jobs) {
       if (job.owner === null) continue;
+      if (job.kind === "helm" && job.chart.from === "repo") deployedCharts.add(realDir(job.chart.root, job.chart.dir));
       jobs.set(job.jobId, {
         jobId: job.jobId,
         owner: job.owner,
@@ -857,7 +911,7 @@ function runWith(options: RunOptions, prepared: Prepared): RunOutcome {
   const graph = buildGraph({ objects, extracted: capped.kept, config, opaque: marks });
   const overrides = hosts.overrides();
   const relied = [...new Set(overrides.map((o) => o.keyPath))];
-  let analysis = analyse(graph, config, { matchEntries: relied });
+  let analysis = analyse(graph, config, { matchEntries: relied, handApplied });
   // A match entry that overrode a host may hide a cycle: find the cycles without the entries and
   // list the ones the report does not hold (review M1).
   let hidden: HiddenCycle[] = [];
@@ -878,7 +932,8 @@ function runWith(options: RunOptions, prepared: Prepared): RunOutcome {
       overrides,
     );
     // nodes on a hidden cycle are unverified: analyse again, naming them (B5 review pass 2, m1)
-    if (hidden.length > 0) analysis = analyse(graph, config, { matchEntries: relied, hiddenCycles: hidden });
+    if (hidden.length > 0)
+      analysis = analyse(graph, config, { matchEntries: relied, hiddenCycles: hidden, handApplied });
   }
   const nodeById = new Map(graph.nodes.map((n) => [n.id, n]));
   const outcomes: SourceOutcome[] = [...sources.values()].map((s) => ({
@@ -887,7 +942,10 @@ function runWith(options: RunOptions, prepared: Prepared): RunOutcome {
     kustomizeRoot: null,
     mark: nodeById.get(s.object.id)?.opaque ?? null,
   }));
-  outcomes.push(...rootOutcomes);
+  outcomes.push(...rootOutcomes, ...handOutcomes);
+  const undeployedCharts = discovery.chartDirs
+    .filter((d) => !handCharts.has(d) && !deployedCharts.has(realDir(".", d)))
+    .map((d) => (d === "" ? "." : d));
   const report = assembleReport({
     scanned: identity.scanned,
     scannedPath: options.url === undefined ? options.path : (redactUrl(options.url) ?? "unparseable URL"),
@@ -904,6 +962,7 @@ function runWith(options: RunOptions, prepared: Prepared): RunOutcome {
     toolchain,
     floating,
     undeployedKustomizeRoots: undeployed,
+    undeployedCharts,
     helmRendered: commands.some((c) => c.tool === "helm" && c.subcommand[0] === "template"),
     unusedMatches: hosts.unusedRules(),
     matchOverrides: overrides,

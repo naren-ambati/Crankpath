@@ -19,7 +19,7 @@ import type {
   RepoMapping,
 } from "../u1-graph-model/declared-facts.js";
 import { NO_DECLARED_FACTS } from "../u1-graph-model/declared-facts.js";
-import { externalId, isNodeId, isValidExternalName } from "../u1-graph-model/graph-model.js";
+import { externalId, isNodeId, isValidExternalName, isValidNamespace } from "../u1-graph-model/graph-model.js";
 import { type DerivedLimit, LIMITS, limitValue } from "../u1-graph-model/limits.js";
 import { compareCodePoints } from "../u1-graph-model/order.js";
 import {
@@ -60,6 +60,9 @@ export type ConfigProblem =
   | "names a root label crankpath assigns (alias:N or fetch:N)"
   | "a crank needs by"
   | "a crank needs creates or reroutes"
+  | "applies to a render: target only"
+  | "names a render: path an earlier crank applies with another namespace or release"
+  | "not a namespace name"
   | "more than one document"
   | "not readable"
   | "more entries than the limit";
@@ -255,10 +258,31 @@ function crankReroute(v: YamlValue | undefined, at: string): CrankReroute {
 
 function readCranks(v: YamlValue | undefined): CrankDecl[] {
   if (v === undefined) return [];
+  const cranks = readCrankList(v);
+  // A directory applied by hand is rendered once (FR7.4): two cranks may name the same render: path
+  // only when they apply it the same way (B7 review m4); else the later one is refused, by key path.
+  const applied = new Map<string, string>();
+  for (const c of cranks) {
+    c.creates.forEach((t, j) => {
+      if (t.kind !== "render") return;
+      const how = `${c.namespace ?? ""}\n${c.release ?? ""}`;
+      const seen = applied.get(t.path);
+      if (seen === undefined) applied.set(t.path, how);
+      else if (seen !== how)
+        throw new Invalid(
+          c.creates.length === 1 ? `${c.keyPath}.creates` : `${c.keyPath}.creates[${j}]`,
+          "names a render: path an earlier crank applies with another namespace or release",
+        );
+    });
+  }
+  return cranks;
+}
+
+function readCrankList(v: YamlValue): CrankDecl[] {
   return list(v, "cranks").map((item, i) => {
     const at = `cranks[${i}]`;
     const o = obj(item, at);
-    allowKeys(o, at, ["creates", "reroutes", "by", "ref"]);
+    allowKeys(o, at, ["creates", "reroutes", "by", "ref", "namespace", "release"]);
     if (o.by === undefined) throw new Invalid(at, "a crank needs by");
     const by = str(o.by, `${at}.by`);
     const creates =
@@ -275,12 +299,25 @@ function readCranks(v: YamlValue | undefined): CrankDecl[] {
           : [crankReroute(o.reroutes, `${at}.reroutes`)];
     if (creates.length === 0 && reroutes.length === 0) throw new Invalid(at, "a crank needs creates or reroutes");
     const ref = o.ref === undefined ? null : str(o.ref, `${at}.ref`);
+    // how a directory applied by hand is applied (FR7.4): meaningful only with a render: target
+    const rendersPath = creates.some((t) => t.kind === "render");
+    const namespace = o.namespace === undefined ? null : str(o.namespace, `${at}.namespace`);
+    if (namespace !== null && !isValidNamespace(namespace))
+      throw new Invalid(`${at}.namespace`, "not a namespace name");
+    const release = o.release === undefined ? null : str(o.release, `${at}.release`);
+    for (const [k, v] of [
+      ["namespace", namespace],
+      ["release", release],
+    ] as const)
+      if (v !== null && !rendersPath) throw new Invalid(`${at}.${k}`, "applies to a render: target only");
     return Object.freeze({
       id: `crank:${i + 1}`,
       creates: Object.freeze(creates),
       reroutes: Object.freeze(reroutes),
       by,
       ref,
+      namespace,
+      release,
       keyPath: at,
     });
   });

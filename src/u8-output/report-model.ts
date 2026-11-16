@@ -73,6 +73,8 @@ export interface OpaqueEntry extends OpaqueMark {
   /** The opaque node, or null for a Kustomize root (which is a source but not an object). */
   readonly node: NodeId | null;
   readonly kustomizeRoot: string | null;
+  /** A Helm chart directory applied by hand (a `render:<path>` crank, FR7.4), else null. */
+  readonly chartRoot?: string | null;
   readonly sourceKind: SourceKind;
 }
 
@@ -155,6 +157,8 @@ export interface Report {
   readonly floating: readonly FloatingRevision[];
   /** Kustomize roots no Application or Flux Kustomization renders: built on their own, objects not in the graph. Sorted. */
   readonly undeployedKustomizeRoots: readonly string[];
+  /** Helm chart directories of the scanned root nothing read deploys and no crank applies by hand, sorted. */
+  readonly undeployedCharts?: readonly string[];
   /** Sources opaque `tool-missing`, by the tool they need. */
   readonly toolMissing: { readonly helm: number; readonly kustomize: number };
   /**

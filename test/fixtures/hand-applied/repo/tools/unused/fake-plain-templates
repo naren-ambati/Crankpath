@@ -1,0 +1,1 @@
+For the tests' fake helm only: this chart's templates are plain YAML, rendered as written.

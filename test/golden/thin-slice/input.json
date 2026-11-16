@@ -1,0 +1,66 @@
+{
+  "case": "thin-slice",
+  "description": "B1's thin slice (plain directories, no helm, no network): one extracted Gitea-serves-Argo-CD cycle. Its expected files stay beside the fixture, where B1 to B6's tests read them.",
+  "form": "full",
+  "needs": [],
+  "input": {
+    "fixture": "test/fixtures/thin-slice",
+    "parts": ["repo"],
+    "scan": "repo"
+  },
+  "fetch": [],
+  "args": ["--repo-url", "http://gitea-http.gitea:3000/ops/thin-slice"],
+  "expectedDir": "test/fixtures/thin-slice",
+  "mutations": [
+    {
+      "id": "remove-service",
+      "kind": "remove an edge source",
+      "why": "without the Service, the repoURL host matches nothing: the selects and reads-source edges go and the cycle with them",
+      "edits": [
+        {
+          "op": "remove",
+          "path": "repo/platform/gitea/service.yaml"
+        }
+      ],
+      "expect": {
+        "cycles": 0,
+        "cycleIds": [],
+        "opaqueNodes": ["Application/argocd/notes"]
+      }
+    },
+    {
+      "id": "rename-service",
+      "kind": "rename a node",
+      "why": "a Service named other than the repoURL host serves nothing the Applications read",
+      "edits": [
+        {
+          "op": "replace",
+          "path": "repo/platform/gitea/service.yaml",
+          "from": "name: gitea-http",
+          "to": "name: gitea-web"
+        }
+      ],
+      "expect": {
+        "cycles": 0,
+        "cycleIds": [],
+        "opaqueNodes": ["Application/argocd/notes"]
+      }
+    },
+    {
+      "id": "other-repo-url",
+      "kind": "drop the repo identity",
+      "why": "scanned as another repository, the Applications' repoURL is unreadable and their sources opaque",
+      "edits": [
+        {
+          "op": "drop-arg",
+          "flag": "--repo-url",
+          "startsWith": "http://gitea-http.gitea:3000/ops/thin-slice"
+        }
+      ],
+      "expect": {
+        "cycleIds": [],
+        "opaqueNodes": ["Application/argocd/gitea", "Application/argocd/notes"]
+      }
+    }
+  ]
+}

@@ -112,7 +112,17 @@ What the run shows:
   two are compared: object names that differ make it `render-failed` ("not deterministic"), other
   content that differs is a floating entry. Two renders cannot prove determinism: output that varies
   only rarely can agree twice (a name from `randInt 0 2` agrees half the time), so Helm output is not
-  claimed byte-identical across runs. The template scan names the random, time and lookup functions
+  claimed byte-identical across runs. The flag itself is only as stable as the chart: when a chart's
+  own rendering varies, the floating entry `helm template: content differs between two renders`
+  appears in the runs where crankpath's two renders happen to differ and not in the others. Observed
+  on khuedoan/homelab at 8b9d40f (2026-11-16, B7): three charts vary (Go map order picks a Service
+  port); two were flagged in every run seen, one in 3 of 5, so that estate's JSON differs between
+  runs by one floating entry. The golden lane (`npm run verify:golden`) therefore compares the
+  floating revisions of a reduced case without that render note. On a loaded machine a render can
+  also reach `renderWallClock` or, through `helm dependency build`, a network failure: crankpath then
+  counts a timeout or names an opaque source, and the golden fails with those outcomes named (B7
+  review m7: 20 runs of the homelab case under 12 busy loops on 10 cores, 2026-11-16, gave the same
+  counts every time; the one failure the reviewer saw could not be reproduced). The template scan names the random, time and lookup functions
   it finds as a floating entry (`chart templates`); it is a flag, never the guard, and does not open
   archived subcharts. A second render that fails, times out or cannot be read keeps the first
   render with the note "determinism not checked: second render ...". Each render has its own

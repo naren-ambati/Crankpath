@@ -1,0 +1,2703 @@
+{
+  "clustersUsed": [],
+  "cranks": [],
+  "cycles": [
+    {
+      "crankedBy": [],
+      "edges": [
+        {
+          "from": "Application/argocd/platform",
+          "kind": "needs-credential",
+          "source": "extracted",
+          "to": "Secret/argocd/repo-platform"
+        },
+        {
+          "from": "ExternalSecret/argocd/repo-platform",
+          "kind": "deployed-by",
+          "source": "extracted",
+          "to": "Application/argocd/platform"
+        },
+        {
+          "from": "Secret/argocd/repo-platform",
+          "kind": "produced-by",
+          "source": "extracted",
+          "to": "ExternalSecret/argocd/repo-platform"
+        }
+      ],
+      "id": "c-35505771",
+      "introducedBy": [],
+      "label": "extracted",
+      "labelBeforeCranks": "extracted",
+      "nodes": [
+        "Application/argocd/platform",
+        "ExternalSecret/argocd/repo-platform",
+        "Secret/argocd/repo-platform"
+      ],
+      "representative": [
+        "Application/argocd/platform",
+        "Secret/argocd/repo-platform",
+        "ExternalSecret/argocd/repo-platform"
+      ],
+      "residual": null,
+      "residualLabel": null,
+      "touchedBy": []
+    },
+    {
+      "crankedBy": [],
+      "edges": [
+        {
+          "from": "Certificate/vault/vault-tls",
+          "kind": "issued-by",
+          "source": "extracted",
+          "to": "ClusterIssuer/vault-pki"
+        },
+        {
+          "from": "ClusterIssuer/vault-pki",
+          "kind": "depends-on",
+          "source": "extracted",
+          "to": "Service/vault/vault"
+        },
+        {
+          "from": "Secret/vault/vault-tls",
+          "kind": "produced-by",
+          "source": "extracted",
+          "to": "Certificate/vault/vault-tls"
+        },
+        {
+          "from": "Service/vault/vault",
+          "kind": "selects",
+          "source": "extracted",
+          "to": "StatefulSet/vault/vault"
+        },
+        {
+          "from": "StatefulSet/vault/vault",
+          "kind": "needs-secret",
+          "source": "extracted",
+          "to": "Secret/vault/vault-tls"
+        }
+      ],
+      "id": "c-ba4047ac",
+      "introducedBy": [],
+      "label": "extracted",
+      "labelBeforeCranks": "extracted",
+      "nodes": [
+        "Certificate/vault/vault-tls",
+        "ClusterIssuer/vault-pki",
+        "Secret/vault/vault-tls",
+        "Service/vault/vault",
+        "StatefulSet/vault/vault"
+      ],
+      "representative": [
+        "Certificate/vault/vault-tls",
+        "ClusterIssuer/vault-pki",
+        "Service/vault/vault",
+        "StatefulSet/vault/vault",
+        "Secret/vault/vault-tls"
+      ],
+      "residual": null,
+      "residualLabel": null,
+      "touchedBy": []
+    }
+  ],
+  "edges": [
+    {
+      "evidence": {
+        "field": "spec.source.path",
+        "file": "bootstrap/root.yaml",
+        "line": null,
+        "renderedPath": "apps/external-secrets.yaml#1"
+      },
+      "from": "Application/argocd/external-secrets",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/root"
+    },
+    {
+      "evidence": {
+        "field": "spec.sources[1].repoURL",
+        "file": "apps/external-secrets.yaml",
+        "line": null,
+        "renderedPath": "apps/external-secrets.yaml#1"
+      },
+      "from": "Application/argocd/external-secrets",
+      "kind": "needs-credential",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Secret/argocd/repo-platform"
+    },
+    {
+      "evidence": {
+        "field": "spec.sources[0].repoURL",
+        "file": "apps/external-secrets.yaml",
+        "line": null,
+        "renderedPath": "apps/external-secrets.yaml#1"
+      },
+      "from": "Application/argocd/external-secrets",
+      "kind": "reads-source",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "external:github.com"
+    },
+    {
+      "evidence": {
+        "field": "spec.source.path",
+        "file": "bootstrap/root.yaml",
+        "line": null,
+        "renderedPath": "apps/platform.yaml#1"
+      },
+      "from": "Application/argocd/platform",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/root"
+    },
+    {
+      "evidence": {
+        "field": "spec.source.repoURL",
+        "file": "apps/platform.yaml",
+        "line": null,
+        "renderedPath": "apps/platform.yaml#1"
+      },
+      "from": "Application/argocd/platform",
+      "kind": "needs-credential",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Secret/argocd/repo-platform"
+    },
+    {
+      "evidence": {
+        "field": "spec.source.repoURL",
+        "file": "apps/platform.yaml",
+        "line": null,
+        "renderedPath": "apps/platform.yaml#1"
+      },
+      "from": "Application/argocd/platform",
+      "kind": "reads-source",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "external:github.com"
+    },
+    {
+      "evidence": {
+        "field": "spec.source.path",
+        "file": "bootstrap/root.yaml",
+        "line": null,
+        "renderedPath": "apps/platform-secrets.yaml#1"
+      },
+      "from": "Application/argocd/platform-secrets",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/root"
+    },
+    {
+      "evidence": {
+        "field": "spec.source.repoURL",
+        "file": "apps/platform-secrets.yaml",
+        "line": null,
+        "renderedPath": "apps/platform-secrets.yaml#1"
+      },
+      "from": "Application/argocd/platform-secrets",
+      "kind": "reads-source",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "external:github.com"
+    },
+    {
+      "evidence": {
+        "field": "spec.source.repoURL",
+        "file": "bootstrap/root.yaml",
+        "line": null,
+        "renderedPath": "bootstrap/root.yaml#1"
+      },
+      "from": "Application/argocd/root",
+      "kind": "reads-source",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "external:github.com"
+    },
+    {
+      "evidence": {
+        "field": "spec.source.path",
+        "file": "bootstrap/root.yaml",
+        "line": null,
+        "renderedPath": "apps/vault.yaml#1"
+      },
+      "from": "Application/argocd/vault",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/root"
+    },
+    {
+      "evidence": {
+        "field": "spec.sources[1].repoURL",
+        "file": "apps/vault.yaml",
+        "line": null,
+        "renderedPath": "apps/vault.yaml#1"
+      },
+      "from": "Application/argocd/vault",
+      "kind": "needs-credential",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Secret/argocd/repo-platform"
+    },
+    {
+      "evidence": {
+        "field": "spec.sources[0].repoURL",
+        "file": "apps/vault.yaml",
+        "line": null,
+        "renderedPath": "apps/vault.yaml#1"
+      },
+      "from": "Application/argocd/vault",
+      "kind": "reads-source",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "external:github.com"
+    },
+    {
+      "evidence": {
+        "field": "spec.source.path",
+        "file": "apps/platform.yaml",
+        "line": null,
+        "renderedPath": "alias:1/manifests/vault/certificate.yaml#1"
+      },
+      "from": "Certificate/vault/vault-tls",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/platform"
+    },
+    {
+      "evidence": {
+        "field": "spec.issuerRef.name",
+        "file": "alias:1/manifests/vault/certificate.yaml",
+        "line": null,
+        "renderedPath": "alias:1/manifests/vault/certificate.yaml#1"
+      },
+      "from": "Certificate/vault/vault-tls",
+      "kind": "issued-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "ClusterIssuer/vault-pki"
+    },
+    {
+      "evidence": {
+        "field": "spec.source.path",
+        "file": "apps/platform.yaml",
+        "line": null,
+        "renderedPath": "alias:1/manifests/cert-manager/vault-pki.yaml#1"
+      },
+      "from": "ClusterIssuer/vault-pki",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/platform"
+    },
+    {
+      "evidence": {
+        "field": "spec.vault.server",
+        "file": "alias:1/manifests/cert-manager/vault-pki.yaml",
+        "line": null,
+        "renderedPath": "alias:1/manifests/cert-manager/vault-pki.yaml#1"
+      },
+      "from": "ClusterIssuer/vault-pki",
+      "kind": "depends-on",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Service/vault/vault"
+    },
+    {
+      "evidence": {
+        "field": "spec.vault.auth.kubernetes.serviceAccountRef.name",
+        "file": "alias:1/manifests/cert-manager/vault-pki.yaml",
+        "line": null,
+        "renderedPath": "alias:1/manifests/cert-manager/vault-pki.yaml#1"
+      },
+      "from": "ClusterIssuer/vault-pki",
+      "kind": "runs-as",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "ServiceAccount/cert-manager/vault-issuer"
+    },
+    {
+      "evidence": {
+        "field": "spec.sources[0].path",
+        "file": "apps/external-secrets.yaml",
+        "line": null,
+        "renderedPath": "render:Application/argocd/external-secrets#0#5"
+      },
+      "from": "ClusterRole/external-secrets-cert-controller",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/external-secrets"
+    },
+    {
+      "evidence": {
+        "field": "spec.sources[0].path",
+        "file": "apps/external-secrets.yaml",
+        "line": null,
+        "renderedPath": "render:Application/argocd/external-secrets#0#6"
+      },
+      "from": "ClusterRole/external-secrets-controller",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/external-secrets"
+    },
+    {
+      "evidence": {
+        "field": "spec.sources[0].path",
+        "file": "apps/external-secrets.yaml",
+        "line": null,
+        "renderedPath": "render:Application/argocd/external-secrets#0#8"
+      },
+      "from": "ClusterRole/external-secrets-edit",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/external-secrets"
+    },
+    {
+      "evidence": {
+        "field": "spec.sources[0].path",
+        "file": "apps/external-secrets.yaml",
+        "line": null,
+        "renderedPath": "render:Application/argocd/external-secrets#0#9"
+      },
+      "from": "ClusterRole/external-secrets-servicebindings",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/external-secrets"
+    },
+    {
+      "evidence": {
+        "field": "spec.sources[0].path",
+        "file": "apps/external-secrets.yaml",
+        "line": null,
+        "renderedPath": "render:Application/argocd/external-secrets#0#7"
+      },
+      "from": "ClusterRole/external-secrets-view",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/external-secrets"
+    },
+    {
+      "evidence": {
+        "field": "spec.sources[0].path",
+        "file": "apps/external-secrets.yaml",
+        "line": null,
+        "renderedPath": "render:Application/argocd/external-secrets#0#10"
+      },
+      "from": "ClusterRoleBinding/external-secrets-cert-controller",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/external-secrets"
+    },
+    {
+      "evidence": {
+        "field": "spec.sources[0].path",
+        "file": "apps/external-secrets.yaml",
+        "line": null,
+        "renderedPath": "render:Application/argocd/external-secrets#0#11"
+      },
+      "from": "ClusterRoleBinding/external-secrets-controller",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/external-secrets"
+    },
+    {
+      "evidence": {
+        "field": "spec.source.path",
+        "file": "apps/platform-secrets.yaml",
+        "line": null,
+        "renderedPath": "render:Application/argocd/platform-secrets#0#3"
+      },
+      "from": "ClusterRoleBinding/platform-secrets-vault-server-binding",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/platform-secrets"
+    },
+    {
+      "evidence": {
+        "field": "spec.sources[0].path",
+        "file": "apps/vault.yaml",
+        "line": null,
+        "renderedPath": "render:Application/argocd/vault#0#3"
+      },
+      "from": "ClusterRoleBinding/vault-server-binding",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/vault"
+    },
+    {
+      "evidence": {
+        "field": "spec.source.path",
+        "file": "bootstrap/root.yaml",
+        "line": null,
+        "renderedPath": "apps/platform-secrets-store.yaml#1"
+      },
+      "from": "ClusterSecretStore/platform-secrets",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/root"
+    },
+    {
+      "evidence": {
+        "field": "spec.provider.vault.server",
+        "file": "apps/platform-secrets-store.yaml",
+        "line": null,
+        "renderedPath": "apps/platform-secrets-store.yaml#1"
+      },
+      "from": "ClusterSecretStore/platform-secrets",
+      "kind": "depends-on",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Service/platform-secrets/platform-secrets-vault"
+    },
+    {
+      "evidence": {
+        "field": "spec.source.path",
+        "file": "apps/platform-secrets.yaml",
+        "line": null,
+        "renderedPath": "render:Application/argocd/platform-secrets#0#2"
+      },
+      "from": "ConfigMap/platform-secrets/platform-secrets-vault-config",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/platform-secrets"
+    },
+    {
+      "evidence": {
+        "field": "spec.sources[0].path",
+        "file": "apps/vault.yaml",
+        "line": null,
+        "renderedPath": "render:Application/argocd/vault#0#2"
+      },
+      "from": "ConfigMap/vault/vault-config",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/vault"
+    },
+    {
+      "evidence": {
+        "field": "spec.sources[0].path",
+        "file": "apps/external-secrets.yaml",
+        "line": null,
+        "renderedPath": "render:Application/argocd/external-secrets#0#16"
+      },
+      "from": "Deployment/external-secrets/external-secrets",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/external-secrets"
+    },
+    {
+      "evidence": {
+        "field": "spec.template.spec.serviceAccountName",
+        "file": "render:Application/argocd/external-secrets#0",
+        "line": null,
+        "renderedPath": "render:Application/argocd/external-secrets#0#16"
+      },
+      "from": "Deployment/external-secrets/external-secrets",
+      "kind": "runs-as",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "ServiceAccount/external-secrets/external-secrets"
+    },
+    {
+      "evidence": {
+        "field": "spec.sources[0].path",
+        "file": "apps/external-secrets.yaml",
+        "line": null,
+        "renderedPath": "render:Application/argocd/external-secrets#0#15"
+      },
+      "from": "Deployment/external-secrets/external-secrets-cert-controller",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/external-secrets"
+    },
+    {
+      "evidence": {
+        "field": "spec.template.spec.serviceAccountName",
+        "file": "render:Application/argocd/external-secrets#0",
+        "line": null,
+        "renderedPath": "render:Application/argocd/external-secrets#0#15"
+      },
+      "from": "Deployment/external-secrets/external-secrets-cert-controller",
+      "kind": "runs-as",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "ServiceAccount/external-secrets/external-secrets-cert-controller"
+    },
+    {
+      "evidence": {
+        "field": "spec.sources[0].path",
+        "file": "apps/external-secrets.yaml",
+        "line": null,
+        "renderedPath": "render:Application/argocd/external-secrets#0#17"
+      },
+      "from": "Deployment/external-secrets/external-secrets-webhook",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/external-secrets"
+    },
+    {
+      "evidence": {
+        "field": "spec.template.spec.volumes[0].secret.secretName",
+        "file": "render:Application/argocd/external-secrets#0",
+        "line": null,
+        "renderedPath": "render:Application/argocd/external-secrets#0#17"
+      },
+      "from": "Deployment/external-secrets/external-secrets-webhook",
+      "kind": "needs-secret",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Secret/external-secrets/external-secrets-webhook"
+    },
+    {
+      "evidence": {
+        "field": "spec.template.spec.serviceAccountName",
+        "file": "render:Application/argocd/external-secrets#0",
+        "line": null,
+        "renderedPath": "render:Application/argocd/external-secrets#0#17"
+      },
+      "from": "Deployment/external-secrets/external-secrets-webhook",
+      "kind": "runs-as",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "ServiceAccount/external-secrets/external-secrets-webhook"
+    },
+    {
+      "evidence": {
+        "field": "spec.source.path",
+        "file": "apps/platform.yaml",
+        "line": null,
+        "renderedPath": "alias:1/manifests/argocd/repo-platform.yaml#1"
+      },
+      "from": "ExternalSecret/argocd/repo-platform",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/platform"
+    },
+    {
+      "evidence": {
+        "field": "spec.secretStoreRef.name",
+        "file": "alias:1/manifests/argocd/repo-platform.yaml",
+        "line": null,
+        "renderedPath": "alias:1/manifests/argocd/repo-platform.yaml#1"
+      },
+      "from": "ExternalSecret/argocd/repo-platform",
+      "kind": "uses-store",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "ClusterSecretStore/platform-secrets"
+    },
+    {
+      "evidence": {
+        "field": "spec.sources[0].path",
+        "file": "apps/external-secrets.yaml",
+        "line": null,
+        "renderedPath": "render:Application/argocd/external-secrets#0#12"
+      },
+      "from": "Role/external-secrets/external-secrets-leaderelection",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/external-secrets"
+    },
+    {
+      "evidence": {
+        "field": "spec.sources[0].path",
+        "file": "apps/external-secrets.yaml",
+        "line": null,
+        "renderedPath": "render:Application/argocd/external-secrets#0#13"
+      },
+      "from": "RoleBinding/external-secrets/external-secrets-leaderelection",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/external-secrets"
+    },
+    {
+      "evidence": {
+        "field": "spec.target.name",
+        "file": "alias:1/manifests/argocd/repo-platform.yaml",
+        "line": null,
+        "renderedPath": "alias:1/manifests/argocd/repo-platform.yaml#1"
+      },
+      "from": "Secret/argocd/repo-platform",
+      "kind": "produced-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "ExternalSecret/argocd/repo-platform"
+    },
+    {
+      "evidence": {
+        "field": "spec.sources[0].path",
+        "file": "apps/external-secrets.yaml",
+        "line": null,
+        "renderedPath": "render:Application/argocd/external-secrets#0#4"
+      },
+      "from": "Secret/external-secrets/external-secrets-webhook",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/external-secrets"
+    },
+    {
+      "evidence": {
+        "field": "spec.secretName",
+        "file": "alias:1/manifests/vault/certificate.yaml",
+        "line": null,
+        "renderedPath": "alias:1/manifests/vault/certificate.yaml#1"
+      },
+      "from": "Secret/vault/vault-tls",
+      "kind": "produced-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Certificate/vault/vault-tls"
+    },
+    {
+      "evidence": {
+        "field": "spec.sources[0].path",
+        "file": "apps/external-secrets.yaml",
+        "line": null,
+        "renderedPath": "render:Application/argocd/external-secrets#0#14"
+      },
+      "from": "Service/external-secrets/external-secrets-webhook",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/external-secrets"
+    },
+    {
+      "evidence": {
+        "field": "spec.selector",
+        "file": "render:Application/argocd/external-secrets#0",
+        "line": null,
+        "renderedPath": "render:Application/argocd/external-secrets#0#14"
+      },
+      "from": "Service/external-secrets/external-secrets-webhook",
+      "kind": "selects",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Deployment/external-secrets/external-secrets-webhook"
+    },
+    {
+      "evidence": {
+        "field": "spec.source.path",
+        "file": "apps/platform-secrets.yaml",
+        "line": null,
+        "renderedPath": "render:Application/argocd/platform-secrets#0#5"
+      },
+      "from": "Service/platform-secrets/platform-secrets-vault",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/platform-secrets"
+    },
+    {
+      "evidence": {
+        "field": "spec.selector",
+        "file": "render:Application/argocd/platform-secrets#0",
+        "line": null,
+        "renderedPath": "render:Application/argocd/platform-secrets#0#5"
+      },
+      "from": "Service/platform-secrets/platform-secrets-vault",
+      "kind": "selects",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "StatefulSet/platform-secrets/platform-secrets-vault"
+    },
+    {
+      "evidence": {
+        "field": "spec.source.path",
+        "file": "apps/platform-secrets.yaml",
+        "line": null,
+        "renderedPath": "render:Application/argocd/platform-secrets#0#4"
+      },
+      "from": "Service/platform-secrets/platform-secrets-vault-internal",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/platform-secrets"
+    },
+    {
+      "evidence": {
+        "field": "spec.selector",
+        "file": "render:Application/argocd/platform-secrets#0",
+        "line": null,
+        "renderedPath": "render:Application/argocd/platform-secrets#0#4"
+      },
+      "from": "Service/platform-secrets/platform-secrets-vault-internal",
+      "kind": "selects",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "StatefulSet/platform-secrets/platform-secrets-vault"
+    },
+    {
+      "evidence": {
+        "field": "spec.sources[0].path",
+        "file": "apps/vault.yaml",
+        "line": null,
+        "renderedPath": "render:Application/argocd/vault#0#5"
+      },
+      "from": "Service/vault/vault",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/vault"
+    },
+    {
+      "evidence": {
+        "field": "spec.selector",
+        "file": "render:Application/argocd/vault#0",
+        "line": null,
+        "renderedPath": "render:Application/argocd/vault#0#5"
+      },
+      "from": "Service/vault/vault",
+      "kind": "selects",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "StatefulSet/vault/vault"
+    },
+    {
+      "evidence": {
+        "field": "spec.sources[0].path",
+        "file": "apps/vault.yaml",
+        "line": null,
+        "renderedPath": "render:Application/argocd/vault#0#4"
+      },
+      "from": "Service/vault/vault-internal",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/vault"
+    },
+    {
+      "evidence": {
+        "field": "spec.selector",
+        "file": "render:Application/argocd/vault#0",
+        "line": null,
+        "renderedPath": "render:Application/argocd/vault#0#4"
+      },
+      "from": "Service/vault/vault-internal",
+      "kind": "selects",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "StatefulSet/vault/vault"
+    },
+    {
+      "evidence": {
+        "field": "spec.source.path",
+        "file": "apps/platform.yaml",
+        "line": null,
+        "renderedPath": "alias:1/manifests/cert-manager/vault-pki.yaml#2"
+      },
+      "from": "ServiceAccount/cert-manager/vault-issuer",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/platform"
+    },
+    {
+      "evidence": {
+        "field": "spec.sources[0].path",
+        "file": "apps/external-secrets.yaml",
+        "line": null,
+        "renderedPath": "render:Application/argocd/external-secrets#0#2"
+      },
+      "from": "ServiceAccount/external-secrets/external-secrets",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/external-secrets"
+    },
+    {
+      "evidence": {
+        "field": "spec.sources[0].path",
+        "file": "apps/external-secrets.yaml",
+        "line": null,
+        "renderedPath": "render:Application/argocd/external-secrets#0#1"
+      },
+      "from": "ServiceAccount/external-secrets/external-secrets-cert-controller",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/external-secrets"
+    },
+    {
+      "evidence": {
+        "field": "spec.sources[0].path",
+        "file": "apps/external-secrets.yaml",
+        "line": null,
+        "renderedPath": "render:Application/argocd/external-secrets#0#3"
+      },
+      "from": "ServiceAccount/external-secrets/external-secrets-webhook",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/external-secrets"
+    },
+    {
+      "evidence": {
+        "field": "spec.source.path",
+        "file": "apps/platform-secrets.yaml",
+        "line": null,
+        "renderedPath": "render:Application/argocd/platform-secrets#0#1"
+      },
+      "from": "ServiceAccount/platform-secrets/platform-secrets-vault",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/platform-secrets"
+    },
+    {
+      "evidence": {
+        "field": "metadata.annotations.eks.amazonaws.com/role-arn",
+        "file": "render:Application/argocd/platform-secrets#0",
+        "line": null,
+        "renderedPath": "render:Application/argocd/platform-secrets#0#1"
+      },
+      "from": "ServiceAccount/platform-secrets/platform-secrets-vault",
+      "kind": "assumes-identity",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "external:aws-sts"
+    },
+    {
+      "evidence": {
+        "field": "spec.sources[0].path",
+        "file": "apps/vault.yaml",
+        "line": null,
+        "renderedPath": "render:Application/argocd/vault#0#1"
+      },
+      "from": "ServiceAccount/vault/vault",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/vault"
+    },
+    {
+      "evidence": {
+        "field": "metadata.annotations.eks.amazonaws.com/role-arn",
+        "file": "render:Application/argocd/vault#0",
+        "line": null,
+        "renderedPath": "render:Application/argocd/vault#0#1"
+      },
+      "from": "ServiceAccount/vault/vault",
+      "kind": "assumes-identity",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "external:aws-sts"
+    },
+    {
+      "evidence": {
+        "field": "spec.source.path",
+        "file": "apps/platform-secrets.yaml",
+        "line": null,
+        "renderedPath": "render:Application/argocd/platform-secrets#0#6"
+      },
+      "from": "StatefulSet/platform-secrets/platform-secrets-vault",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/platform-secrets"
+    },
+    {
+      "evidence": {
+        "field": "spec.template.spec.volumes[0].configMap.name",
+        "file": "render:Application/argocd/platform-secrets#0",
+        "line": null,
+        "renderedPath": "render:Application/argocd/platform-secrets#0#6"
+      },
+      "from": "StatefulSet/platform-secrets/platform-secrets-vault",
+      "kind": "needs-config",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "ConfigMap/platform-secrets/platform-secrets-vault-config"
+    },
+    {
+      "evidence": {
+        "field": "spec.template.spec.serviceAccountName",
+        "file": "render:Application/argocd/platform-secrets#0",
+        "line": null,
+        "renderedPath": "render:Application/argocd/platform-secrets#0#6"
+      },
+      "from": "StatefulSet/platform-secrets/platform-secrets-vault",
+      "kind": "runs-as",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "ServiceAccount/platform-secrets/platform-secrets-vault"
+    },
+    {
+      "evidence": {
+        "field": "data.extraconfig-from-values.hcl.seal.awskms",
+        "file": "render:Application/argocd/platform-secrets#0",
+        "line": null,
+        "renderedPath": "render:Application/argocd/platform-secrets#0#2"
+      },
+      "from": "StatefulSet/platform-secrets/platform-secrets-vault",
+      "kind": "seals-with",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "external:aws-kms/us-east-1"
+    },
+    {
+      "evidence": {
+        "field": "spec.sources[0].path",
+        "file": "apps/vault.yaml",
+        "line": null,
+        "renderedPath": "render:Application/argocd/vault#0#6"
+      },
+      "from": "StatefulSet/vault/vault",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/vault"
+    },
+    {
+      "evidence": {
+        "field": "spec.template.spec.volumes[0].configMap.name",
+        "file": "render:Application/argocd/vault#0",
+        "line": null,
+        "renderedPath": "render:Application/argocd/vault#0#6"
+      },
+      "from": "StatefulSet/vault/vault",
+      "kind": "needs-config",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "ConfigMap/vault/vault-config"
+    },
+    {
+      "evidence": {
+        "field": "spec.template.spec.volumes[1].secret.secretName",
+        "file": "render:Application/argocd/vault#0",
+        "line": null,
+        "renderedPath": "render:Application/argocd/vault#0#6"
+      },
+      "from": "StatefulSet/vault/vault",
+      "kind": "needs-secret",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Secret/vault/vault-tls"
+    },
+    {
+      "evidence": {
+        "field": "spec.template.spec.serviceAccountName",
+        "file": "render:Application/argocd/vault#0",
+        "line": null,
+        "renderedPath": "render:Application/argocd/vault#0#6"
+      },
+      "from": "StatefulSet/vault/vault",
+      "kind": "runs-as",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "ServiceAccount/vault/vault"
+    },
+    {
+      "evidence": {
+        "field": "data.extraconfig-from-values.hcl.seal.awskms",
+        "file": "render:Application/argocd/vault#0",
+        "line": null,
+        "renderedPath": "render:Application/argocd/vault#0#2"
+      },
+      "from": "StatefulSet/vault/vault",
+      "kind": "seals-with",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "external:aws-kms/us-east-1"
+    },
+    {
+      "evidence": {
+        "field": "spec.sources[0].path",
+        "file": "apps/external-secrets.yaml",
+        "line": null,
+        "renderedPath": "render:Application/argocd/external-secrets#0#19"
+      },
+      "from": "ValidatingWebhookConfiguration/externalsecret-validate",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/external-secrets"
+    },
+    {
+      "evidence": {
+        "field": "spec.sources[0].path",
+        "file": "apps/external-secrets.yaml",
+        "line": null,
+        "renderedPath": "render:Application/argocd/external-secrets#0#18"
+      },
+      "from": "ValidatingWebhookConfiguration/secretstore-validate",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/external-secrets"
+    }
+  ],
+  "externals": [
+    {
+      "coldStart": "unspecified",
+      "id": "external:aws-kms/us-east-1",
+      "servedBy": null
+    },
+    {
+      "coldStart": "unspecified",
+      "id": "external:aws-sts",
+      "servedBy": null
+    },
+    {
+      "coldStart": "unspecified",
+      "id": "external:github.com",
+      "servedBy": null
+    }
+  ],
+  "floating": [
+    {
+      "field": "spec.sources[0].targetRevision",
+      "node": "Application/argocd/external-secrets",
+      "resolved": null,
+      "value": "helm-chart-2.9.0"
+    },
+    {
+      "field": "spec.source.targetRevision",
+      "node": "Application/argocd/platform",
+      "resolved": null,
+      "value": "main"
+    },
+    {
+      "field": "spec.source.targetRevision",
+      "node": "Application/argocd/platform-secrets",
+      "resolved": null,
+      "value": "v0.34.1"
+    },
+    {
+      "field": "spec.source.targetRevision",
+      "node": "Application/argocd/root",
+      "resolved": null,
+      "value": "main"
+    },
+    {
+      "field": "spec.sources[0].targetRevision",
+      "node": "Application/argocd/vault",
+      "resolved": null,
+      "value": "v0.34.1"
+    }
+  ],
+  "hiddenCycles": [],
+  "matchOverrides": [],
+  "nodes": [
+    {
+      "flags": [],
+      "id": "Application/argocd/external-secrets",
+      "kind": "Application",
+      "name": "external-secrets",
+      "namespace": "argocd",
+      "opaque": null,
+      "origin": {
+        "document": 1,
+        "path": "apps/external-secrets.yaml",
+        "renderJob": null
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "Application/argocd/platform",
+      "kind": "Application",
+      "name": "platform",
+      "namespace": "argocd",
+      "opaque": null,
+      "origin": {
+        "document": 1,
+        "path": "apps/platform.yaml",
+        "renderJob": null
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "Application/argocd/platform-secrets",
+      "kind": "Application",
+      "name": "platform-secrets",
+      "namespace": "argocd",
+      "opaque": null,
+      "origin": {
+        "document": 1,
+        "path": "apps/platform-secrets.yaml",
+        "renderJob": null
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "Application/argocd/root",
+      "kind": "Application",
+      "name": "root",
+      "namespace": "argocd",
+      "opaque": null,
+      "origin": {
+        "document": 1,
+        "path": "bootstrap/root.yaml",
+        "renderJob": null
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "Application/argocd/vault",
+      "kind": "Application",
+      "name": "vault",
+      "namespace": "argocd",
+      "opaque": null,
+      "origin": {
+        "document": 1,
+        "path": "apps/vault.yaml",
+        "renderJob": null
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "Certificate/vault/vault-tls",
+      "kind": "Certificate",
+      "name": "vault-tls",
+      "namespace": "vault",
+      "opaque": null,
+      "origin": {
+        "document": 1,
+        "path": "alias:1/manifests/vault/certificate.yaml",
+        "renderJob": "Application/argocd/platform#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "ClusterIssuer/vault-pki",
+      "kind": "ClusterIssuer",
+      "name": "vault-pki",
+      "namespace": null,
+      "opaque": null,
+      "origin": {
+        "document": 1,
+        "path": "alias:1/manifests/cert-manager/vault-pki.yaml",
+        "renderJob": "Application/argocd/platform#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "ClusterRole/external-secrets-cert-controller",
+      "kind": "ClusterRole",
+      "name": "external-secrets-cert-controller",
+      "namespace": null,
+      "opaque": null,
+      "origin": {
+        "document": 5,
+        "path": "render:Application/argocd/external-secrets#0",
+        "renderJob": "Application/argocd/external-secrets#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "ClusterRole/external-secrets-controller",
+      "kind": "ClusterRole",
+      "name": "external-secrets-controller",
+      "namespace": null,
+      "opaque": null,
+      "origin": {
+        "document": 6,
+        "path": "render:Application/argocd/external-secrets#0",
+        "renderJob": "Application/argocd/external-secrets#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "ClusterRole/external-secrets-edit",
+      "kind": "ClusterRole",
+      "name": "external-secrets-edit",
+      "namespace": null,
+      "opaque": null,
+      "origin": {
+        "document": 8,
+        "path": "render:Application/argocd/external-secrets#0",
+        "renderJob": "Application/argocd/external-secrets#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "ClusterRole/external-secrets-servicebindings",
+      "kind": "ClusterRole",
+      "name": "external-secrets-servicebindings",
+      "namespace": null,
+      "opaque": null,
+      "origin": {
+        "document": 9,
+        "path": "render:Application/argocd/external-secrets#0",
+        "renderJob": "Application/argocd/external-secrets#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "ClusterRole/external-secrets-view",
+      "kind": "ClusterRole",
+      "name": "external-secrets-view",
+      "namespace": null,
+      "opaque": null,
+      "origin": {
+        "document": 7,
+        "path": "render:Application/argocd/external-secrets#0",
+        "renderJob": "Application/argocd/external-secrets#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "ClusterRoleBinding/external-secrets-cert-controller",
+      "kind": "ClusterRoleBinding",
+      "name": "external-secrets-cert-controller",
+      "namespace": null,
+      "opaque": null,
+      "origin": {
+        "document": 10,
+        "path": "render:Application/argocd/external-secrets#0",
+        "renderJob": "Application/argocd/external-secrets#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "ClusterRoleBinding/external-secrets-controller",
+      "kind": "ClusterRoleBinding",
+      "name": "external-secrets-controller",
+      "namespace": null,
+      "opaque": null,
+      "origin": {
+        "document": 11,
+        "path": "render:Application/argocd/external-secrets#0",
+        "renderJob": "Application/argocd/external-secrets#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "ClusterRoleBinding/platform-secrets-vault-server-binding",
+      "kind": "ClusterRoleBinding",
+      "name": "platform-secrets-vault-server-binding",
+      "namespace": null,
+      "opaque": null,
+      "origin": {
+        "document": 3,
+        "path": "render:Application/argocd/platform-secrets#0",
+        "renderJob": "Application/argocd/platform-secrets#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "ClusterRoleBinding/vault-server-binding",
+      "kind": "ClusterRoleBinding",
+      "name": "vault-server-binding",
+      "namespace": null,
+      "opaque": null,
+      "origin": {
+        "document": 3,
+        "path": "render:Application/argocd/vault#0",
+        "renderJob": "Application/argocd/vault#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "ClusterSecretStore/platform-secrets",
+      "kind": "ClusterSecretStore",
+      "name": "platform-secrets",
+      "namespace": null,
+      "opaque": null,
+      "origin": {
+        "document": 1,
+        "path": "apps/platform-secrets-store.yaml",
+        "renderJob": "Application/argocd/root#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "ConfigMap/platform-secrets/platform-secrets-vault-config",
+      "kind": "ConfigMap",
+      "name": "platform-secrets-vault-config",
+      "namespace": "platform-secrets",
+      "opaque": null,
+      "origin": {
+        "document": 2,
+        "path": "render:Application/argocd/platform-secrets#0",
+        "renderJob": "Application/argocd/platform-secrets#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "ConfigMap/vault/vault-config",
+      "kind": "ConfigMap",
+      "name": "vault-config",
+      "namespace": "vault",
+      "opaque": null,
+      "origin": {
+        "document": 2,
+        "path": "render:Application/argocd/vault#0",
+        "renderJob": "Application/argocd/vault#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "Deployment/external-secrets/external-secrets",
+      "kind": "Deployment",
+      "name": "external-secrets",
+      "namespace": "external-secrets",
+      "opaque": null,
+      "origin": {
+        "document": 16,
+        "path": "render:Application/argocd/external-secrets#0",
+        "renderJob": "Application/argocd/external-secrets#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "Deployment/external-secrets/external-secrets-cert-controller",
+      "kind": "Deployment",
+      "name": "external-secrets-cert-controller",
+      "namespace": "external-secrets",
+      "opaque": null,
+      "origin": {
+        "document": 15,
+        "path": "render:Application/argocd/external-secrets#0",
+        "renderJob": "Application/argocd/external-secrets#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "Deployment/external-secrets/external-secrets-webhook",
+      "kind": "Deployment",
+      "name": "external-secrets-webhook",
+      "namespace": "external-secrets",
+      "opaque": null,
+      "origin": {
+        "document": 17,
+        "path": "render:Application/argocd/external-secrets#0",
+        "renderJob": "Application/argocd/external-secrets#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "ExternalSecret/argocd/repo-platform",
+      "kind": "ExternalSecret",
+      "name": "repo-platform",
+      "namespace": "argocd",
+      "opaque": null,
+      "origin": {
+        "document": 1,
+        "path": "alias:1/manifests/argocd/repo-platform.yaml",
+        "renderJob": "Application/argocd/platform#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "Role/external-secrets/external-secrets-leaderelection",
+      "kind": "Role",
+      "name": "external-secrets-leaderelection",
+      "namespace": "external-secrets",
+      "opaque": null,
+      "origin": {
+        "document": 12,
+        "path": "render:Application/argocd/external-secrets#0",
+        "renderJob": "Application/argocd/external-secrets#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "RoleBinding/external-secrets/external-secrets-leaderelection",
+      "kind": "RoleBinding",
+      "name": "external-secrets-leaderelection",
+      "namespace": "external-secrets",
+      "opaque": null,
+      "origin": {
+        "document": 13,
+        "path": "render:Application/argocd/external-secrets#0",
+        "renderJob": "Application/argocd/external-secrets#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "Secret/argocd/repo-platform",
+      "kind": "Secret",
+      "name": "repo-platform",
+      "namespace": "argocd",
+      "opaque": null,
+      "origin": {
+        "document": 1,
+        "path": "alias:1/manifests/argocd/repo-platform.yaml",
+        "renderJob": "Application/argocd/platform#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "Secret/external-secrets/external-secrets-webhook",
+      "kind": "Secret",
+      "name": "external-secrets-webhook",
+      "namespace": "external-secrets",
+      "opaque": null,
+      "origin": {
+        "document": 4,
+        "path": "render:Application/argocd/external-secrets#0",
+        "renderJob": "Application/argocd/external-secrets#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "Secret/vault/vault-tls",
+      "kind": "Secret",
+      "name": "vault-tls",
+      "namespace": "vault",
+      "opaque": null,
+      "origin": {
+        "document": 1,
+        "path": "alias:1/manifests/vault/certificate.yaml",
+        "renderJob": "Application/argocd/platform#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "Service/external-secrets/external-secrets-webhook",
+      "kind": "Service",
+      "name": "external-secrets-webhook",
+      "namespace": "external-secrets",
+      "opaque": null,
+      "origin": {
+        "document": 14,
+        "path": "render:Application/argocd/external-secrets#0",
+        "renderJob": "Application/argocd/external-secrets#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "Service/platform-secrets/platform-secrets-vault",
+      "kind": "Service",
+      "name": "platform-secrets-vault",
+      "namespace": "platform-secrets",
+      "opaque": null,
+      "origin": {
+        "document": 5,
+        "path": "render:Application/argocd/platform-secrets#0",
+        "renderJob": "Application/argocd/platform-secrets#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "Service/platform-secrets/platform-secrets-vault-internal",
+      "kind": "Service",
+      "name": "platform-secrets-vault-internal",
+      "namespace": "platform-secrets",
+      "opaque": null,
+      "origin": {
+        "document": 4,
+        "path": "render:Application/argocd/platform-secrets#0",
+        "renderJob": "Application/argocd/platform-secrets#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "Service/vault/vault",
+      "kind": "Service",
+      "name": "vault",
+      "namespace": "vault",
+      "opaque": null,
+      "origin": {
+        "document": 5,
+        "path": "render:Application/argocd/vault#0",
+        "renderJob": "Application/argocd/vault#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "Service/vault/vault-internal",
+      "kind": "Service",
+      "name": "vault-internal",
+      "namespace": "vault",
+      "opaque": null,
+      "origin": {
+        "document": 4,
+        "path": "render:Application/argocd/vault#0",
+        "renderJob": "Application/argocd/vault#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "ServiceAccount/cert-manager/vault-issuer",
+      "kind": "ServiceAccount",
+      "name": "vault-issuer",
+      "namespace": "cert-manager",
+      "opaque": null,
+      "origin": {
+        "document": 2,
+        "path": "alias:1/manifests/cert-manager/vault-pki.yaml",
+        "renderJob": "Application/argocd/platform#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "ServiceAccount/external-secrets/external-secrets",
+      "kind": "ServiceAccount",
+      "name": "external-secrets",
+      "namespace": "external-secrets",
+      "opaque": null,
+      "origin": {
+        "document": 2,
+        "path": "render:Application/argocd/external-secrets#0",
+        "renderJob": "Application/argocd/external-secrets#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "ServiceAccount/external-secrets/external-secrets-cert-controller",
+      "kind": "ServiceAccount",
+      "name": "external-secrets-cert-controller",
+      "namespace": "external-secrets",
+      "opaque": null,
+      "origin": {
+        "document": 1,
+        "path": "render:Application/argocd/external-secrets#0",
+        "renderJob": "Application/argocd/external-secrets#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "ServiceAccount/external-secrets/external-secrets-webhook",
+      "kind": "ServiceAccount",
+      "name": "external-secrets-webhook",
+      "namespace": "external-secrets",
+      "opaque": null,
+      "origin": {
+        "document": 3,
+        "path": "render:Application/argocd/external-secrets#0",
+        "renderJob": "Application/argocd/external-secrets#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "ServiceAccount/platform-secrets/platform-secrets-vault",
+      "kind": "ServiceAccount",
+      "name": "platform-secrets-vault",
+      "namespace": "platform-secrets",
+      "opaque": null,
+      "origin": {
+        "document": 1,
+        "path": "render:Application/argocd/platform-secrets#0",
+        "renderJob": "Application/argocd/platform-secrets#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "ServiceAccount/vault/vault",
+      "kind": "ServiceAccount",
+      "name": "vault",
+      "namespace": "vault",
+      "opaque": null,
+      "origin": {
+        "document": 1,
+        "path": "render:Application/argocd/vault#0",
+        "renderJob": "Application/argocd/vault#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "StatefulSet/platform-secrets/platform-secrets-vault",
+      "kind": "StatefulSet",
+      "name": "platform-secrets-vault",
+      "namespace": "platform-secrets",
+      "opaque": null,
+      "origin": {
+        "document": 6,
+        "path": "render:Application/argocd/platform-secrets#0",
+        "renderJob": "Application/argocd/platform-secrets#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "StatefulSet/vault/vault",
+      "kind": "StatefulSet",
+      "name": "vault",
+      "namespace": "vault",
+      "opaque": null,
+      "origin": {
+        "document": 6,
+        "path": "render:Application/argocd/vault#0",
+        "renderJob": "Application/argocd/vault#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "ValidatingWebhookConfiguration/externalsecret-validate",
+      "kind": "ValidatingWebhookConfiguration",
+      "name": "externalsecret-validate",
+      "namespace": null,
+      "opaque": null,
+      "origin": {
+        "document": 19,
+        "path": "render:Application/argocd/external-secrets#0",
+        "renderJob": "Application/argocd/external-secrets#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "ValidatingWebhookConfiguration/secretstore-validate",
+      "kind": "ValidatingWebhookConfiguration",
+      "name": "secretstore-validate",
+      "namespace": null,
+      "opaque": null,
+      "origin": {
+        "document": 18,
+        "path": "render:Application/argocd/external-secrets#0",
+        "renderJob": "Application/argocd/external-secrets#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "external:aws-kms/us-east-1",
+      "kind": "External",
+      "name": "aws-kms/us-east-1",
+      "namespace": null,
+      "opaque": null,
+      "origin": {
+        "document": null,
+        "path": null,
+        "renderJob": null
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "external:aws-sts",
+      "kind": "External",
+      "name": "aws-sts",
+      "namespace": null,
+      "opaque": null,
+      "origin": {
+        "document": null,
+        "path": null,
+        "renderJob": null
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "external:github.com",
+      "kind": "External",
+      "name": "github.com",
+      "namespace": null,
+      "opaque": null,
+      "origin": {
+        "document": null,
+        "path": null,
+        "renderJob": null
+      },
+      "syncWave": null
+    }
+  ],
+  "notComputed": [],
+  "notModelled": [
+    "a running Argo CD or Flux controller is assumed",
+    "dependencies only visible at runtime are not seen",
+    "the content of opaque nodes is not seen",
+    "the revision each Application names is taken to be the files as read",
+    "repository credentials not defined in the estate are not seen",
+    "helm renders with no cluster: `lookup` is empty, only helm's default API versions are seen, values are not checked against a chart's values.schema.json (its `$ref`s would be fetched), a template may resolve host names (`getHostByName`) even under --no-network, helm follows a chart repository's redirects, a chart host is checked by name, not by the address it resolves to, each ch... (cut at 381 of 503 characters)"
+  ],
+  "notVerified": [
+    {
+      "count": 4,
+      "item": "unresolved-items"
+    },
+    {
+      "count": 2,
+      "item": "uncranked-cycles"
+    },
+    {
+      "count": 3,
+      "item": "unspecified-externals"
+    },
+    {
+      "count": 0,
+      "item": "declared-edges"
+    }
+  ],
+  "opaque": [],
+  "plan": {
+    "assumes": {
+      "argocdNamespace": [
+        "Namespace/argocd"
+      ],
+      "clusterProvided": [],
+      "cranks": [],
+      "externals": [],
+      "matchEntries": [],
+      "notModelled": [
+        "a running Argo CD or Flux controller is assumed",
+        "dependencies only visible at runtime are not seen",
+        "the content of opaque nodes is not seen",
+        "the revision each Application names is taken to be the files as read",
+        "repository credentials not defined in the estate are not seen"
+      ],
+      "servedBy": []
+    },
+    "conflicts": [],
+    "disclaimer": "an order, not a schedule; cold-load pickup is not modelled",
+    "listedUnordered": [
+      {
+        "blockers": [
+          "c-35505771"
+        ],
+        "node": "Application/argocd/external-secrets",
+        "reason": "cycle",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "c-35505771"
+        ],
+        "node": "Application/argocd/platform",
+        "reason": "cycle",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "external:github.com"
+        ],
+        "node": "Application/argocd/platform-secrets",
+        "reason": "external-unspecified",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "external:github.com"
+        ],
+        "node": "Application/argocd/root",
+        "reason": "external-unspecified",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "c-35505771"
+        ],
+        "node": "Application/argocd/vault",
+        "reason": "cycle",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "c-ba4047ac"
+        ],
+        "node": "Certificate/vault/vault-tls",
+        "reason": "cycle",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "c-ba4047ac"
+        ],
+        "node": "ClusterIssuer/vault-pki",
+        "reason": "cycle",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "c-35505771"
+        ],
+        "node": "ClusterRole/external-secrets-cert-controller",
+        "reason": "cycle",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "c-35505771"
+        ],
+        "node": "ClusterRole/external-secrets-controller",
+        "reason": "cycle",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "c-35505771"
+        ],
+        "node": "ClusterRole/external-secrets-edit",
+        "reason": "cycle",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "c-35505771"
+        ],
+        "node": "ClusterRole/external-secrets-servicebindings",
+        "reason": "cycle",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "c-35505771"
+        ],
+        "node": "ClusterRole/external-secrets-view",
+        "reason": "cycle",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "c-35505771"
+        ],
+        "node": "ClusterRoleBinding/external-secrets-cert-controller",
+        "reason": "cycle",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "c-35505771"
+        ],
+        "node": "ClusterRoleBinding/external-secrets-controller",
+        "reason": "cycle",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "external:github.com"
+        ],
+        "node": "ClusterRoleBinding/platform-secrets-vault-server-binding",
+        "reason": "external-unspecified",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "c-35505771"
+        ],
+        "node": "ClusterRoleBinding/vault-server-binding",
+        "reason": "cycle",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "external:github.com"
+        ],
+        "node": "ClusterSecretStore/platform-secrets",
+        "reason": "external-unspecified",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "external:github.com"
+        ],
+        "node": "ConfigMap/platform-secrets/platform-secrets-vault-config",
+        "reason": "external-unspecified",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "c-35505771"
+        ],
+        "node": "ConfigMap/vault/vault-config",
+        "reason": "cycle",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "c-35505771"
+        ],
+        "node": "Deployment/external-secrets/external-secrets",
+        "reason": "cycle",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "c-35505771"
+        ],
+        "node": "Deployment/external-secrets/external-secrets-cert-controller",
+        "reason": "cycle",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "c-35505771"
+        ],
+        "node": "Deployment/external-secrets/external-secrets-webhook",
+        "reason": "cycle",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "c-35505771"
+        ],
+        "node": "ExternalSecret/argocd/repo-platform",
+        "reason": "cycle",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "c-35505771"
+        ],
+        "node": "Role/external-secrets/external-secrets-leaderelection",
+        "reason": "cycle",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "c-35505771"
+        ],
+        "node": "RoleBinding/external-secrets/external-secrets-leaderelection",
+        "reason": "cycle",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "c-35505771"
+        ],
+        "node": "Secret/argocd/repo-platform",
+        "reason": "cycle",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "c-35505771"
+        ],
+        "node": "Secret/external-secrets/external-secrets-webhook",
+        "reason": "cycle",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "c-ba4047ac"
+        ],
+        "node": "Secret/vault/vault-tls",
+        "reason": "cycle",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "c-35505771"
+        ],
+        "node": "Service/external-secrets/external-secrets-webhook",
+        "reason": "cycle",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "external:aws-kms/us-east-1"
+        ],
+        "node": "Service/platform-secrets/platform-secrets-vault",
+        "reason": "external-unspecified",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "external:aws-kms/us-east-1"
+        ],
+        "node": "Service/platform-secrets/platform-secrets-vault-internal",
+        "reason": "external-unspecified",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "c-ba4047ac"
+        ],
+        "node": "Service/vault/vault",
+        "reason": "cycle",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "c-ba4047ac"
+        ],
+        "node": "Service/vault/vault-internal",
+        "reason": "cycle",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "c-35505771"
+        ],
+        "node": "ServiceAccount/cert-manager/vault-issuer",
+        "reason": "cycle",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "c-35505771"
+        ],
+        "node": "ServiceAccount/external-secrets/external-secrets",
+        "reason": "cycle",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "c-35505771"
+        ],
+        "node": "ServiceAccount/external-secrets/external-secrets-cert-controller",
+        "reason": "cycle",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "c-35505771"
+        ],
+        "node": "ServiceAccount/external-secrets/external-secrets-webhook",
+        "reason": "cycle",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "external:aws-sts"
+        ],
+        "node": "ServiceAccount/platform-secrets/platform-secrets-vault",
+        "reason": "external-unspecified",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "external:aws-sts"
+        ],
+        "node": "ServiceAccount/vault/vault",
+        "reason": "external-unspecified",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "external:aws-kms/us-east-1"
+        ],
+        "node": "StatefulSet/platform-secrets/platform-secrets-vault",
+        "reason": "external-unspecified",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "c-ba4047ac"
+        ],
+        "node": "StatefulSet/vault/vault",
+        "reason": "cycle",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "c-35505771"
+        ],
+        "node": "ValidatingWebhookConfiguration/externalsecret-validate",
+        "reason": "cycle",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "c-35505771"
+        ],
+        "node": "ValidatingWebhookConfiguration/secretstore-validate",
+        "reason": "cycle",
+        "status": "blocked"
+      }
+    ],
+    "steps": []
+  },
+  "repo": {
+    "commit": null,
+    "floating": false,
+    "url": "https://github.com/acme/platform-gitops",
+    "urlFrom": "flag"
+  },
+  "repoMappings": [
+    {
+      "commit": null,
+      "failure": null,
+      "floating": false,
+      "from": "--repo-alias",
+      "root": "alias:1",
+      "url": "github.com:acme/platform.git",
+      "used": true
+    },
+    {
+      "commit": null,
+      "failure": null,
+      "floating": false,
+      "from": "--repo-alias",
+      "root": "alias:3",
+      "url": "https://github.com/external-secrets/external-secrets",
+      "used": true
+    },
+    {
+      "commit": null,
+      "failure": null,
+      "floating": false,
+      "from": "--repo-alias",
+      "root": "alias:2",
+      "url": "https://github.com/hashicorp/vault-helm",
+      "used": true
+    }
+  ],
+  "runStatus": {
+    "counts": {
+      "declaredAssumptions": 0,
+      "declaredFacts": 0,
+      "droppedHooks": 2,
+      "edgesDeclared": 0,
+      "edgesExtracted": 73,
+      "foreignDestination": 0,
+      "ignoredFiles": 2,
+      "nodes": 46,
+      "opaque": 0,
+      "opaqueApplicationSets": 0,
+      "rendered": 5,
+      "runLimitEdges": 0,
+      "runLimitFiles": 0,
+      "runLimitJobs": 0,
+      "skipped": 0,
+      "skippedSources": 0,
+      "sourcesByKind": {
+        "Application": 5,
+        "ApplicationSet": 0,
+        "HandAppliedChart": 0,
+        "HelmRelease": 0,
+        "Kustomization": 0,
+        "KustomizeRoot": 0
+      },
+      "sourcesFound": 5,
+      "timeouts": 0,
+      "unreadableFiles": 0,
+      "unresolved": 4
+    },
+    "floor": false,
+    "reasons": [
+      "unresolved-items"
+    ],
+    "state": "ANALYSED WITH GAPS"
+  },
+  "schemaVersion": 1,
+  "skipped": [],
+  "statusCounts": {
+    "blocked": 43,
+    "startable": 0,
+    "unverified": 0
+  },
+  "statuses": [
+    {
+      "blockers": [
+        "c-35505771"
+      ],
+      "node": "Application/argocd/external-secrets",
+      "reason": "cycle",
+      "status": "blocked",
+      "via": "Secret/argocd/repo-platform"
+    },
+    {
+      "blockers": [
+        "c-35505771"
+      ],
+      "node": "Application/argocd/platform",
+      "reason": "cycle",
+      "status": "blocked",
+      "via": null
+    },
+    {
+      "blockers": [
+        "external:github.com"
+      ],
+      "node": "Application/argocd/platform-secrets",
+      "reason": "external-unspecified",
+      "status": "blocked",
+      "via": "external:github.com"
+    },
+    {
+      "blockers": [
+        "external:github.com"
+      ],
+      "node": "Application/argocd/root",
+      "reason": "external-unspecified",
+      "status": "blocked",
+      "via": "external:github.com"
+    },
+    {
+      "blockers": [
+        "c-35505771"
+      ],
+      "node": "Application/argocd/vault",
+      "reason": "cycle",
+      "status": "blocked",
+      "via": "Secret/argocd/repo-platform"
+    },
+    {
+      "blockers": [
+        "c-ba4047ac"
+      ],
+      "node": "Certificate/vault/vault-tls",
+      "reason": "cycle",
+      "status": "blocked",
+      "via": null
+    },
+    {
+      "blockers": [
+        "c-ba4047ac"
+      ],
+      "node": "ClusterIssuer/vault-pki",
+      "reason": "cycle",
+      "status": "blocked",
+      "via": null
+    },
+    {
+      "blockers": [
+        "c-35505771"
+      ],
+      "node": "ClusterRole/external-secrets-cert-controller",
+      "reason": "cycle",
+      "status": "blocked",
+      "via": "Application/argocd/external-secrets"
+    },
+    {
+      "blockers": [
+        "c-35505771"
+      ],
+      "node": "ClusterRole/external-secrets-controller",
+      "reason": "cycle",
+      "status": "blocked",
+      "via": "Application/argocd/external-secrets"
+    },
+    {
+      "blockers": [
+        "c-35505771"
+      ],
+      "node": "ClusterRole/external-secrets-edit",
+      "reason": "cycle",
+      "status": "blocked",
+      "via": "Application/argocd/external-secrets"
+    },
+    {
+      "blockers": [
+        "c-35505771"
+      ],
+      "node": "ClusterRole/external-secrets-servicebindings",
+      "reason": "cycle",
+      "status": "blocked",
+      "via": "Application/argocd/external-secrets"
+    },
+    {
+      "blockers": [
+        "c-35505771"
+      ],
+      "node": "ClusterRole/external-secrets-view",
+      "reason": "cycle",
+      "status": "blocked",
+      "via": "Application/argocd/external-secrets"
+    },
+    {
+      "blockers": [
+        "c-35505771"
+      ],
+      "node": "ClusterRoleBinding/external-secrets-cert-controller",
+      "reason": "cycle",
+      "status": "blocked",
+      "via": "Application/argocd/external-secrets"
+    },
+    {
+      "blockers": [
+        "c-35505771"
+      ],
+      "node": "ClusterRoleBinding/external-secrets-controller",
+      "reason": "cycle",
+      "status": "blocked",
+      "via": "Application/argocd/external-secrets"
+    },
+    {
+      "blockers": [
+        "external:github.com"
+      ],
+      "node": "ClusterRoleBinding/platform-secrets-vault-server-binding",
+      "reason": "external-unspecified",
+      "status": "blocked",
+      "via": "Application/argocd/platform-secrets"
+    },
+    {
+      "blockers": [
+        "c-35505771"
+      ],
+      "node": "ClusterRoleBinding/vault-server-binding",
+      "reason": "cycle",
+      "status": "blocked",
+      "via": "Application/argocd/vault"
+    },
+    {
+      "blockers": [
+        "external:github.com"
+      ],
+      "node": "ClusterSecretStore/platform-secrets",
+      "reason": "external-unspecified",
+      "status": "blocked",
+      "via": "Application/argocd/root"
+    },
+    {
+      "blockers": [
+        "external:github.com"
+      ],
+      "node": "ConfigMap/platform-secrets/platform-secrets-vault-config",
+      "reason": "external-unspecified",
+      "status": "blocked",
+      "via": "Application/argocd/platform-secrets"
+    },
+    {
+      "blockers": [
+        "c-35505771"
+      ],
+      "node": "ConfigMap/vault/vault-config",
+      "reason": "cycle",
+      "status": "blocked",
+      "via": "Application/argocd/vault"
+    },
+    {
+      "blockers": [
+        "c-35505771"
+      ],
+      "node": "Deployment/external-secrets/external-secrets",
+      "reason": "cycle",
+      "status": "blocked",
+      "via": "Application/argocd/external-secrets"
+    },
+    {
+      "blockers": [
+        "c-35505771"
+      ],
+      "node": "Deployment/external-secrets/external-secrets-cert-controller",
+      "reason": "cycle",
+      "status": "blocked",
+      "via": "Application/argocd/external-secrets"
+    },
+    {
+      "blockers": [
+        "c-35505771"
+      ],
+      "node": "Deployment/external-secrets/external-secrets-webhook",
+      "reason": "cycle",
+      "status": "blocked",
+      "via": "Application/argocd/external-secrets"
+    },
+    {
+      "blockers": [
+        "c-35505771"
+      ],
+      "node": "ExternalSecret/argocd/repo-platform",
+      "reason": "cycle",
+      "status": "blocked",
+      "via": null
+    },
+    {
+      "blockers": [
+        "c-35505771"
+      ],
+      "node": "Role/external-secrets/external-secrets-leaderelection",
+      "reason": "cycle",
+      "status": "blocked",
+      "via": "Application/argocd/external-secrets"
+    },
+    {
+      "blockers": [
+        "c-35505771"
+      ],
+      "node": "RoleBinding/external-secrets/external-secrets-leaderelection",
+      "reason": "cycle",
+      "status": "blocked",
+      "via": "Application/argocd/external-secrets"
+    },
+    {
+      "blockers": [
+        "c-35505771"
+      ],
+      "node": "Secret/argocd/repo-platform",
+      "reason": "cycle",
+      "status": "blocked",
+      "via": null
+    },
+    {
+      "blockers": [
+        "c-35505771"
+      ],
+      "node": "Secret/external-secrets/external-secrets-webhook",
+      "reason": "cycle",
+      "status": "blocked",
+      "via": "Application/argocd/external-secrets"
+    },
+    {
+      "blockers": [
+        "c-ba4047ac"
+      ],
+      "node": "Secret/vault/vault-tls",
+      "reason": "cycle",
+      "status": "blocked",
+      "via": null
+    },
+    {
+      "blockers": [
+        "c-35505771"
+      ],
+      "node": "Service/external-secrets/external-secrets-webhook",
+      "reason": "cycle",
+      "status": "blocked",
+      "via": "Application/argocd/external-secrets"
+    },
+    {
+      "blockers": [
+        "external:aws-kms/us-east-1"
+      ],
+      "node": "Service/platform-secrets/platform-secrets-vault",
+      "reason": "external-unspecified",
+      "status": "blocked",
+      "via": "StatefulSet/platform-secrets/platform-secrets-vault"
+    },
+    {
+      "blockers": [
+        "external:aws-kms/us-east-1"
+      ],
+      "node": "Service/platform-secrets/platform-secrets-vault-internal",
+      "reason": "external-unspecified",
+      "status": "blocked",
+      "via": "StatefulSet/platform-secrets/platform-secrets-vault"
+    },
+    {
+      "blockers": [
+        "c-ba4047ac"
+      ],
+      "node": "Service/vault/vault",
+      "reason": "cycle",
+      "status": "blocked",
+      "via": null
+    },
+    {
+      "blockers": [
+        "c-ba4047ac"
+      ],
+      "node": "Service/vault/vault-internal",
+      "reason": "cycle",
+      "status": "blocked",
+      "via": "StatefulSet/vault/vault"
+    },
+    {
+      "blockers": [
+        "c-35505771"
+      ],
+      "node": "ServiceAccount/cert-manager/vault-issuer",
+      "reason": "cycle",
+      "status": "blocked",
+      "via": "Application/argocd/platform"
+    },
+    {
+      "blockers": [
+        "c-35505771"
+      ],
+      "node": "ServiceAccount/external-secrets/external-secrets",
+      "reason": "cycle",
+      "status": "blocked",
+      "via": "Application/argocd/external-secrets"
+    },
+    {
+      "blockers": [
+        "c-35505771"
+      ],
+      "node": "ServiceAccount/external-secrets/external-secrets-cert-controller",
+      "reason": "cycle",
+      "status": "blocked",
+      "via": "Application/argocd/external-secrets"
+    },
+    {
+      "blockers": [
+        "c-35505771"
+      ],
+      "node": "ServiceAccount/external-secrets/external-secrets-webhook",
+      "reason": "cycle",
+      "status": "blocked",
+      "via": "Application/argocd/external-secrets"
+    },
+    {
+      "blockers": [
+        "external:aws-sts"
+      ],
+      "node": "ServiceAccount/platform-secrets/platform-secrets-vault",
+      "reason": "external-unspecified",
+      "status": "blocked",
+      "via": "external:aws-sts"
+    },
+    {
+      "blockers": [
+        "external:aws-sts"
+      ],
+      "node": "ServiceAccount/vault/vault",
+      "reason": "external-unspecified",
+      "status": "blocked",
+      "via": "external:aws-sts"
+    },
+    {
+      "blockers": [
+        "external:aws-kms/us-east-1"
+      ],
+      "node": "StatefulSet/platform-secrets/platform-secrets-vault",
+      "reason": "external-unspecified",
+      "status": "blocked",
+      "via": "external:aws-kms/us-east-1"
+    },
+    {
+      "blockers": [
+        "c-ba4047ac"
+      ],
+      "node": "StatefulSet/vault/vault",
+      "reason": "cycle",
+      "status": "blocked",
+      "via": null
+    },
+    {
+      "blockers": [
+        "c-35505771"
+      ],
+      "node": "ValidatingWebhookConfiguration/externalsecret-validate",
+      "reason": "cycle",
+      "status": "blocked",
+      "via": "Application/argocd/external-secrets"
+    },
+    {
+      "blockers": [
+        "c-35505771"
+      ],
+      "node": "ValidatingWebhookConfiguration/secretstore-validate",
+      "reason": "cycle",
+      "status": "blocked",
+      "via": "Application/argocd/external-secrets"
+    },
+    {
+      "blockers": [
+        "external:aws-kms/us-east-1"
+      ],
+      "node": "external:aws-kms/us-east-1",
+      "reason": "external-unspecified",
+      "status": "blocked",
+      "via": null
+    },
+    {
+      "blockers": [
+        "external:aws-sts"
+      ],
+      "node": "external:aws-sts",
+      "reason": "external-unspecified",
+      "status": "blocked",
+      "via": null
+    },
+    {
+      "blockers": [
+        "external:github.com"
+      ],
+      "node": "external:github.com",
+      "reason": "external-unspecified",
+      "status": "blocked",
+      "via": null
+    }
+  ],
+  "toolMissing": {
+    "helm": 0,
+    "kustomize": 0
+  },
+  "toolchain": {
+    "crankpath": "0.1.0",
+    "helm": "v4.3.2",
+    "kustomize": "v5.8.1",
+    "missing": [],
+    "tested": true,
+    "testedPair": {
+      "helm": "v4.3.2",
+      "kustomize": "v5.8.1"
+    },
+    "unrecognised": []
+  },
+  "undeployedCharts": [],
+  "undeployedKustomizeRoots": [],
+  "unreadable": [],
+  "unresolved": [
+    {
+      "candidates": [],
+      "candidatesTruncated": false,
+      "field": null,
+      "owner": null,
+      "subject": "Namespace/argocd",
+      "value": null,
+      "where": "apps/external-secrets.yaml#1",
+      "why": "argocd-namespace-assumed"
+    },
+    {
+      "candidates": [],
+      "candidatesTruncated": false,
+      "field": null,
+      "owner": "external:aws-kms/us-east-1",
+      "subject": "external:aws-kms/us-east-1",
+      "value": null,
+      "where": "crankpath.yaml",
+      "why": "external-unspecified"
+    },
+    {
+      "candidates": [],
+      "candidatesTruncated": false,
+      "field": null,
+      "owner": "external:aws-sts",
+      "subject": "external:aws-sts",
+      "value": null,
+      "where": "crankpath.yaml",
+      "why": "external-unspecified"
+    },
+    {
+      "candidates": [],
+      "candidatesTruncated": false,
+      "field": null,
+      "owner": "external:github.com",
+      "subject": "external:github.com",
+      "value": null,
+      "where": "crankpath.yaml",
+      "why": "external-unspecified"
+    }
+  ],
+  "unusedMatches": []
+}

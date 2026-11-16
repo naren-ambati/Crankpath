@@ -1,0 +1,104 @@
+{
+  "form": "crankpath-golden-reduced/1",
+  "runStatus": {
+    "state": "NOTHING ANALYSED",
+    "floor": true,
+    "reasons": [
+      "no-sources"
+    ],
+    "counts": {
+      "declaredAssumptions": 0,
+      "declaredFacts": 0,
+      "droppedHooks": 0,
+      "edgesDeclared": 0,
+      "edgesExtracted": 0,
+      "foreignDestination": 0,
+      "ignoredFiles": 220,
+      "nodes": 0,
+      "opaque": 0,
+      "opaqueApplicationSets": 0,
+      "rendered": 0,
+      "runLimitEdges": 0,
+      "runLimitFiles": 0,
+      "runLimitJobs": 0,
+      "skipped": 0,
+      "skippedSources": 0,
+      "sourcesByKind": {
+        "Application": 0,
+        "ApplicationSet": 0,
+        "HandAppliedChart": 0,
+        "HelmRelease": 0,
+        "Kustomization": 0,
+        "KustomizeRoot": 0
+      },
+      "sourcesFound": 0,
+      "timeouts": 0,
+      "unreadableFiles": 1,
+      "unresolved": 0
+    }
+  },
+  "toolchain": {
+    "helm": "v4.3.2",
+    "kustomize": "v5.8.1",
+    "tested": true
+  },
+  "nodes": {
+    "total": 0,
+    "byKind": {}
+  },
+  "edges": {
+    "total": 0,
+    "byKind": {},
+    "bySource": {}
+  },
+  "cycles": [],
+  "hiddenCycles": 0,
+  "externals": [],
+  "opaque": {
+    "total": 0,
+    "byReason": {},
+    "nodes": []
+  },
+  "unreadable": {
+    "total": 1,
+    "byReason": {
+      "parse-error": 1
+    }
+  },
+  "skipped": {
+    "total": 0,
+    "byReason": {}
+  },
+  "unresolved": {
+    "total": 0,
+    "byWhy": {}
+  },
+  "floating": 0,
+  "undeployed": {
+    "charts": 31,
+    "kustomizeRoots": 0
+  },
+  "repoMappings": {
+    "total": 1,
+    "used": 0
+  },
+  "cranks": [],
+  "statusCounts": {
+    "blocked": 0,
+    "startable": 0,
+    "unverified": 0
+  },
+  "statusesByReason": {},
+  "plan": {
+    "steps": [],
+    "listedUnordered": 0,
+    "conflicts": 0,
+    "assumes": {
+      "externals": [],
+      "cranks": [],
+      "clusterProvided": 0,
+      "argocdNamespace": []
+    }
+  },
+  "notComputed": []
+}

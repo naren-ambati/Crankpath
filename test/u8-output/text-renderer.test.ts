@@ -104,10 +104,13 @@ describe("opacity statement (FR4.4, M3)", () => {
       "base/kustomization.yaml": "resources: []\n",
     });
     expect(text).toContain('  opaque 1 of 1  Kustomize root: "base"  reason: tool-missing');
+    // the block names chart directories too (B7, FR7.4), with the crank to declare for a hand-applied one
     expect(text).toContain(
-      "  1 Kustomize root no source deploys: its objects are not in the graph (each is built on its own unless it is a component)",
+      "  not deployed by anything read: 0 chart directories, 1 Kustomize root; their objects are not in the graph; if one is applied by hand at bootstrap, declare it as a crank: creates: render:<path>",
     );
-    expect(text).toContain('    undeployed 1 of 1  Kustomize root: "base"');
+    expect(text).toContain(
+      '    undeployed 1 of 1  Kustomize root: "base"  (built on its own unless it is a component)',
+    );
     expect(text).toContain(
       'tool missing: "kustomize" (not found on PATH)  affected: 1 Kustomize source opaque, reason tool-missing',
     );

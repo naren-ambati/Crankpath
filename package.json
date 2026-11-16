@@ -38,7 +38,8 @@
     "check-tree": "node scripts/check-tree.mjs",
     "census": "node scripts/census.mjs",
     "verify": "npm run typecheck && npm run lint && npm run build && vitest run --coverage && node scripts/check-tree.mjs",
-    "verify:live": "npm run build && node scripts/live-render.mjs && node scripts/live-fetch.mjs"
+    "verify:live": "npm run build && node scripts/live-render.mjs && node scripts/live-fetch.mjs",
+    "verify:golden": "npm run build && node scripts/golden.mjs"
   },
   "dependencies": {
     "commander": "15.1.0",

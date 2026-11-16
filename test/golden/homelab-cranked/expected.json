@@ -1,0 +1,1079 @@
+{
+  "form": "crankpath-golden-reduced/1",
+  "runStatus": {
+    "state": "ANALYSED WITH GAPS",
+    "floor": true,
+    "reasons": [
+      "opaque-sources",
+      "skipped-objects",
+      "unreadable-files",
+      "unresolved-items"
+    ],
+    "counts": {
+      "declaredAssumptions": 2,
+      "declaredFacts": 0,
+      "droppedHooks": 9,
+      "edgesDeclared": 0,
+      "edgesExtracted": 793,
+      "foreignDestination": 0,
+      "ignoredFiles": 220,
+      "nodes": 614,
+      "opaque": 2,
+      "opaqueApplicationSets": 0,
+      "rendered": 31,
+      "runLimitEdges": 0,
+      "runLimitFiles": 0,
+      "runLimitJobs": 0,
+      "skipped": 12,
+      "skippedSources": 0,
+      "sourcesByKind": {
+        "Application": 31,
+        "ApplicationSet": 1,
+        "HandAppliedChart": 1,
+        "HelmRelease": 0,
+        "Kustomization": 0,
+        "KustomizeRoot": 0
+      },
+      "sourcesFound": 33,
+      "timeouts": 0,
+      "unreadableFiles": 1,
+      "unresolved": 22
+    }
+  },
+  "toolchain": {
+    "helm": "v4.3.2",
+    "kustomize": "v5.8.1",
+    "tested": true
+  },
+  "nodes": {
+    "total": 614,
+    "byKind": {
+      "Alertmanager": 1,
+      "Application": 31,
+      "ApplicationSet": 1,
+      "CephBlockPool": 1,
+      "CephCluster": 1,
+      "CephFilesystem": 1,
+      "CephFilesystemSubVolumeGroup": 1,
+      "Certificate": 1,
+      "ClusterIssuer": 1,
+      "ClusterRole": 47,
+      "ClusterRoleBinding": 38,
+      "ClusterSecretStore": 1,
+      "ConfigMap": 53,
+      "CustomResourceDefinition": 59,
+      "DaemonSet": 3,
+      "Deployment": 38,
+      "External": 2,
+      "ExternalSecret": 7,
+      "Ingress": 17,
+      "IngressClass": 1,
+      "Issuer": 1,
+      "Job": 10,
+      "MutatingWebhookConfiguration": 2,
+      "NetworkPolicy": 1,
+      "PersistentVolumeClaim": 8,
+      "Prometheus": 1,
+      "PrometheusRule": 36,
+      "Role": 31,
+      "RoleBinding": 33,
+      "Secret": 32,
+      "Service": 57,
+      "ServiceAccount": 64,
+      "ServiceMonitor": 15,
+      "StatefulSet": 8,
+      "StorageClass": 2,
+      "ValidatingWebhookConfiguration": 6,
+      "VolumeSnapshotClass": 2
+    }
+  },
+  "edges": {
+    "total": 793,
+    "byKind": {
+      "depends-on": 1,
+      "deployed-by": 553,
+      "generated-by": 31,
+      "issued-by": 1,
+      "needs-config": 21,
+      "needs-secret": 34,
+      "produced-by": 8,
+      "reads-source": 32,
+      "runs-as": 55,
+      "selects": 50,
+      "uses-store": 7
+    },
+    "bySource": {
+      "extracted": 793
+    }
+  },
+  "cycles": [
+    {
+      "id": "c-35843cd4",
+      "label": "cranked",
+      "labelBeforeCranks": "extracted",
+      "nodes": [
+        "Application/argocd/argocd",
+        "Application/argocd/gitea",
+        "Application/argocd/global-secrets",
+        "ApplicationSet/argocd/root",
+        "ClusterSecretStore/global-secrets",
+        "Deployment/gitea/gitea",
+        "ExternalSecret/gitea/gitea-admin-secret",
+        "Secret/gitea/gitea",
+        "Secret/gitea/gitea-admin-secret",
+        "Secret/gitea/gitea-init",
+        "Secret/gitea/gitea-inline-config",
+        "Service/gitea/gitea-http"
+      ],
+      "edgeCount": 22,
+      "edges": [
+        [
+          "Application/argocd/argocd",
+          "generated-by",
+          "ApplicationSet/argocd/root"
+        ],
+        [
+          "Application/argocd/argocd",
+          "reads-source",
+          "Service/gitea/gitea-http"
+        ],
+        [
+          "Application/argocd/gitea",
+          "generated-by",
+          "ApplicationSet/argocd/root"
+        ],
+        [
+          "Application/argocd/gitea",
+          "reads-source",
+          "Service/gitea/gitea-http"
+        ],
+        [
+          "Application/argocd/global-secrets",
+          "generated-by",
+          "ApplicationSet/argocd/root"
+        ],
+        [
+          "Application/argocd/global-secrets",
+          "reads-source",
+          "Service/gitea/gitea-http"
+        ],
+        [
+          "ApplicationSet/argocd/root",
+          "deployed-by",
+          "Application/argocd/argocd"
+        ],
+        [
+          "ApplicationSet/argocd/root",
+          "reads-source",
+          "Service/gitea/gitea-http"
+        ],
+        [
+          "ClusterSecretStore/global-secrets",
+          "deployed-by",
+          "Application/argocd/global-secrets"
+        ],
+        [
+          "Deployment/gitea/gitea",
+          "deployed-by",
+          "Application/argocd/gitea"
+        ],
+        [
+          "Deployment/gitea/gitea",
+          "needs-secret",
+          "Secret/gitea/gitea"
+        ],
+        [
+          "Deployment/gitea/gitea",
+          "needs-secret",
+          "Secret/gitea/gitea-admin-secret"
+        ],
+        [
+          "Deployment/gitea/gitea",
+          "needs-secret",
+          "Secret/gitea/gitea-init"
+        ],
+        [
+          "Deployment/gitea/gitea",
+          "needs-secret",
+          "Secret/gitea/gitea-inline-config"
+        ],
+        [
+          "ExternalSecret/gitea/gitea-admin-secret",
+          "deployed-by",
+          "Application/argocd/gitea"
+        ],
+        [
+          "ExternalSecret/gitea/gitea-admin-secret",
+          "uses-store",
+          "ClusterSecretStore/global-secrets"
+        ],
+        [
+          "Secret/gitea/gitea",
+          "deployed-by",
+          "Application/argocd/gitea"
+        ],
+        [
+          "Secret/gitea/gitea-admin-secret",
+          "produced-by",
+          "ExternalSecret/gitea/gitea-admin-secret"
+        ],
+        [
+          "Secret/gitea/gitea-init",
+          "deployed-by",
+          "Application/argocd/gitea"
+        ],
+        [
+          "Secret/gitea/gitea-inline-config",
+          "deployed-by",
+          "Application/argocd/gitea"
+        ],
+        [
+          "Service/gitea/gitea-http",
+          "deployed-by",
+          "Application/argocd/gitea"
+        ],
+        [
+          "Service/gitea/gitea-http",
+          "selects",
+          "Deployment/gitea/gitea"
+        ]
+      ],
+      "crankedBy": [
+        "crank:1"
+      ],
+      "introducedBy": []
+    }
+  ],
+  "hiddenCycles": 0,
+  "externals": [
+    {
+      "id": "external:acme-v02.api.letsencrypt.org",
+      "coldStart": "unspecified",
+      "servedBy": null
+    },
+    {
+      "id": "external:github.com",
+      "coldStart": "available",
+      "servedBy": null
+    }
+  ],
+  "opaque": {
+    "total": 2,
+    "byReason": {
+      "render-failed": 1,
+      "unsupported-field": 1
+    },
+    "nodes": [
+      "Application/argocd/renovate",
+      "Application/argocd/zot"
+    ]
+  },
+  "unreadable": {
+    "total": 1,
+    "byReason": {
+      "parse-error": 1
+    }
+  },
+  "skipped": {
+    "total": 12,
+    "byReason": {
+      "invalid-name": 12
+    }
+  },
+  "unresolved": {
+    "total": 22,
+    "byWhy": {
+      "external-unspecified": 1,
+      "not-defined": 21
+    }
+  },
+  "floating": 31,
+  "undeployed": {
+    "charts": 0,
+    "kustomizeRoots": 0
+  },
+  "repoMappings": {
+    "total": 1,
+    "used": 1
+  },
+  "cranks": [
+    {
+      "id": "crank:1",
+      "matched": true,
+      "createdNodes": 54,
+      "alreadyCreated": 0,
+      "reroutedEdges": [
+        [
+          "Application/argocd/actualbudget",
+          "external:github.com"
+        ],
+        [
+          "Application/argocd/argocd",
+          "external:github.com"
+        ],
+        [
+          "Application/argocd/blog",
+          "external:github.com"
+        ],
+        [
+          "Application/argocd/cert-manager",
+          "external:github.com"
+        ],
+        [
+          "Application/argocd/cloudflared",
+          "external:github.com"
+        ],
+        [
+          "Application/argocd/dex",
+          "external:github.com"
+        ],
+        [
+          "Application/argocd/excalidraw",
+          "external:github.com"
+        ],
+        [
+          "Application/argocd/external-dns",
+          "external:github.com"
+        ],
+        [
+          "Application/argocd/external-secrets",
+          "external:github.com"
+        ],
+        [
+          "Application/argocd/gitea",
+          "external:github.com"
+        ],
+        [
+          "Application/argocd/global-secrets",
+          "external:github.com"
+        ],
+        [
+          "Application/argocd/grafana",
+          "external:github.com"
+        ],
+        [
+          "Application/argocd/homepage",
+          "external:github.com"
+        ],
+        [
+          "Application/argocd/ingress-nginx",
+          "external:github.com"
+        ],
+        [
+          "Application/argocd/jellyfin",
+          "external:github.com"
+        ],
+        [
+          "Application/argocd/kanidm",
+          "external:github.com"
+        ],
+        [
+          "Application/argocd/kured",
+          "external:github.com"
+        ],
+        [
+          "Application/argocd/loki",
+          "external:github.com"
+        ],
+        [
+          "Application/argocd/matrix",
+          "external:github.com"
+        ],
+        [
+          "Application/argocd/monitoring-system",
+          "external:github.com"
+        ],
+        [
+          "Application/argocd/ollama",
+          "external:github.com"
+        ],
+        [
+          "Application/argocd/pairdrop",
+          "external:github.com"
+        ],
+        [
+          "Application/argocd/paperless",
+          "external:github.com"
+        ],
+        [
+          "Application/argocd/renovate",
+          "external:github.com"
+        ],
+        [
+          "Application/argocd/rook-ceph",
+          "external:github.com"
+        ],
+        [
+          "Application/argocd/speedtest",
+          "external:github.com"
+        ],
+        [
+          "Application/argocd/tailscale",
+          "external:github.com"
+        ],
+        [
+          "Application/argocd/volsync-system",
+          "external:github.com"
+        ],
+        [
+          "Application/argocd/wireguard",
+          "external:github.com"
+        ],
+        [
+          "Application/argocd/woodpecker",
+          "external:github.com"
+        ],
+        [
+          "Application/argocd/zot",
+          "external:github.com"
+        ],
+        [
+          "ApplicationSet/argocd/root",
+          "external:github.com"
+        ]
+      ],
+      "removedEdges": 115
+    }
+  ],
+  "statusCounts": {
+    "blocked": 1,
+    "startable": 549,
+    "unverified": 62
+  },
+  "statusesByReason": {
+    "blocked:external-unspecified": 2,
+    "startable:none": 550,
+    "unverified:opaque": 2,
+    "unverified:undefined-reference": 60
+  },
+  "plan": {
+    "steps": [
+      {
+        "no": 1,
+        "kind": "crank",
+        "manual": true,
+        "crank": "crank:1",
+        "nodes": [
+          "ApplicationSet/argocd/root",
+          "ClusterRole/argocd-application-controller",
+          "ClusterRole/argocd-notifications-controller",
+          "ClusterRole/argocd-server",
+          "ClusterRoleBinding/argocd-application-controller",
+          "ClusterRoleBinding/argocd-notifications-controller",
+          "ClusterRoleBinding/argocd-server",
+          "ConfigMap/argocd/argocd-cm",
+          "ConfigMap/argocd/argocd-cmd-params-cm",
+          "ConfigMap/argocd/argocd-gpg-keys-cm",
+          "ConfigMap/argocd/argocd-notifications-cm",
+          "ConfigMap/argocd/argocd-rbac-cm",
+          "ConfigMap/argocd/argocd-redis-health-configmap",
+          "ConfigMap/argocd/argocd-ssh-known-hosts-cm",
+          "ConfigMap/argocd/argocd-tls-certs-cm",
+          "CustomResourceDefinition/applications.argoproj.io",
+          "CustomResourceDefinition/applicationsets.argoproj.io",
+          "CustomResourceDefinition/appprojects.argoproj.io",
+          "Deployment/argocd/argocd-applicationset-controller",
+          "Deployment/argocd/argocd-notifications-controller",
+          "Deployment/argocd/argocd-redis",
+          "Deployment/argocd/argocd-repo-server",
+          "Deployment/argocd/argocd-server",
+          "Ingress/argocd/argocd-server",
+          "Job/argocd/argocd-redis-secret-init",
+          "Role/argocd/argocd-application-controller",
+          "Role/argocd/argocd-applicationset-controller",
+          "Role/argocd/argocd-notifications-controller",
+          "Role/argocd/argocd-redis-secret-init",
+          "Role/argocd/argocd-repo-server",
+          "Role/argocd/argocd-server",
+          "RoleBinding/argocd/argocd-application-controller",
+          "RoleBinding/argocd/argocd-applicationset-controller",
+          "RoleBinding/argocd/argocd-notifications-controller",
+          "RoleBinding/argocd/argocd-redis-secret-init",
+          "RoleBinding/argocd/argocd-repo-server",
+          "RoleBinding/argocd/argocd-server",
+          "Secret/argocd/argocd-notifications-secret",
+          "Secret/argocd/argocd-secret",
+          "Service/argocd/argocd-application-controller-metrics",
+          "Service/argocd/argocd-applicationset-controller",
+          "Service/argocd/argocd-redis",
+          "Service/argocd/argocd-redis-metrics",
+          "Service/argocd/argocd-repo-server",
+          "Service/argocd/argocd-repo-server-metrics",
+          "Service/argocd/argocd-server",
+          "Service/argocd/argocd-server-metrics",
+          "ServiceAccount/argocd/argocd-application-controller",
+          "ServiceAccount/argocd/argocd-applicationset-controller",
+          "ServiceAccount/argocd/argocd-notifications-controller",
+          "ServiceAccount/argocd/argocd-redis-secret-init",
+          "ServiceAccount/argocd/argocd-repo-server",
+          "ServiceAccount/argocd/argocd-server",
+          "StatefulSet/argocd/argocd-application-controller"
+        ]
+      },
+      {
+        "no": 2,
+        "kind": "start",
+        "manual": false,
+        "crank": null,
+        "nodes": [
+          "Application/argocd/actualbudget",
+          "Application/argocd/argocd",
+          "Application/argocd/blog",
+          "Application/argocd/cert-manager",
+          "Application/argocd/cloudflared",
+          "Application/argocd/dex",
+          "Application/argocd/excalidraw",
+          "Application/argocd/external-dns",
+          "Application/argocd/external-secrets",
+          "Application/argocd/gitea",
+          "Application/argocd/global-secrets",
+          "Application/argocd/grafana",
+          "Application/argocd/homepage",
+          "Application/argocd/ingress-nginx",
+          "Application/argocd/jellyfin",
+          "Application/argocd/kanidm",
+          "Application/argocd/kured",
+          "Application/argocd/loki",
+          "Application/argocd/matrix",
+          "Application/argocd/monitoring-system",
+          "Application/argocd/ollama",
+          "Application/argocd/pairdrop",
+          "Application/argocd/paperless",
+          "Application/argocd/rook-ceph",
+          "Application/argocd/speedtest",
+          "Application/argocd/tailscale",
+          "Application/argocd/volsync-system",
+          "Application/argocd/wireguard",
+          "Application/argocd/woodpecker"
+        ]
+      },
+      {
+        "no": 3,
+        "kind": "start",
+        "manual": false,
+        "crank": null,
+        "nodes": [
+          "Alertmanager/monitoring-system/monitoring-system-kube-pro-alertmanager",
+          "CephBlockPool/rook-ceph/standard-rwo",
+          "CephCluster/rook-ceph/rook-ceph",
+          "CephFilesystem/rook-ceph/standard-rwx",
+          "CephFilesystemSubVolumeGroup/rook-ceph/standard-rwx-csi",
+          "ClusterRole/cephfs-csi-nodeplugin",
+          "ClusterRole/cephfs-external-provisioner-runner",
+          "ClusterRole/cert-manager-cainjector",
+          "ClusterRole/cert-manager-cluster-view",
+          "ClusterRole/cert-manager-controller-certificates",
+          "ClusterRole/cert-manager-controller-certificatesigningrequests",
+          "ClusterRole/cert-manager-controller-challenges",
+          "ClusterRole/cert-manager-controller-clusterissuers",
+          "ClusterRole/cert-manager-controller-ingress-shim",
+          "ClusterRole/cert-manager-controller-issuers",
+          "ClusterRole/cert-manager-controller-orders",
+          "ClusterRole/cert-manager-edit",
+          "ClusterRole/cert-manager-view",
+          "ClusterRole/dex",
+          "ClusterRole/external-dns",
+          "ClusterRole/external-secrets-cert-controller",
+          "ClusterRole/external-secrets-controller",
+          "ClusterRole/external-secrets-edit",
+          "ClusterRole/external-secrets-servicebindings",
+          "ClusterRole/external-secrets-view",
+          "ClusterRole/grafana-clusterrole",
+          "ClusterRole/ingress-nginx",
+          "ClusterRole/ingress-nginx-admission",
+          "ClusterRole/kured",
+          "ClusterRole/loki-promtail",
+          "ClusterRole/monitoring-system-kube-pro-admission",
+          "ClusterRole/monitoring-system-kube-pro-operator",
+          "ClusterRole/monitoring-system-kube-pro-prometheus",
+          "ClusterRole/monitoring-system-kube-state-metrics",
+          "ClusterRole/objectstorage-provisioner-role",
+          "ClusterRole/rbd-csi-nodeplugin",
+          "ClusterRole/rbd-external-provisioner-runner",
+          "ClusterRole/rook-ceph-cluster-mgmt",
+          "ClusterRole/rook-ceph-global",
+          "ClusterRole/rook-ceph-mgr-cluster",
+          "ClusterRole/rook-ceph-mgr-system",
+          "ClusterRole/rook-ceph-object-bucket",
+          "ClusterRole/rook-ceph-osd",
+          "ClusterRole/rook-ceph-snapshot-controller",
+          "ClusterRole/rook-ceph-snapshot-validation-webhook",
+          "ClusterRole/rook-ceph-system",
+          "ClusterRole/volsync-system-manager",
+          "ClusterRole/volsync-system-metrics-reader",
+          "ClusterRole/volsync-system-proxy",
+          "ClusterRoleBinding/cephfs-csi-nodeplugin-role",
+          "ClusterRoleBinding/cephfs-csi-provisioner-role",
+          "ClusterRoleBinding/cert-manager-cainjector",
+          "ClusterRoleBinding/cert-manager-controller-certificates",
+          "ClusterRoleBinding/cert-manager-controller-certificatesigningrequests",
+          "ClusterRoleBinding/cert-manager-controller-challenges",
+          "ClusterRoleBinding/cert-manager-controller-clusterissuers",
+          "ClusterRoleBinding/cert-manager-controller-ingress-shim",
+          "ClusterRoleBinding/cert-manager-controller-issuers",
+          "ClusterRoleBinding/cert-manager-controller-orders",
+          "ClusterRoleBinding/dex-cluster",
+          "ClusterRoleBinding/external-dns-viewer",
+          "ClusterRoleBinding/external-secrets-cert-controller",
+          "ClusterRoleBinding/external-secrets-controller",
+          "ClusterRoleBinding/grafana-clusterrolebinding",
+          "ClusterRoleBinding/ingress-nginx",
+          "ClusterRoleBinding/ingress-nginx-admission",
+          "ClusterRoleBinding/kured",
+          "ClusterRoleBinding/loki-promtail",
+          "ClusterRoleBinding/monitoring-system-kube-pro-admission",
+          "ClusterRoleBinding/monitoring-system-kube-pro-operator",
+          "ClusterRoleBinding/monitoring-system-kube-pro-prometheus",
+          "ClusterRoleBinding/monitoring-system-kube-state-metrics",
+          "ClusterRoleBinding/objectstorage-provisioner-role-binding",
+          "ClusterRoleBinding/rbd-csi-nodeplugin",
+          "ClusterRoleBinding/rbd-csi-provisioner-role",
+          "ClusterRoleBinding/rook-ceph-global",
+          "ClusterRoleBinding/rook-ceph-mgr-cluster",
+          "ClusterRoleBinding/rook-ceph-object-bucket",
+          "ClusterRoleBinding/rook-ceph-osd",
+          "ClusterRoleBinding/rook-ceph-snapshot-controller",
+          "ClusterRoleBinding/rook-ceph-snapshot-validation-webhook",
+          "ClusterRoleBinding/rook-ceph-system",
+          "ClusterRoleBinding/volsync-system-manager",
+          "ClusterRoleBinding/volsync-system-proxy",
+          "ClusterSecretStore/global-secrets",
+          "ConfigMap/cloudflared/cloudflared-config",
+          "ConfigMap/gitea/gitea-config-source",
+          "ConfigMap/gitea/gitea-postgresql-ha-postgresql-hooks-scripts",
+          "ConfigMap/gitea/gitea-redis-cluster-default",
+          "ConfigMap/gitea/gitea-redis-cluster-scripts",
+          "ConfigMap/global-secrets/secret-generator",
+          "ConfigMap/grafana/grafana",
+          "ConfigMap/grafana/grafana-config-dashboards",
+          "ConfigMap/homepage/homepage-config",
+          "ConfigMap/ingress-nginx/ingress-nginx-controller",
+          "ConfigMap/ingress-nginx/ingress-nginx-tcp",
+          "ConfigMap/kanidm/kanidm-config",
+          "ConfigMap/loki/loki-loki-stack",
+          "ConfigMap/loki/loki-loki-stack-test",
+          "ConfigMap/matrix/matrix-elementweb",
+          "ConfigMap/monitoring-system/monitoring-system-kube-pro-alertmanager-overview",
+          "ConfigMap/monitoring-system/monitoring-system-kube-pro-apiserver",
+          "ConfigMap/monitoring-system/monitoring-system-kube-pro-cluster-total",
+          "ConfigMap/monitoring-system/monitoring-system-kube-pro-controller-manager",
+          "ConfigMap/monitoring-system/monitoring-system-kube-pro-etcd",
+          "ConfigMap/monitoring-system/monitoring-system-kube-pro-grafana-datasource",
+          "ConfigMap/monitoring-system/monitoring-system-kube-pro-grafana-overview",
+          "ConfigMap/monitoring-system/monitoring-system-kube-pro-k8s-coredns",
+          "ConfigMap/monitoring-system/monitoring-system-kube-pro-k8s-resources-cluster",
+          "ConfigMap/monitoring-system/monitoring-system-kube-pro-k8s-resources-multicluster",
+          "ConfigMap/monitoring-system/monitoring-system-kube-pro-k8s-resources-namespace",
+          "ConfigMap/monitoring-system/monitoring-system-kube-pro-k8s-resources-node",
+          "ConfigMap/monitoring-system/monitoring-system-kube-pro-k8s-resources-pod",
+          "ConfigMap/monitoring-system/monitoring-system-kube-pro-k8s-resources-workload",
+          "ConfigMap/monitoring-system/monitoring-system-kube-pro-k8s-resources-workloads-namespace",
+          "ConfigMap/monitoring-system/monitoring-system-kube-pro-kubelet",
+          "ConfigMap/monitoring-system/monitoring-system-kube-pro-namespace-by-pod",
+          "ConfigMap/monitoring-system/monitoring-system-kube-pro-namespace-by-workload",
+          "ConfigMap/monitoring-system/monitoring-system-kube-pro-node-cluster-rsrc-use",
+          "ConfigMap/monitoring-system/monitoring-system-kube-pro-node-rsrc-use",
+          "ConfigMap/monitoring-system/monitoring-system-kube-pro-nodes",
+          "ConfigMap/monitoring-system/monitoring-system-kube-pro-nodes-darwin",
+          "ConfigMap/monitoring-system/monitoring-system-kube-pro-persistentvolumesusage",
+          "ConfigMap/monitoring-system/monitoring-system-kube-pro-pod-total",
+          "ConfigMap/monitoring-system/monitoring-system-kube-pro-prometheus",
+          "ConfigMap/monitoring-system/monitoring-system-kube-pro-proxy",
+          "ConfigMap/monitoring-system/monitoring-system-kube-pro-scheduler",
+          "ConfigMap/monitoring-system/monitoring-system-kube-pro-workload-total",
+          "ConfigMap/monitoring-system/webhook-transformer",
+          "ConfigMap/rook-ceph/rook-ceph-operator-config",
+          "CustomResourceDefinition/acraccesstokens.generators.external-secrets.io",
+          "CustomResourceDefinition/alertmanagerconfigs.monitoring.coreos.com",
+          "CustomResourceDefinition/alertmanagers.monitoring.coreos.com",
+          "CustomResourceDefinition/cephblockpoolradosnamespaces.ceph.rook.io",
+          "CustomResourceDefinition/cephblockpools.ceph.rook.io",
+          "CustomResourceDefinition/cephbucketnotifications.ceph.rook.io",
+          "CustomResourceDefinition/cephbuckettopics.ceph.rook.io",
+          "CustomResourceDefinition/cephclients.ceph.rook.io",
+          "CustomResourceDefinition/cephclusters.ceph.rook.io",
+          "CustomResourceDefinition/cephcosidrivers.ceph.rook.io",
+          "CustomResourceDefinition/cephfilesystemmirrors.ceph.rook.io",
+          "CustomResourceDefinition/cephfilesystems.ceph.rook.io",
+          "CustomResourceDefinition/cephfilesystemsubvolumegroups.ceph.rook.io",
+          "CustomResourceDefinition/cephnfses.ceph.rook.io",
+          "CustomResourceDefinition/cephobjectrealms.ceph.rook.io",
+          "CustomResourceDefinition/cephobjectstores.ceph.rook.io",
+          "CustomResourceDefinition/cephobjectstoreusers.ceph.rook.io",
+          "CustomResourceDefinition/cephobjectzonegroups.ceph.rook.io",
+          "CustomResourceDefinition/cephobjectzones.ceph.rook.io",
+          "CustomResourceDefinition/cephrbdmirrors.ceph.rook.io",
+          "CustomResourceDefinition/certificaterequests.cert-manager.io",
+          "CustomResourceDefinition/certificates.cert-manager.io",
+          "CustomResourceDefinition/challenges.acme.cert-manager.io",
+          "CustomResourceDefinition/clusterexternalsecrets.external-secrets.io",
+          "CustomResourceDefinition/clusterissuers.cert-manager.io",
+          "CustomResourceDefinition/clustersecretstores.external-secrets.io",
+          "CustomResourceDefinition/ecrauthorizationtokens.generators.external-secrets.io",
+          "CustomResourceDefinition/externalsecrets.external-secrets.io",
+          "CustomResourceDefinition/fakes.generators.external-secrets.io",
+          "CustomResourceDefinition/gcraccesstokens.generators.external-secrets.io",
+          "CustomResourceDefinition/githubaccesstokens.generators.external-secrets.io",
+          "CustomResourceDefinition/issuers.cert-manager.io",
+          "CustomResourceDefinition/objectbucketclaims.objectbucket.io",
+          "CustomResourceDefinition/objectbuckets.objectbucket.io",
+          "CustomResourceDefinition/orders.acme.cert-manager.io",
+          "CustomResourceDefinition/passwords.generators.external-secrets.io",
+          "CustomResourceDefinition/podmonitors.monitoring.coreos.com",
+          "CustomResourceDefinition/probes.monitoring.coreos.com",
+          "CustomResourceDefinition/prometheusagents.monitoring.coreos.com",
+          "CustomResourceDefinition/prometheuses.monitoring.coreos.com",
+          "CustomResourceDefinition/prometheusrules.monitoring.coreos.com",
+          "CustomResourceDefinition/pushsecrets.external-secrets.io",
+          "CustomResourceDefinition/replicationdestinations.volsync.backube",
+          "CustomResourceDefinition/replicationsources.volsync.backube",
+          "CustomResourceDefinition/scrapeconfigs.monitoring.coreos.com",
+          "CustomResourceDefinition/secretstores.external-secrets.io",
+          "CustomResourceDefinition/servicemonitors.monitoring.coreos.com",
+          "CustomResourceDefinition/thanosrulers.monitoring.coreos.com",
+          "CustomResourceDefinition/vaultdynamicsecrets.generators.external-secrets.io",
+          "CustomResourceDefinition/volumegroupsnapshotclasses.groupsnapshot.storage.k8s.io",
+          "CustomResourceDefinition/volumegroupsnapshotcontents.groupsnapshot.storage.k8s.io",
+          "CustomResourceDefinition/volumegroupsnapshots.groupsnapshot.storage.k8s.io",
+          "CustomResourceDefinition/volumesnapshotclasses.snapshot.storage.k8s.io",
+          "CustomResourceDefinition/volumesnapshotcontents.snapshot.storage.k8s.io",
+          "CustomResourceDefinition/volumesnapshots.snapshot.storage.k8s.io",
+          "CustomResourceDefinition/webhooks.generators.external-secrets.io",
+          "Ingress/actualbudget/actualbudget",
+          "Ingress/blog/blog",
+          "Ingress/dex/dex",
+          "Ingress/excalidraw/excalidraw",
+          "Ingress/gitea/gitea",
+          "Ingress/grafana/grafana",
+          "Ingress/homepage/homepage",
+          "Ingress/jellyfin/jellyfin",
+          "Ingress/kanidm/kanidm",
+          "Ingress/matrix/matrix-dendrite",
+          "Ingress/matrix/matrix-elementweb",
+          "Ingress/ollama/ollama",
+          "Ingress/pairdrop/pairdrop",
+          "Ingress/paperless/paperless",
+          "Ingress/speedtest/speedtest",
+          "Ingress/woodpecker/woodpecker-server",
+          "IngressClass/nginx",
+          "Issuer/kanidm/kanidm-selfsigned",
+          "Job/woodpecker/pre-install-agent-secret-check",
+          "MutatingWebhookConfiguration/cert-manager-webhook",
+          "MutatingWebhookConfiguration/monitoring-system-kube-pro-admission",
+          "NetworkPolicy/gitea/gitea-redis-cluster",
+          "PersistentVolumeClaim/actualbudget/actualbudget-data",
+          "PersistentVolumeClaim/gitea/gitea-shared-storage",
+          "PersistentVolumeClaim/jellyfin/jellyfin-data",
+          "PersistentVolumeClaim/matrix/matrix-dendrite-jetstream-pvc",
+          "PersistentVolumeClaim/matrix/matrix-dendrite-media-pvc",
+          "PersistentVolumeClaim/matrix/matrix-dendrite-search-pvc",
+          "PersistentVolumeClaim/ollama/ollama-data",
+          "PersistentVolumeClaim/paperless/paperless-data",
+          "Prometheus/monitoring-system/monitoring-system-kube-pro-prometheus",
+          "PrometheusRule/monitoring-system/monitoring-system-kube-pro-alertmanager.rules",
+          "PrometheusRule/monitoring-system/monitoring-system-kube-pro-config-reloaders",
+          "PrometheusRule/monitoring-system/monitoring-system-kube-pro-etcd",
+          "PrometheusRule/monitoring-system/monitoring-system-kube-pro-general.rules",
+          "PrometheusRule/monitoring-system/monitoring-system-kube-pro-k8s.rules.container-cpu-usage-second",
+          "PrometheusRule/monitoring-system/monitoring-system-kube-pro-k8s.rules.container-memory-cache",
+          "PrometheusRule/monitoring-system/monitoring-system-kube-pro-k8s.rules.container-memory-rss",
+          "PrometheusRule/monitoring-system/monitoring-system-kube-pro-k8s.rules.container-memory-swap",
+          "PrometheusRule/monitoring-system/monitoring-system-kube-pro-k8s.rules.container-memory-working-s",
+          "PrometheusRule/monitoring-system/monitoring-system-kube-pro-k8s.rules.container-resource",
+          "PrometheusRule/monitoring-system/monitoring-system-kube-pro-k8s.rules.pod-owner",
+          "PrometheusRule/monitoring-system/monitoring-system-kube-pro-kube-apiserver-availability.rules",
+          "PrometheusRule/monitoring-system/monitoring-system-kube-pro-kube-apiserver-burnrate.rules",
+          "PrometheusRule/monitoring-system/monitoring-system-kube-pro-kube-apiserver-histogram.rules",
+          "PrometheusRule/monitoring-system/monitoring-system-kube-pro-kube-apiserver-slos",
+          "PrometheusRule/monitoring-system/monitoring-system-kube-pro-kube-prometheus-general.rules",
+          "PrometheusRule/monitoring-system/monitoring-system-kube-pro-kube-prometheus-node-recording.rules",
+          "PrometheusRule/monitoring-system/monitoring-system-kube-pro-kube-scheduler.rules",
+          "PrometheusRule/monitoring-system/monitoring-system-kube-pro-kube-state-metrics",
+          "PrometheusRule/monitoring-system/monitoring-system-kube-pro-kubelet.rules",
+          "PrometheusRule/monitoring-system/monitoring-system-kube-pro-kubernetes-apps",
+          "PrometheusRule/monitoring-system/monitoring-system-kube-pro-kubernetes-resources",
+          "PrometheusRule/monitoring-system/monitoring-system-kube-pro-kubernetes-storage",
+          "PrometheusRule/monitoring-system/monitoring-system-kube-pro-kubernetes-system",
+          "PrometheusRule/monitoring-system/monitoring-system-kube-pro-kubernetes-system-apiserver",
+          "PrometheusRule/monitoring-system/monitoring-system-kube-pro-kubernetes-system-controller-manager",
+          "PrometheusRule/monitoring-system/monitoring-system-kube-pro-kubernetes-system-kube-proxy",
+          "PrometheusRule/monitoring-system/monitoring-system-kube-pro-kubernetes-system-kubelet",
+          "PrometheusRule/monitoring-system/monitoring-system-kube-pro-kubernetes-system-scheduler",
+          "PrometheusRule/monitoring-system/monitoring-system-kube-pro-node-exporter",
+          "PrometheusRule/monitoring-system/monitoring-system-kube-pro-node-exporter.rules",
+          "PrometheusRule/monitoring-system/monitoring-system-kube-pro-node-network",
+          "PrometheusRule/monitoring-system/monitoring-system-kube-pro-node.rules",
+          "PrometheusRule/monitoring-system/monitoring-system-kube-pro-prometheus",
+          "PrometheusRule/monitoring-system/monitoring-system-kube-pro-prometheus-operator",
+          "PrometheusRule/rook-ceph/prometheus-ceph-rules",
+          "Role/dex/dex",
+          "Role/external-secrets/external-secrets-leaderelection",
+          "Role/global-secrets/external-secrets-kubernetes-global-secrets",
+          "Role/global-secrets/secret-generator",
+          "Role/grafana/grafana",
+          "Role/ingress-nginx/ingress-nginx",
+          "Role/ingress-nginx/ingress-nginx-admission",
+          "Role/kured/kured",
+          "Role/loki/loki",
+          "Role/matrix/matrix-dendrite-signing-key",
+          "Role/monitoring-system/monitoring-system-kube-pro-admission",
+          "Role/rook-ceph/cephfs-external-provisioner-cfg",
+          "Role/rook-ceph/rbd-external-provisioner-cfg",
+          "Role/rook-ceph/rook-ceph-cmd-reporter",
+          "Role/rook-ceph/rook-ceph-mgr",
+          "Role/rook-ceph/rook-ceph-monitoring",
+          "Role/rook-ceph/rook-ceph-monitoring-mgr",
+          "Role/rook-ceph/rook-ceph-osd",
+          "Role/rook-ceph/rook-ceph-purge-osd",
+          "Role/rook-ceph/rook-ceph-rgw",
+          "Role/rook-ceph/rook-ceph-snapshot-controller",
+          "Role/rook-ceph/rook-ceph-system",
+          "Role/tailscale/tailscale",
+          "Role/volsync-system/volsync-system-leader-election",
+          "Role/woodpecker/woodpecker-agent",
+          "RoleBinding/dex/dex",
+          "RoleBinding/external-secrets/external-secrets-leaderelection",
+          "RoleBinding/global-secrets/external-secrets-kubernetes-global-secrets",
+          "RoleBinding/global-secrets/secret-generator",
+          "RoleBinding/grafana/grafana",
+          "RoleBinding/ingress-nginx/ingress-nginx",
+          "RoleBinding/ingress-nginx/ingress-nginx-admission",
+          "RoleBinding/kured/kured",
+          "RoleBinding/loki/loki",
+          "RoleBinding/matrix/matrix-dendrite-signing-key",
+          "RoleBinding/monitoring-system/monitoring-system-kube-pro-admission",
+          "RoleBinding/rook-ceph/cephfs-csi-provisioner-role-cfg",
+          "RoleBinding/rook-ceph/rbd-csi-provisioner-role-cfg",
+          "RoleBinding/rook-ceph/rook-ceph-cluster-mgmt",
+          "RoleBinding/rook-ceph/rook-ceph-cmd-reporter",
+          "RoleBinding/rook-ceph/rook-ceph-mgr",
+          "RoleBinding/rook-ceph/rook-ceph-mgr-system",
+          "RoleBinding/rook-ceph/rook-ceph-monitoring",
+          "RoleBinding/rook-ceph/rook-ceph-monitoring-mgr",
+          "RoleBinding/rook-ceph/rook-ceph-osd",
+          "RoleBinding/rook-ceph/rook-ceph-purge-osd",
+          "RoleBinding/rook-ceph/rook-ceph-rgw",
+          "RoleBinding/rook-ceph/rook-ceph-snapshot-controller",
+          "RoleBinding/rook-ceph/rook-ceph-system",
+          "RoleBinding/tailscale/tailscale",
+          "RoleBinding/volsync-system/volsync-system-leader-election",
+          "RoleBinding/woodpecker/woodpecker-agent",
+          "Secret/dex/dex",
+          "Secret/external-secrets/external-secrets-webhook",
+          "Secret/gitea/gitea",
+          "Secret/gitea/gitea-init",
+          "Secret/gitea/gitea-inline-config",
+          "Secret/gitea/gitea-postgresql-ha-pgpool",
+          "Secret/gitea/gitea-postgresql-ha-postgresql",
+          "Secret/grafana/grafana",
+          "Secret/loki/loki",
+          "Secret/loki/loki-promtail",
+          "Secret/matrix/matrix-dendrite-conf",
+          "Secret/matrix/matrix-dendrite-signing-key",
+          "Secret/matrix/matrix-postgresql",
+          "Secret/monitoring-system/alertmanager-monitoring-system-kube-pro-alertmanager",
+          "Secret/monitoring-system/monitoring-system-kube-pro-prometheus",
+          "Secret/rook-ceph/rook-ceph-snapshot-validation-webhook-tls",
+          "Service/kube-system/monitoring-system-kube-pro-coredns",
+          "Service/kube-system/monitoring-system-kube-pro-kube-controller-manager",
+          "Service/kube-system/monitoring-system-kube-pro-kube-etcd",
+          "Service/kube-system/monitoring-system-kube-pro-kube-proxy",
+          "Service/kube-system/monitoring-system-kube-pro-kube-scheduler",
+          "Service/monitoring-system/monitoring-system-kube-pro-alertmanager",
+          "Service/monitoring-system/monitoring-system-kube-pro-prometheus",
+          "ServiceAccount/cert-manager/cert-manager",
+          "ServiceAccount/cert-manager/cert-manager-cainjector",
+          "ServiceAccount/cert-manager/cert-manager-startupapicheck",
+          "ServiceAccount/cert-manager/cert-manager-webhook",
+          "ServiceAccount/dex/dex",
+          "ServiceAccount/external-dns/external-dns",
+          "ServiceAccount/external-secrets/external-secrets",
+          "ServiceAccount/external-secrets/external-secrets-cert-controller",
+          "ServiceAccount/external-secrets/external-secrets-webhook",
+          "ServiceAccount/gitea/gitea-postgresql-ha",
+          "ServiceAccount/gitea/gitea-redis-cluster",
+          "ServiceAccount/global-secrets/external-secrets-kubernetes-global-secrets",
+          "ServiceAccount/global-secrets/secret-generator",
+          "ServiceAccount/grafana/grafana",
+          "ServiceAccount/ingress-nginx/ingress-nginx",
+          "ServiceAccount/ingress-nginx/ingress-nginx-admission",
+          "ServiceAccount/kured/kured",
+          "ServiceAccount/loki/loki",
+          "ServiceAccount/loki/loki-promtail",
+          "ServiceAccount/matrix/matrix-dendrite-signing-key",
+          "ServiceAccount/matrix/matrix-elementweb",
+          "ServiceAccount/monitoring-system/monitoring-system-kube-pro-admission",
+          "ServiceAccount/monitoring-system/monitoring-system-kube-pro-alertmanager",
+          "ServiceAccount/monitoring-system/monitoring-system-kube-pro-operator",
+          "ServiceAccount/monitoring-system/monitoring-system-kube-pro-prometheus",
+          "ServiceAccount/monitoring-system/monitoring-system-kube-state-metrics",
+          "ServiceAccount/monitoring-system/monitoring-system-prometheus-node-exporter",
+          "ServiceAccount/rook-ceph/objectstorage-provisioner",
+          "ServiceAccount/rook-ceph/rook-ceph-cmd-reporter",
+          "ServiceAccount/rook-ceph/rook-ceph-mgr",
+          "ServiceAccount/rook-ceph/rook-ceph-osd",
+          "ServiceAccount/rook-ceph/rook-ceph-purge-osd",
+          "ServiceAccount/rook-ceph/rook-ceph-rgw",
+          "ServiceAccount/rook-ceph/rook-ceph-snapshot-controller",
+          "ServiceAccount/rook-ceph/rook-ceph-snapshot-validation-webhook",
+          "ServiceAccount/rook-ceph/rook-ceph-system",
+          "ServiceAccount/rook-ceph/rook-csi-cephfs-plugin-sa",
+          "ServiceAccount/rook-ceph/rook-csi-cephfs-provisioner-sa",
+          "ServiceAccount/rook-ceph/rook-csi-rbd-plugin-sa",
+          "ServiceAccount/rook-ceph/rook-csi-rbd-provisioner-sa",
+          "ServiceAccount/tailscale/tailscale",
+          "ServiceAccount/volsync-system/volsync-system",
+          "ServiceAccount/woodpecker/woodpecker-agent",
+          "ServiceMonitor/cert-manager/cert-manager",
+          "ServiceMonitor/ingress-nginx/ingress-nginx-controller",
+          "ServiceMonitor/loki/loki",
+          "ServiceMonitor/monitoring-system/monitoring-system-kube-pro-alertmanager",
+          "ServiceMonitor/monitoring-system/monitoring-system-kube-pro-apiserver",
+          "ServiceMonitor/monitoring-system/monitoring-system-kube-pro-coredns",
+          "ServiceMonitor/monitoring-system/monitoring-system-kube-pro-kube-controller-manager",
+          "ServiceMonitor/monitoring-system/monitoring-system-kube-pro-kube-etcd",
+          "ServiceMonitor/monitoring-system/monitoring-system-kube-pro-kube-proxy",
+          "ServiceMonitor/monitoring-system/monitoring-system-kube-pro-kube-scheduler",
+          "ServiceMonitor/monitoring-system/monitoring-system-kube-pro-kubelet",
+          "ServiceMonitor/monitoring-system/monitoring-system-kube-pro-operator",
+          "ServiceMonitor/monitoring-system/monitoring-system-kube-pro-prometheus",
+          "ServiceMonitor/monitoring-system/monitoring-system-kube-state-metrics",
+          "ServiceMonitor/monitoring-system/monitoring-system-prometheus-node-exporter",
+          "StorageClass/standard-rwo",
+          "StorageClass/standard-rwx",
+          "ValidatingWebhookConfiguration/cert-manager-webhook",
+          "ValidatingWebhookConfiguration/externalsecret-validate",
+          "ValidatingWebhookConfiguration/ingress-nginx-admission",
+          "ValidatingWebhookConfiguration/monitoring-system-kube-pro-admission",
+          "ValidatingWebhookConfiguration/rook-ceph-snapshot-validation-webhook",
+          "ValidatingWebhookConfiguration/secretstore-validate",
+          "VolumeSnapshotClass/ceph-block",
+          "VolumeSnapshotClass/ceph-filesystem"
+        ]
+      },
+      {
+        "no": 4,
+        "kind": "start",
+        "manual": false,
+        "crank": null,
+        "nodes": [
+          "Certificate/kanidm/kanidm-selfsigned",
+          "DaemonSet/kured/kured",
+          "DaemonSet/loki/loki-promtail",
+          "DaemonSet/monitoring-system/monitoring-system-prometheus-node-exporter",
+          "Deployment/cert-manager/cert-manager",
+          "Deployment/cert-manager/cert-manager-cainjector",
+          "Deployment/cert-manager/cert-manager-webhook",
+          "Deployment/external-secrets/external-secrets",
+          "Deployment/external-secrets/external-secrets-cert-controller",
+          "Deployment/external-secrets/external-secrets-webhook",
+          "Deployment/gitea/gitea-postgresql-ha-pgpool",
+          "Deployment/matrix/matrix-dendrite",
+          "Deployment/matrix/matrix-elementweb",
+          "Deployment/monitoring-system/monitoring-system-kube-state-metrics",
+          "Deployment/rook-ceph/rook-ceph-operator",
+          "Deployment/rook-ceph/rook-ceph-snapshot-controller",
+          "Deployment/rook-ceph/rook-ceph-snapshot-validation-webhook",
+          "Deployment/volsync-system/volsync-system",
+          "ExternalSecret/dex/dex-secrets",
+          "ExternalSecret/gitea/gitea-admin-secret",
+          "ExternalSecret/grafana/grafana-secrets",
+          "ExternalSecret/paperless/paperless-secret",
+          "ExternalSecret/tailscale/tailscale-auth",
+          "ExternalSecret/wireguard/wireguard-secret",
+          "ExternalSecret/woodpecker/woodpecker-secret",
+          "Job/cert-manager/cert-manager-startupapicheck",
+          "Job/global-secrets/secret-generator-4231e5e",
+          "Job/ingress-nginx/ingress-nginx-admission-create",
+          "Job/ingress-nginx/ingress-nginx-admission-patch",
+          "Job/matrix/generate-signing-key",
+          "Job/monitoring-system/monitoring-system-kube-pro-admission-create",
+          "Job/monitoring-system/monitoring-system-kube-pro-admission-patch",
+          "StatefulSet/gitea/gitea-postgresql-ha-postgresql",
+          "StatefulSet/gitea/gitea-redis-cluster",
+          "StatefulSet/loki/loki"
+        ]
+      },
+      {
+        "no": 5,
+        "kind": "start",
+        "manual": false,
+        "crank": null,
+        "nodes": [
+          "Secret/dex/dex-secrets",
+          "Secret/gitea/gitea-admin-secret",
+          "Secret/grafana/grafana-secrets",
+          "Secret/kanidm/kanidm-selfsigned-certificate",
+          "Secret/paperless/paperless-secret",
+          "Secret/tailscale/tailscale-auth",
+          "Secret/wireguard/wireguard-secret",
+          "Secret/woodpecker/woodpecker-secret",
+          "Service/cert-manager/cert-manager",
+          "Service/cert-manager/cert-manager-webhook",
+          "Service/external-secrets/external-secrets-webhook",
+          "Service/gitea/gitea-postgresql-ha-pgpool",
+          "Service/gitea/gitea-postgresql-ha-postgresql",
+          "Service/gitea/gitea-postgresql-ha-postgresql-headless",
+          "Service/gitea/gitea-redis-cluster",
+          "Service/gitea/gitea-redis-cluster-headless",
+          "Service/loki/loki",
+          "Service/loki/loki-headless",
+          "Service/loki/loki-memberlist",
+          "Service/matrix/matrix-dendrite",
+          "Service/matrix/matrix-elementweb",
+          "Service/monitoring-system/monitoring-system-kube-state-metrics",
+          "Service/monitoring-system/monitoring-system-prometheus-node-exporter",
+          "Service/rook-ceph/rook-ceph-snapshot-validation-webhook",
+          "Service/volsync-system/volsync-system-metrics"
+        ]
+      },
+      {
+        "no": 6,
+        "kind": "start",
+        "manual": false,
+        "crank": null,
+        "nodes": [
+          "Deployment/dex/dex",
+          "Deployment/gitea/gitea",
+          "Deployment/grafana/grafana",
+          "Deployment/tailscale/tailscale",
+          "StatefulSet/woodpecker/woodpecker-agent"
+        ]
+      },
+      {
+        "no": 7,
+        "kind": "start",
+        "manual": false,
+        "crank": null,
+        "nodes": [
+          "Service/dex/dex",
+          "Service/gitea/gitea-http",
+          "Service/gitea/gitea-ssh",
+          "Service/grafana/grafana"
+        ]
+      },
+      {
+        "no": 8,
+        "kind": "start",
+        "manual": false,
+        "crank": null,
+        "nodes": [
+          "Job/gitea/gitea-config-4424134"
+        ]
+      }
+    ],
+    "listedUnordered": 63,
+    "conflicts": 0,
+    "assumes": {
+      "externals": [
+        "external:github.com"
+      ],
+      "cranks": [
+        "crank:1"
+      ],
+      "clusterProvided": 0,
+      "argocdNamespace": []
+    }
+  },
+  "notComputed": []
+}
