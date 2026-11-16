@@ -20,6 +20,7 @@ import type {
 } from "../u1-graph-model/declared-facts.js";
 import { NO_DECLARED_FACTS } from "../u1-graph-model/declared-facts.js";
 import { externalId, isNodeId, isValidExternalName } from "../u1-graph-model/graph-model.js";
+import { type DerivedLimit, LIMITS, limitValue } from "../u1-graph-model/limits.js";
 import { compareCodePoints } from "../u1-graph-model/order.js";
 import {
   canonicalPath,
@@ -44,6 +45,7 @@ export type ConfigProblem =
   | "expected a string"
   | "expected true"
   | "expected available or unavailable"
+  | "needs cold_start or served_by, not both"
   | "empty"
   | "not a node id"
   | "not a node id or external name"
@@ -59,7 +61,8 @@ export type ConfigProblem =
   | "a crank needs by"
   | "a crank needs creates or reroutes"
   | "more than one document"
-  | "not readable";
+  | "not readable"
+  | "more entries than the limit";
 
 export interface ConfigError {
   /** The key path in crankpath's notation (`edges[0].from`, `repos."<url>".read_from`); null for the file. */
@@ -158,6 +161,10 @@ function readExternals(v: YamlValue | undefined): ExternalDecl[] {
         coldStart = c;
       }
       if (b.served_by !== undefined) servedBy = nodeRef(b.served_by, keyPathOf(at, "served_by"));
+      // Both would say two things at once: available at cold start, and only as available as the
+      // node serving it. Refused rather than resolved by a precedence crankpath would invent.
+      if (b.cold_start !== undefined && b.served_by !== undefined)
+        throw new Invalid(at, "needs cold_start or served_by, not both");
     }
     out.push(Object.freeze({ name, id, coldStart, servedBy, keyPath: at }));
   }
@@ -312,8 +319,24 @@ function readClusters(v: YamlValue | undefined): ClusterDecl[] {
 
 const TOP_KEYS = ["external", "match", "repos", "edges", "cranks", "clusters"] as const;
 
+/**
+ * Every entry of every section, counted (review M3): the scanned repo controls these counts, so
+ * they are held to the derived `declaredEntries` limit.
+ */
+export function countEntries(c: ConfigDocument): number {
+  let n = c.externals.length + c.matches.length + c.repos.length + c.edges.length + c.clusters.length;
+  for (const k of c.cranks) n += 1 + k.creates.length + k.reroutes.length;
+  for (const cl of c.clusters) n += Object.keys(cl.labels).length + Object.keys(cl.annotations).length;
+  return n;
+}
+
 /** Validates one parsed document (null = an empty file) against C2. `scanned` is the scanned root. */
-export function validateConfig(doc: YamlValue, file: string, scanned: ScanRoot): ConfigResult {
+export function validateConfig(
+  doc: YamlValue,
+  file: string,
+  scanned: ScanRoot,
+  entryLimit: DerivedLimit<"entries"> = LIMITS.declaredEntries,
+): ConfigResult {
   if (doc === null) return { ok: true, config: { ...NO_DECLARED_FACTS, file } };
   try {
     if (!isObj(doc)) throw new Invalid("", "expected a mapping");
@@ -327,6 +350,8 @@ export function validateConfig(doc: YamlValue, file: string, scanned: ScanRoot):
       cranks: Object.freeze(readCranks(doc.cranks)),
       clusters: Object.freeze(readClusters(doc.clusters)),
     });
+    if (countEntries(config) > limitValue(entryLimit))
+      return { ok: false, error: { keyPath: null, problem: "more entries than the limit" } };
     return { ok: true, config };
   } catch (e) {
     if (e instanceof Invalid) return { ok: false, error: { keyPath: e.keyPath, problem: e.problem } };
@@ -391,7 +416,11 @@ export function configLocation(
 }
 
 /** Reads and validates the config at its location. An absent default file is no declared facts. */
-export function readConfig(location: ConfigLocation, scanned: ScanRoot): ConfigResult {
+export function readConfig(
+  location: ConfigLocation,
+  scanned: ScanRoot,
+  entryLimit: DerivedLimit<"entries"> = LIMITS.declaredEntries,
+): ConfigResult {
   const text = readText(location.dir, location.name);
   if (text.outcome === "not-found" && !location.explicit) return { ok: true, config: NO_DECLARED_FACTS };
   if (text.outcome !== "ok")
@@ -407,5 +436,5 @@ export function readConfig(location: ConfigLocation, scanned: ScanRoot): ConfigR
   }
   const docs = parsed.documents;
   if (docs.length > 1) return { ok: false, error: { keyPath: null, problem: "more than one document" } };
-  return validateConfig(docs[0] ?? null, location.label, scanned);
+  return validateConfig(docs[0] ?? null, location.label, scanned, entryLimit);
 }

@@ -225,7 +225,7 @@ describe("the fixture's tests fail when the fixture is broken", () => {
   });
 });
 
-describe("the two documented edits (BR11.8; statuses and the crank's effect are B5's)", () => {
+describe("the two documented edits (BR11.8)", () => {
   it("crank-a: the crankpath.yaml crank parses and names the credential Secret of cycle A", () => {
     const root = copy(withOverlays(VAULT, [VARIANT("crank-a")]));
     const config = fixtureConfig(`${root}/gitops`);
@@ -235,13 +235,13 @@ describe("the two documented edits (BR11.8; statuses and the crank's effect are 
         "kubectl create secret from the offline key backup, runbook DR-3",
       ],
     ]);
-    // This build does not apply cranks: cycle A is still found, holds the crank's node, and the
-    // analysis says cranks are not computed. B5 makes it `cranked`.
+    // B5 applies the crank: cycle A, holding the crank's node, is `cranked` (the definition-of-done
+    // tests of B5 are in vault-dod.test.ts).
     const { analysis } = analyseFixture(loadFixture(root), config);
-    expect(analysis.notComputed).toContain("cranks");
+    expect(analysis.notComputed).toEqual([]);
     const a = analysis.cycles.find((c) => c.nodes.includes("Application/argocd/platform"));
     expect(a?.nodes).toEqual(CYCLE_A_NODES);
-    expect(a?.label).toBe("extracted");
+    expect(a?.label).toBe("cranked");
   });
   it("ca-issuer: cycle B is gone and cycle A stays; the bootstrap CA comes from the platform-secrets store", () => {
     const root = copy(withOverlays(VAULT, [VARIANT("ca-issuer")]));

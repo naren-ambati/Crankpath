@@ -43,10 +43,12 @@ import { discover, SKIP_AT_ROOT, SKIP_DIRS, sourceKindOf } from "../u3-discovery
 import { buildObjects, byLocation, countStringLeaves } from "../u4-render-engine/rendered-set-builder.js";
 import { type RenderIo, render } from "../u4-render-engine/renderers.js";
 import { GITOPS_EXTRACTORS } from "../u5-extractors-gitops/index.js";
-import { createHostMatcher, type ServiceEntry } from "../u6-extractors-workload/host-matcher.js";
+import { createHostMatching, hostResolution, type ServiceEntry } from "../u6-extractors-workload/host-matcher.js";
 import { WORKLOAD_EXTRACTORS } from "../u6-extractors-workload/index.js";
-import { analyse } from "../u7-graph-analysis/analysis.js";
+import { analyse, type HiddenCycle } from "../u7-graph-analysis/analysis.js";
+import { findCycles } from "../u7-graph-analysis/cycle-finder.js";
 import { buildGraph, compareEdges } from "../u7-graph-analysis/graph-builder.js";
+import { cyclesHiddenByOverrides } from "../u7-graph-analysis/match-overrides.js";
 import { assembleReport, type SourceOutcome } from "../u8-output/report-assembler.js";
 import { type BudgetSpec, RunBudget } from "./run-budget.js";
 import { READER_PARSE_COST, RUN_LIMITS, RUN_RATES } from "../u1-graph-model/run-limits.js";
@@ -175,6 +177,18 @@ export function runPipeline(options: RunOptions): RunOutcome {
     if (!roots.has(`${REPOS_LABEL}${m.readFrom}`)) setRoot(`${REPOS_LABEL}${m.readFrom}`, sub.root);
   }
   const identity = createRepoIdentity({ scannedUrl, scannedFrom, aliases, mappings: config.repos });
+  // Which mappings a resolution went through (B5 review pass 2, M2): a `repos:` entry of the
+  // scanned repo's crankpath.yaml changes what is read (a declared fact, a gap); a --repo-alias is
+  // the user's own input (listed as an assumption).
+  const usedMappings = new Set<string>();
+  const resolveRepo = (url: string) => {
+    const r = identity.resolve(url);
+    if (r.via === "repos-read-from" || r.via === "repos-fetch" || r.via === "repo-alias") {
+      const n = normaliseRepoUrl(url);
+      if (n !== null) usedMappings.add(`${r.via === "repo-alias" ? "alias" : "repos"}\n${n}`);
+    }
+    return r;
+  };
 
   // Every file held parsed is charged to the run's budget; over it, the file is a counted
   // `too-large` refusal (detail `run budget`) and its parsed documents are let go.
@@ -270,7 +284,7 @@ export function runPipeline(options: RunOptions): RunOutcome {
   for (const o of discovered) enqueue(o);
 
   const planContext: PlanContext = {
-    resolveRepo: (url) => identity.resolve(url),
+    resolveRepo,
     probeDirectory: (label, dir) => {
       const listed = io.walk(label, dir, { recurse: false });
       if (!listed.ok) return { ok: false, reasonWord: listed.refusal.reasonWord };
@@ -351,36 +365,78 @@ export function runPipeline(options: RunOptions): RunOutcome {
       services.set(o.id, { id: o.id, name: o.name, namespace: o.namespace });
     }
   }
-  const matchHost = createHostMatcher([...services.values()]);
+  // `match:` entries are tried first, in file order (US2.3); the ones no host matched are listed.
+  const resolution = hostResolution(objects, [...services.values()], config.matches);
+  const hosts = resolution.matching;
+  const matchHost = hosts.match;
   const ctx: ExtractContext = Object.freeze({
-    resolveRepo: (url: string) => identity.resolve(url),
+    resolveRepo,
     matchHost,
+    externalOf: resolution.externalOf,
     config,
     jobs,
   });
-  const extracted: ExtractResult[] = [];
-  for (const extractor of options.extractors ?? EXTRACTORS) {
-    try {
-      extracted.push(extractor.extract(objects, ctx));
-    } catch {
-      const failed = emptyResult();
-      failed.unresolved.push(unresolvedItem(`extractor:${extractor.name}`, "extractor-failed", "(extractor)", null));
-      extracted.push(failed);
+  const extractAll = (context: ExtractContext): ExtractResult[] => {
+    const results: ExtractResult[] = [];
+    for (const extractor of options.extractors ?? EXTRACTORS) {
+      try {
+        results.push(extractor.extract(objects, context));
+      } catch {
+        const failed = emptyResult();
+        failed.unresolved.push(unresolvedItem(`extractor:${extractor.name}`, "extractor-failed", "(extractor)", null));
+        results.push(failed);
+      }
     }
+    return results;
+  };
+  const extracted = extractAll(ctx);
+  if (hosts.limitHit()) {
+    // the wildcard comparison budget was spent: a counted limit that leaves every node unverified
+    const limited = emptyResult();
+    limited.unresolved.push(unresolvedItem("match", "match-limit", config.file ?? "crankpath.yaml", "match"));
+    extracted.push(limited);
   }
 
   // edgesPerRun (N2): over it, the edges kept are the first in canonical order; the rest are counted.
-  const totalEdges = extracted.reduce((n, r) => n + r.edges.length, 0);
-  let kept = extracted;
-  if (totalEdges > budget.spec.maxEdges) {
-    const all = extracted.flatMap((r) => r.edges).sort(compareEdges);
+  const capEdges = (results: ExtractResult[]): { kept: ExtractResult[]; dropped: number } => {
+    const total = results.reduce((n, r) => n + r.edges.length, 0);
+    if (total <= budget.spec.maxEdges) return { kept: results, dropped: 0 };
+    const all = results.flatMap((r) => r.edges).sort(compareEdges);
     const keep = new Set(all.slice(0, budget.spec.maxEdges));
-    budget.droppedEdges = totalEdges - keep.size;
-    kept = extracted.map((r) => ({ ...r, edges: r.edges.filter((e) => keep.has(e)) }));
-  }
+    return {
+      kept: results.map((r) => ({ ...r, edges: r.edges.filter((e) => keep.has(e)) })),
+      dropped: total - keep.size,
+    };
+  };
+  const capped = capEdges(extracted);
+  if (capped.dropped > 0) budget.droppedEdges = capped.dropped;
 
-  const graph = buildGraph({ objects, extracted: kept, config, opaque: marks });
-  const analysis = analyse(graph, config);
+  const graph = buildGraph({ objects, extracted: capped.kept, config, opaque: marks });
+  const overrides = hosts.overrides();
+  const relied = [...new Set(overrides.map((o) => o.keyPath))];
+  let analysis = analyse(graph, config, { matchEntries: relied });
+  // A match entry that overrode a host may hide a cycle: find the cycles without the entries and
+  // list the ones the report does not hold (review M1).
+  let hidden: HiddenCycle[] = [];
+  if (overrides.length > 0) {
+    const plain = createHostMatching([...services.values()], []);
+    const without = buildGraph({
+      objects,
+      extracted: capEdges(extractAll(Object.freeze({ ...ctx, matchHost: plain.match }))).kept,
+      config,
+      opaque: marks,
+    });
+    hidden = cyclesHiddenByOverrides(
+      analysis.cycles,
+      findCycles(
+        without.nodes.map((n) => n.id),
+        without.edges,
+      ),
+      overrides,
+    );
+    // nodes on a hidden cycle are unverified: analyse again, naming them (B5 review pass 2, m1)
+    if (hidden.length > 0) analysis = analyse(graph, config, { matchEntries: relied, hiddenCycles: hidden });
+  }
   const nodeById = new Map(graph.nodes.map((n) => [n.id, n]));
   const outcomes: SourceOutcome[] = [...sources.values()].map((s) => ({
     kind: s.kind,
@@ -405,6 +461,23 @@ export function runPipeline(options: RunOptions): RunOutcome {
     droppedHooks,
     timeouts: 0,
     limits: budget.use(),
+    unusedMatches: hosts.unusedRules(),
+    matchOverrides: overrides,
+    hiddenCycles: hidden,
+    repoMappings: [
+      ...config.repos.map((m) => ({
+        url: m.url,
+        root: m.readFrom === null ? "(fetch)" : m.readFrom === "" ? "." : m.readFrom,
+        from: "crankpath.yaml" as const,
+        used: usedMappings.has(`repos\n${m.normalised}`),
+      })),
+      ...aliases.map((a) => ({
+        url: a.url,
+        root: a.label,
+        from: "--repo-alias" as const,
+        used: usedMappings.has(`alias\n${a.normalised}`),
+      })),
+    ],
   });
   const diagnostics = [
     `sources found: ${outcomes.length}`,

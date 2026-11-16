@@ -136,7 +136,12 @@ describe("thin slice: hostile input (FR8.6, NFR4, BR1.3)", () => {
     "Not",
     "unresolved",
     "External",
-    "Plan:",
+    "Plan",
+    "blocked",
+    "ConfigMap",
+    "Deployment",
+    "Secret",
+    "Assumed,",
   ]);
   it("starts every line with crankpath's own words", () => {
     for (const line of lines) expect(OWN.has(line.trimStart().split(" ")[0] as string), line).toBe(true);

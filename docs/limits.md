@@ -16,6 +16,8 @@ Written in B0 (2026-11-15). Rule (OD-5, FR1.4, NFR5): no limit is picked. Each i
 | `mermaidMaxEdges` | 500 | edges | a diagram the renderer refuses to draw | Mermaid 12.3.0 config schema (`packages/mermaid/src/schemas/config.schema.yaml`): `maxEdges` default 500. | the Mermaid renderer (B8) |
 | `mermaidMaxTextChars` | 50,000 | characters | a diagram text the renderer refuses to parse | Mermaid 12.3.0 config schema: `maxTextSize` default 50000. | the Mermaid renderer (B8) |
 | `explainElementaryCycles` | — | cycles | readability of `--explain`: the elementary cycles of one component fit one screen | not yet derived: B6 step 0. A VT100 screen is 24 lines (VT100 User Guide, chapter 1), but how many of them the `--explain` listing uses for itself is not designed yet, so no count can be derived from it now. | `--explain` |
+| `declaredEntries` | 1,572,864 | entries | work and output size the scanned repo's `crankpath.yaml` can cause through the number of its entries (B5 review M3) | the same basis as `expandedNodesPerDocument`: `crankpath.yaml` is one document of at most that many nodes, and every entry of every section (an external, a match entry, a repos entry, an edge, a crank, one `creates` or `reroutes` target, a cluster, one label or annotation) is at least one node of it, so no admitted file holds more. Every analysis step over the entries is linear (indexed: no lookup scans a list), so the count bounds the work. | ConfigReader counts the entries after validation and refuses the file by name ("more entries than the limit") |
+| `hostPatternComparisons` | 1,572,864 | steps | the time a run spends comparing hosts with `match:` entries that hold a wildcard (B5 review M3; time bound since pass 2) | the same basis as `expandedNodesPerDocument`: the wildcard work the `match:` entries of one admitted file may cause is held to the nodes one admitted document may hold, counted in steps actually done: one per entry consulted, a literal label's length, a wildcard label's pattern length times label length (the matcher's own table). Entries without a wildcard are looked up by host and cost nothing; wildcard entries are indexed by label count and literal suffix, so a host consults only the entries whose literal suffix it ends in; a host is compared once however often it is queried. | HostMatcher charges each step; a spent budget stops the remaining wildcard work and is a counted `match-limit` item that leaves every node unverified |
 | `filesPerScan` | — | files | total read time of a scan | not yet derived: B3 step 0. No tool or host publishes a file-count ceiling for a repository (GitHub's repository limits recommend at most 3,000 entries per directory and a depth of 50, which bound no total), and OD-7 sets no time budget from which a count could follow; the basis needs discovery's measured per-file cost (review m3: the lead to record the deferral). | discovery (B3) |
 | `renderWallClock` | — | milliseconds | a render subprocess that never ends (a backstop only, OD-30) | not yet derived: B2 step 0. Needs real helm and kustomize renders to measure. | the command runner (B2) |
 | `renderStdoutBytes` | — | bytes | memory held by one render's standard output | not yet derived: B2 step 0. Needs real renders. | the command runner (B2) |
@@ -258,3 +260,16 @@ files-flow n=100: units 100000400, input bytes 100000400, nodes 1, edges 0, outp
 files-flow: 32.5 bytes per unit (peak difference over unit difference)
 ```
 Resident memory counts more than the old-generation heap the budget is taken from, so the rates err toward smaller bounds. One machine, macOS only; Linux not measured.
+
+## Cost of the declared-fact limits (B5, measured)
+
+Measured on 2026-11-15 (Node v22.23.2, macOS arm64), after the second review's fix (budget in steps, literal-suffix index); a one-off script over the built HostMatcher, kept outside the repository:
+
+```
+all-wildcard 4 labels (review pass 2): 2000 entries, 800 hosts, 9 ms, budget spent: true
+all-wildcard 4 labels, distinct entries: 300000 entries, 2000 hosts, 11 ms, budget spent: true
+63-character star labels (first pass): 30000 entries, 2000 hosts, 9 ms, budget spent: true
+literal suffixes: 300000 entries, 100000 hosts, 236 ms, budget spent: false
+```
+
+The earlier figure in this section ("the whole budget at the worst label shape: 619 ms") was wrong: the budget then counted label comparisons, not the work inside them, and the second review measured 19.2 s for the first shape above (`reviews/bolt-5-review-pass-2.md`, M3). Charged per step, the whole budget costs about 10 ms at the worst shapes found. The other declared-fact shapes (`test/u7-graph-analysis/review-b5-regressions.test.ts`, on a 100,000-node ring): 1,000 `render:` cranks and one crank of 10,000 targets about 1.6 s; 50,000 declared externals with 100,000 declared edges about 0.4 s; the second review measured 300,000 mixed `render:` cranks and reroutes at 4.2 s.

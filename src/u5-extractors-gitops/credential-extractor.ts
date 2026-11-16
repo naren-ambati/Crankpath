@@ -223,12 +223,16 @@ export const credentialExtractor: Extractor = Object.freeze({
     // Never silent: how the namespace was found is always listed.
     out.unresolved.push(
       ns.how === "assumed"
-        ? unresolvedItem(`Namespace/${ns.namespace}`, "argocd-namespace-assumed", ns.where, null)
-        : unresolvedItem(`Namespace/${ns.namespace}`, "argocd-namespace-derived", ns.where, null, ns.from),
+        ? // an assumption about the estate, not a gap of one node: listed, owned by no node (B5)
+          unresolvedItem(`Namespace/${ns.namespace}`, "argocd-namespace-assumed", ns.where, null, [], { owner: null })
+        : unresolvedItem(`Namespace/${ns.namespace}`, "argocd-namespace-derived", ns.where, null, ns.from, {
+            owner: null,
+          }),
     );
 
     const credentials: Credential[] = [];
     const outside = new Set<NodeId>();
+    const unreadable = new Set<NodeId>();
     for (const f of found) {
       if (f.where.namespace !== ns.namespace) {
         // Listed once per Secret, however many objects define it.
@@ -242,9 +246,27 @@ export const credentialExtractor: Extractor = Object.freeze({
       const transport = f.url === null ? null : transportOf(f.url);
       if (normalised === null || transport === null) {
         out.unresolved.push(unresolvedItem(f.secret, "credential-url-unresolved", f.where.renderedPath, f.field));
+        unreadable.add(f.secret);
         continue;
       }
       credentials.push({ secret: f.secret, namespace: ns.namespace, type: f.type, normalised, transport });
+    }
+
+    // A credential whose url cannot be read (templated, absent, unparseable) may be the one any
+    // Application in Argo CD's namespace needs for a repository other than the scanned one: each
+    // such Application owns an item naming those credentials, so it is never startable (B5 review).
+    if (unreadable.size > 0) {
+      const candidates = [...unreadable].sort(compareCodePoints);
+      for (const o of apps) {
+        if (o.namespace !== ns.namespace) continue;
+        const foreign = repoUrlFields(o).find(
+          ({ field, url }) =>
+            !(o.kind === "ApplicationSet" && field.startsWith("spec.template.")) &&
+            ctx.resolveRepo(url).outcome !== "self",
+        );
+        if (foreign !== undefined)
+          out.unresolved.push(unresolvedItem(o.id, "credential-unreadable", o.renderedPath, foreign.field, candidates));
+      }
     }
 
     for (const o of apps) {

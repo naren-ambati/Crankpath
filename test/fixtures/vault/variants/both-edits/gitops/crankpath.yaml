@@ -1,0 +1,10 @@
+# Both documented edits (applied over the ca-issuer variant): the crank that breaks cycle A, and
+# the three external preconditions declared available at a cold start, as a runbook would state them.
+external:
+  github.com: {cold_start: available}
+  aws-kms/us-east-1: {cold_start: available}
+  aws-sts: {cold_start: available}
+cranks:
+  - creates: Secret/argocd/repo-platform
+    by: "kubectl create secret from the offline key backup, runbook DR-3"
+    ref: runbooks/dr-3.md

@@ -74,7 +74,7 @@ export const workloadRefExtractor: Extractor = Object.freeze({
       if (raw === undefined) return;
       const id = objectId(targetKind, from.namespace, raw);
       if (!id.ok) {
-        out.unresolved.push(unresolvedItem(raw, "invalid-reference", from.renderedPath, field));
+        out.unresolved.push(unresolvedItem(raw, "invalid-reference", from.renderedPath, field, [], { owner: from.id }));
         return;
       }
       out.edges.push(
@@ -209,7 +209,9 @@ export const workloadRefExtractor: Extractor = Object.freeze({
         );
       } else if (unique.length > 1) {
         out.unresolved.push(
-          unresolvedItem(svc.id, "selector-ambiguous", svc.renderedPath, "spec.selector", unique, truncated),
+          unresolvedItem(svc.id, "selector-ambiguous", svc.renderedPath, "spec.selector", unique, {
+            candidatesTruncated: truncated,
+          }),
         );
       }
     }

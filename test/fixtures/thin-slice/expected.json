@@ -1,4 +1,5 @@
 {
+  "cranks": [],
   "cycles": [
     {
       "crankedBy": [],
@@ -53,7 +54,9 @@
         }
       ],
       "id": "c-d8197e7d",
+      "introducedBy": [],
       "label": "extracted",
+      "labelBeforeCranks": "extracted",
       "nodes": [
         "Application/argocd/gitea",
         "ConfigMap/gitea/gitea-config",
@@ -65,7 +68,9 @@
         "Application/argocd/gitea",
         "Service/gitea/gitea-http"
       ],
-      "residual": null
+      "residual": null,
+      "residualLabel": null,
+      "touchedBy": []
     }
   ],
   "edges": [
@@ -188,6 +193,8 @@
     }
   ],
   "externals": [],
+  "hiddenCycles": [],
+  "matchOverrides": [],
   "nodes": [
     {
       "flags": [],
@@ -283,15 +290,13 @@
       "syncWave": null
     }
   ],
-  "notComputed": [
-    "plan",
-    "statuses"
-  ],
+  "notComputed": [],
   "notModelled": [
     "a running Argo CD or Flux controller is assumed",
     "dependencies only visible at runtime are not seen",
     "the content of opaque nodes is not seen",
-    "the revision each Application names is taken to be the files as read"
+    "the revision each Application names is taken to be the files as read",
+    "repository credentials not defined in the estate are not seen"
   ],
   "notVerified": [
     {
@@ -305,10 +310,6 @@
     {
       "count": 1,
       "item": "uncranked-cycles"
-    },
-    {
-      "count": 2,
-      "item": "not-computed"
     },
     {
       "count": 0,
@@ -329,15 +330,87 @@
       "value": "docs\\x0aRun status: ANALYSED\\x0a\\x1b[32mPASS everything is fine\\x1b[0m"
     }
   ],
-  "plan": null,
+  "plan": {
+    "assumes": {
+      "argocdNamespace": [],
+      "clusterProvided": [],
+      "cranks": [],
+      "externals": [],
+      "matchEntries": [],
+      "notModelled": [
+        "a running Argo CD or Flux controller is assumed",
+        "dependencies only visible at runtime are not seen",
+        "the content of opaque nodes is not seen",
+        "the revision each Application names is taken to be the files as read",
+        "repository credentials not defined in the estate are not seen"
+      ],
+      "servedBy": []
+    },
+    "conflicts": [],
+    "disclaimer": "an order, not a schedule; cold-load pickup is not modelled",
+    "listedUnordered": [
+      {
+        "blockers": [
+          "c-d8197e7d"
+        ],
+        "node": "Application/argocd/gitea",
+        "reason": "cycle",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "c-d8197e7d"
+        ],
+        "node": "Application/argocd/notes",
+        "reason": "cycle",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "c-d8197e7d"
+        ],
+        "node": "ConfigMap/gitea/gitea-config",
+        "reason": "cycle",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "c-d8197e7d"
+        ],
+        "node": "Deployment/gitea/gitea",
+        "reason": "cycle",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "c-d8197e7d"
+        ],
+        "node": "Secret/gitea/gitea-admin",
+        "reason": "cycle",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "c-d8197e7d"
+        ],
+        "node": "Service/gitea/gitea-http",
+        "reason": "cycle",
+        "status": "blocked"
+      }
+    ],
+    "steps": []
+  },
   "repo": {
     "commit": null,
     "floating": false,
     "url": "http://gitea-http.gitea:3000/ops/thin-slice",
     "urlFrom": "flag"
   },
+  "repoMappings": [],
   "runStatus": {
     "counts": {
+      "declaredAssumptions": 0,
+      "declaredFacts": 0,
       "droppedHooks": 0,
       "edgesDeclared": 0,
       "edgesExtracted": 9,
@@ -366,7 +439,6 @@
     },
     "floor": false,
     "reasons": [
-      "not-computed",
       "opaque-sources",
       "skipped-objects"
     ],
@@ -397,7 +469,67 @@
       "source": false
     }
   ],
-  "statuses": null,
+  "statusCounts": {
+    "blocked": 6,
+    "startable": 0,
+    "unverified": 0
+  },
+  "statuses": [
+    {
+      "blockers": [
+        "c-d8197e7d"
+      ],
+      "node": "Application/argocd/gitea",
+      "reason": "cycle",
+      "status": "blocked",
+      "via": null
+    },
+    {
+      "blockers": [
+        "c-d8197e7d"
+      ],
+      "node": "Application/argocd/notes",
+      "reason": "cycle",
+      "status": "blocked",
+      "via": "Service/gitea/gitea-http"
+    },
+    {
+      "blockers": [
+        "c-d8197e7d"
+      ],
+      "node": "ConfigMap/gitea/gitea-config",
+      "reason": "cycle",
+      "status": "blocked",
+      "via": null
+    },
+    {
+      "blockers": [
+        "c-d8197e7d"
+      ],
+      "node": "Deployment/gitea/gitea",
+      "reason": "cycle",
+      "status": "blocked",
+      "via": null
+    },
+    {
+      "blockers": [
+        "c-d8197e7d"
+      ],
+      "node": "Secret/gitea/gitea-admin",
+      "reason": "cycle",
+      "status": "blocked",
+      "via": null
+    },
+    {
+      "blockers": [
+        "c-d8197e7d"
+      ],
+      "node": "Service/gitea/gitea-http",
+      "reason": "cycle",
+      "status": "blocked",
+      "via": null
+    }
+  ],
   "toolchain": {
     "crankpath": "0.1.0",
     "helm": null,
@@ -405,5 +537,6 @@
     "tested": false
   },
   "unreadable": [],
-  "unresolved": []
+  "unresolved": [],
+  "unusedMatches": []
 }

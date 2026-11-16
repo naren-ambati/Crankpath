@@ -1,6 +1,8 @@
 // The Report (contract C7's model, BR8.11): one structure every renderer consumes; no renderer
 // recomputes a count. Complete in its types now: sections a build does not compute are null and
 // named in `notComputed` (statuses and plan until B5), so later bolts fill fields, not sections.
+// Since B5 every section is computed: statuses, the plan and the crank effects are always present,
+// with the counts the text needs (status counts, the not-startable groups) assembled here once.
 // Every string from the scanned repo is held raw here and escaped by each renderer for its
 // destination (SafeText), except URLs, which are held with their userinfo already removed.
 
@@ -13,9 +15,18 @@ import type {
   SkippedObject,
   UnreadableFile,
 } from "../u1-graph-model/graph-model.js";
-import type { NodeStatus, RunStatus, SourceKind, UnresolvedItem } from "../u1-graph-model/status-model.js";
+import type { MatchRule } from "../u1-graph-model/declared-facts.js";
+import type { NodeStatusKind, RunStatus, SourceKind, UnresolvedItem } from "../u1-graph-model/status-model.js";
 import type { ScannedUrlFrom } from "../u2-intake-config/repo-identity.js";
-import type { NotComputed, Plan } from "../u7-graph-analysis/analysis.js";
+import type { MatchOverride } from "../u1-graph-model/extractor.js";
+import type {
+  CrankEffect,
+  HiddenCycle,
+  NodeVerdict,
+  NotComputed,
+  Plan,
+  ReasonClass,
+} from "../u7-graph-analysis/analysis.js";
 import type { Cycle } from "../u7-graph-analysis/cycle-finder.js";
 
 export const SCHEMA_VERSION = 1;
@@ -56,9 +67,14 @@ export const NOT_VERIFIED_ITEMS = Object.freeze([
   "unresolved-items",
   "timeouts",
   "uncranked-cycles",
+  "unverified-nodes",
   "unspecified-externals",
-  "cranks-not-applied",
-  "match-not-used",
+  "externals-declared",
+  "cranks-documented",
+  "match-entries-relied",
+  "repo-mappings",
+  "match-unused",
+  "cluster-provided",
   "clusters-not-used",
   "fetch-not-used",
   "not-computed",
@@ -79,10 +95,24 @@ export interface Report {
   readonly opaque: readonly OpaqueEntry[];
   /** Sorted by id. */
   readonly cycles: readonly Cycle[];
-  /** Null when not computed in this build. */
-  readonly statuses: readonly NodeStatus[] | null;
+  /** One verdict per node (externals included), sorted by node id. */
+  readonly statuses: readonly NodeVerdict[];
+  /** Status counts over the estate's nodes (externals are counted in their own section). */
+  readonly statusCounts: Readonly<Record<NodeStatusKind, number>>;
+  /** The nodes not startable, grouped by their named blocker, in a fixed order (text only). */
+  readonly notStartable: readonly NotStartableGroup[];
   readonly externals: readonly ExternalNode[];
-  readonly plan: Plan | null;
+  readonly plan: Plan;
+  /** Every crank of crankpath.yaml and what it did, in file order. */
+  readonly cranks: readonly CrankEffect[];
+  /** `match:` entries that matched no host, in file order (AC2.3.4). */
+  readonly unusedMatches: readonly MatchRule[];
+  /** Hosts a `match:` entry resolved otherwise than the extracted rules (review M1). */
+  readonly matchOverrides: readonly MatchOverride[];
+  /** Repository mappings (`repos:` of crankpath.yaml, `--repo-alias`), URL userinfo removed, sorted. */
+  readonly repoMappings: readonly RepoMappingEntry[];
+  /** Cycles of the graph without the `match:` entries that the report does not hold (review M1). */
+  readonly hiddenCycles: readonly HiddenCycle[];
   readonly unresolved: readonly UnresolvedItem[];
   /** Sorted by (file, document, item). */
   readonly skipped: readonly SkippedObject[];
@@ -98,6 +128,27 @@ export interface Report {
    */
   readonly scannedPath: string;
   readonly scannedPathAbsolute: boolean;
-  /** Cranks declared in crankpath.yaml (applied from B5). */
+  /** Cranks declared in crankpath.yaml. */
   readonly cranksDeclared: number;
+}
+
+export interface RepoMappingEntry {
+  readonly url: string;
+  /** The root read: a path inside the scanned root, `(fetch)`, or an `alias:N` label. */
+  readonly root: string;
+  /** `crankpath.yaml`: a declared fact of the scanned repo; `--repo-alias`: the user's own input. */
+  readonly from: "crankpath.yaml" | "--repo-alias";
+  /** True when some source was read through it. */
+  readonly used: boolean;
+}
+
+export interface NotStartableGroup {
+  readonly status: Exclude<NodeStatusKind, "startable">;
+  readonly reason: ReasonClass;
+  /** The named blocker: a cycle id or a node id. */
+  readonly blocker: string;
+  /** For a cycle blocker, the cycle's label (and whether a reroute introduced it); else null. */
+  readonly cycleLabel: string | null;
+  /** Sorted by node id. */
+  readonly nodes: readonly { readonly node: NodeId; readonly via: NodeId | null }[];
 }

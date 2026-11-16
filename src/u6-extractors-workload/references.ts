@@ -49,12 +49,16 @@ export function referTo(
 ): NodeId | null {
   if (name === undefined || name === null) return null;
   if (typeof name !== "string") {
-    sink.unresolved.push(unresolvedItem(String(name), "invalid-reference", object.renderedPath, field));
+    sink.unresolved.push(
+      unresolvedItem(String(name), "invalid-reference", object.renderedPath, field, [], { owner: object.id }),
+    );
     return null;
   }
   const id = objectId(targetKind, namespace, name);
   if (!id.ok) {
-    sink.unresolved.push(unresolvedItem(name, "invalid-reference", object.renderedPath, field));
+    sink.unresolved.push(
+      unresolvedItem(name, "invalid-reference", object.renderedPath, field, [], { owner: object.id }),
+    );
     return null;
   }
   sink.edges.push(edgeFrom(object, id.id, kind, field));

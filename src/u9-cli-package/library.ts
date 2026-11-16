@@ -4,7 +4,7 @@
 export type { ConfigDocument } from "../u1-graph-model/declared-facts.js";
 export type { Extractor, ExtractContext, ExtractResult, RenderedObject } from "../u1-graph-model/extractor.js";
 export type { Edge, GraphNode, NodeId } from "../u1-graph-model/graph-model.js";
-export type { AnalysisResult } from "../u7-graph-analysis/analysis.js";
+export type { AnalysisResult, CrankEffect, NodeVerdict, Plan, PlanStep } from "../u7-graph-analysis/analysis.js";
 export { analyse } from "../u7-graph-analysis/analysis.js";
 export type { Cycle } from "../u7-graph-analysis/cycle-finder.js";
 export type { EstateGraph } from "../u7-graph-analysis/graph-builder.js";

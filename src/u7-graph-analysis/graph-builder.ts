@@ -11,6 +11,7 @@ import type { ExtractResult, RenderedObject } from "../u1-graph-model/extractor.
 import {
   type Edge,
   type ExternalNode,
+  externalId,
   type GraphNode,
   makeEdge,
   type NodeFlag,
@@ -118,12 +119,28 @@ export function buildGraph(input: GraphInput): EstateGraph {
     }
   }
 
+  // Indexed once: lookups inside loops never scan a list (the scanned repo controls the counts).
+  const declaredExternals = new Map(input.config.externals.map((x) => [x.id, x]));
+  const definedNamespaces = new Set(
+    input.objects.filter((o) => o.kind === "Namespace" && o.apiVersion === "v1").map((o) => o.name),
+  );
   const externals = new Map<NodeId, ExternalNode>();
   for (const e of input.config.externals) {
     externals.set(e.id, Object.freeze({ id: e.id, name: e.name, coldStart: e.coldStart, servedBy: e.servedBy }));
     if (e.coldStart === "unspecified" && e.servedBy === null) {
       unresolved.push(unresolvedItem(e.id, "external-unspecified", input.config.file ?? "crankpath.yaml", e.keyPath));
     }
+  }
+  // An external a crank reroutes to is named by crankpath.yaml; when no `external:` entry states
+  // its cold start, it is unspecified (UNRESOLVED), never available.
+  for (const c of input.config.cranks) {
+    c.reroutes.forEach((r, j) => {
+      const id = externalId(r.to);
+      if (id === undefined || externals.has(id)) return;
+      externals.set(id, Object.freeze({ id, name: r.to, coldStart: "unspecified", servedBy: null }));
+      const field = c.reroutes.length === 1 ? `${c.keyPath}.reroutes.to` : `${c.keyPath}.reroutes[${j}].to`;
+      unresolved.push(unresolvedItem(id, "external-unspecified", input.config.file ?? "crankpath.yaml", field));
+    });
   }
   for (const r of input.extracted) {
     for (const e of r.externals) {
@@ -138,7 +155,7 @@ export function buildGraph(input: GraphInput): EstateGraph {
     }
   }
   for (const e of externals.values()) {
-    const configured = input.config.externals.find((x) => x.id === e.id);
+    const configured = declaredExternals.get(e.id);
     drafts.set(e.id, {
       id: e.id,
       kind: "External",
@@ -150,9 +167,11 @@ export function buildGraph(input: GraphInput): EstateGraph {
       syncWave: null,
     });
   }
+  const servedByMissing = new Set<NodeId>();
   for (const e of externals.values()) {
     if (e.servedBy !== null && !drafts.has(e.servedBy)) {
-      const decl = input.config.externals.find((x) => x.id === e.id);
+      servedByMissing.add(e.id);
+      const decl = declaredExternals.get(e.id);
       unresolved.push(
         unresolvedItem(e.id, "served-by-missing", input.config.file ?? "crankpath.yaml", decl?.keyPath ?? null),
       );
@@ -190,7 +209,25 @@ export function buildGraph(input: GraphInput): EstateGraph {
     for (const end of [e.from, e.to]) {
       if (drafts.has(end)) continue;
       const parsed = parseNodeId(end);
-      if (parsed === undefined || parsed.external) continue;
+      if (parsed === undefined) continue;
+      if (parsed.external) {
+        // An edge to an external no extractor or `external:` entry named (a `match:` entry
+        // pointing at one): the external is a node, its cold start unspecified (UNRESOLVED).
+        externals.set(end, Object.freeze({ id: end, name: parsed.name, coldStart: "unspecified", servedBy: null }));
+        drafts.set(end, {
+          id: end,
+          kind: "External",
+          namespace: null,
+          name: parsed.name,
+          origin: NO_ORIGIN,
+          opaque: null,
+          flags: new Set(),
+          syncWave: null,
+        });
+        unresolved.push(unresolvedItem(end, "external-unspecified", e.evidence.renderedPath, e.evidence.field));
+        continue;
+      }
+      const provided = isClusterProvided(end, definedNamespaces);
       drafts.set(end, {
         id: end,
         kind: parsed.kind,
@@ -198,22 +235,45 @@ export function buildGraph(input: GraphInput): EstateGraph {
         name: parsed.name,
         origin: NO_ORIGIN,
         opaque: null,
-        flags: new Set<NodeFlag>(["not-defined"]),
+        flags: new Set<NodeFlag>([provided ? "cluster-provided" : "not-defined"]),
         syncWave: null,
       });
-      if (!isClusterProvided(end) && !stubbed.has(end)) {
+      if (!provided && !stubbed.has(end)) {
         stubbed.add(end);
         unresolved.push(unresolvedItem(end, "not-defined", e.evidence.renderedPath, e.evidence.field));
       }
     }
     keep(e);
   }
+  // `served_by` makes an external an alias of an in-estate node (FR6.2): the external needs that
+  // node, by a declared edge, so a cycle through it is never `extracted`.
+  for (const d of input.config.externals) {
+    if (d.servedBy === null || servedByMissing.has(d.id)) continue;
+    keep(
+      makeEdge({
+        from: d.id,
+        to: d.servedBy,
+        kind: "depends-on",
+        source: "declared",
+        evidence: {
+          file: input.config.file ?? "crankpath.yaml",
+          field: `${d.keyPath}.served_by`,
+          renderedPath: d.keyPath,
+          line: null,
+        },
+      }),
+    );
+  }
   input.config.edges.forEach((d) => {
     const missing = [d.from, d.to].filter((end) => !drafts.has(end));
     if (missing.length > 0) {
+      // The end that exists owns the item, so it is never startable on a dependency that is not there.
+      const owner = drafts.has(d.from) ? d.from : drafts.has(d.to) ? d.to : null;
       for (const end of missing) {
         unresolved.push(
-          unresolvedItem(end, "declared-edge-endpoint-missing", input.config.file ?? "crankpath.yaml", d.keyPath),
+          unresolvedItem(end, "declared-edge-endpoint-missing", input.config.file ?? "crankpath.yaml", d.keyPath, [], {
+            owner,
+          }),
         );
       }
       return;

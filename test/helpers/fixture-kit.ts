@@ -30,7 +30,7 @@ import { createRepoIdentity } from "../../src/u2-intake-config/repo-identity.js"
 import { walkFiles } from "../../src/u2-intake-config/tree-walk.js";
 import { sourceKindOf } from "../../src/u3-discovery-expansion/source-discovery.js";
 import { buildObjects, byLocation } from "../../src/u4-render-engine/rendered-set-builder.js";
-import { createHostMatcher } from "../../src/u6-extractors-workload/host-matcher.js";
+import { hostResolution } from "../../src/u6-extractors-workload/host-matcher.js";
 import { type AnalysisResult, analyse } from "../../src/u7-graph-analysis/analysis.js";
 import { buildGraph, type EstateGraph } from "../../src/u7-graph-analysis/graph-builder.js";
 import { EXTRACTORS } from "../../src/u9-cli-package/pipeline-runner.js";
@@ -147,9 +147,11 @@ export function fixtureContext(
     }
   }
   const identity = createRepoIdentity({ scannedUrl: null, scannedFrom: null, aliases: [], mappings: [] });
+  const resolution = hostResolution(objects, Array.from(services.values()), config.matches);
   return {
     resolveRepo: identity.resolve,
-    matchHost: createHostMatcher(Array.from(services.values())),
+    matchHost: resolution.matching.match,
+    externalOf: resolution.externalOf,
     config,
     jobs: jobMap,
   };

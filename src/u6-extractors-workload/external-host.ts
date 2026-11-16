@@ -14,6 +14,7 @@ import type { ExtractContext, RenderedObject } from "../u1-graph-model/extractor
 import {
   type Edge,
   type EdgeKind,
+  type EdgeSource,
   type ExternalNode,
   externalId,
   isValidNamespace,
@@ -72,7 +73,13 @@ export function urlHost(raw: string): string | null {
 }
 
 export type HostTarget =
-  | { readonly kind: "node"; readonly id: NodeId; readonly external: ExternalNode | null }
+  | {
+      readonly kind: "node";
+      readonly id: NodeId;
+      readonly external: ExternalNode | null;
+      /** `declared` when a `match:` entry chose the node (B5): the edge is unverified. */
+      readonly source: EdgeSource;
+    }
   | { readonly kind: "ambiguous"; readonly candidates: readonly NodeId[] }
   | { readonly kind: "unplaced" };
 
@@ -91,15 +98,18 @@ export function resolveHost(
   ctx: ExtractContext,
   host: string,
   field: string,
-  namespaces: ReadonlySet<string>,
   bareNamespace: string | null = null,
 ): HostTarget {
   const match = ctx.matchHost({ host, field, bareNamespace });
-  if (match.outcome === "unique" && match.node !== null) return { kind: "node", id: match.node, external: null };
+  if (match.outcome === "unique" && match.node !== null)
+    return { kind: "node", id: match.node, external: null, source: match.source };
   if (match.outcome === "ambiguous") return { kind: "ambiguous", candidates: match.candidates };
-  const name = externalHostName(host, namespaces);
+  // The one fallback the context carries, the same function the HostMatcher was given (B5 review
+  // m5): an entry naming this external is agreement there because it is this external here.
+  const id = ctx.externalOf(host);
+  const name = id === null ? null : id.slice("external:".length);
   const ext = name === null ? null : externalNode(name);
-  return ext === null ? { kind: "unplaced" } : { kind: "node", id: ext.id, external: ext };
+  return ext === null ? { kind: "unplaced" } : { kind: "node", id: ext.id, external: ext, source: "extracted" };
 }
 
 export interface HostSink {
@@ -116,14 +126,13 @@ export interface HostPlacement {
   readonly host: string;
   readonly field: string;
   readonly kind: EdgeKind;
-  readonly namespaces: ReadonlySet<string>;
   /** The namespace a bare `svc` host resolves in, when the field's owner states one. */
   readonly bareNamespace: string | null;
 }
 
 /** Places a host: an edge (and its external node), or no edge and an item (ambiguous or unplaced). */
 export function placeHost(sink: HostSink, ctx: ExtractContext, p: HostPlacement): void {
-  const t = resolveHost(ctx, p.host, p.field, p.namespaces, p.bareNamespace);
+  const t = resolveHost(ctx, p.host, p.field, p.bareNamespace);
   const where = p.evidence.renderedPath;
   if (t.kind === "node") {
     if (t.external !== null) sink.externals.push(t.external);
@@ -132,17 +141,17 @@ export function placeHost(sink: HostSink, ctx: ExtractContext, p: HostPlacement)
         from: p.from,
         to: t.id,
         kind: p.kind,
-        source: "extracted",
+        source: t.source,
         evidence: evidenceOf(p.evidence, p.field),
       }),
     );
   } else if (t.kind === "ambiguous" && t.candidates.length > 1) {
-    sink.unresolved.push(unresolvedItem(p.from, "host-ambiguous", where, p.field, t.candidates, false, p.host));
+    sink.unresolved.push(unresolvedItem(p.from, "host-ambiguous", where, p.field, t.candidates, { value: p.host }));
   } else {
     // A bare name with no stated namespace and one same-named Service is not a choice between
     // candidates: the namespace is unknown, so the Service is listed and the host is unplaced.
     const candidates = t.kind === "ambiguous" ? t.candidates : [];
-    sink.unresolved.push(unresolvedItem(p.from, "host-unplaced", where, p.field, candidates, false, p.host));
+    sink.unresolved.push(unresolvedItem(p.from, "host-unplaced", where, p.field, candidates, { value: p.host }));
   }
 }
 
@@ -154,7 +163,7 @@ export function placeUrl(sink: HostSink, ctx: ExtractContext, p: Omit<HostPlacem
   if (typeof raw !== "string" || raw === "") return;
   const host = urlHost(raw);
   if (host === null) {
-    sink.unresolved.push(unresolvedItem(p.from, "host-unplaced", p.evidence.renderedPath, p.field, [], false, raw));
+    sink.unresolved.push(unresolvedItem(p.from, "host-unplaced", p.evidence.renderedPath, p.field, [], { value: raw }));
     return;
   }
   placeHost(sink, ctx, { ...p, host });

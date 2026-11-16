@@ -150,10 +150,15 @@ describe("credentials made by an ExternalSecret (BR5.7, BR5.14)", () => {
   ])("lists a url that is %s (%s) as unresolved, with no edge", (url) => {
     const x = extract([externalSecret("repo", template(url)), app("a", "git@github.com:acme/platform.git")]);
     expect(x.edges).toEqual([]);
-    expect(x.items).toEqual(["credential-url-unresolved Secret/argocd/repo @spec.target.template.data.url"]);
+    // the Application that may need the unreadable credential is never startable (B5 review pass 2, M1)
+    expect(x.items).toEqual([
+      "credential-unreadable Application/argocd/a @spec.source.repoURL",
+      "credential-url-unresolved Secret/argocd/repo @spec.target.template.data.url",
+    ]);
   });
   it("lists a plain credential Secret with no url key as unresolved", () => {
     expect(extract([secret("repo", "repository", null), app("a", "https://github.com/acme/platform")]).items).toEqual([
+      "credential-unreadable Application/argocd/a @spec.source.repoURL",
       "credential-url-unresolved Secret/argocd/repo @data.url",
     ]);
   });
@@ -323,7 +328,10 @@ describe("review fixes: Argo CD's own namespace, unlabelled Secrets, size (M1, m
     });
     const x = extract([es, app("a", "https://github.com/acme/%7B%7B.repo%7D%7D")]);
     expect(x.edges).toEqual([]);
-    expect(x.items).toEqual(["credential-url-unresolved Secret/argocd/r @spec.target.template.data.url"]);
+    expect(x.items).toEqual([
+      "credential-unreadable Application/argocd/a @spec.source.repoURL",
+      "credential-url-unresolved Secret/argocd/r @spec.target.template.data.url",
+    ]);
   });
 });
 

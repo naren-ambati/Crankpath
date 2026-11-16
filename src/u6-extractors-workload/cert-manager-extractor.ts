@@ -26,7 +26,7 @@ import {
 } from "../u1-graph-model/extractor.js";
 import { makeEdge, objectId } from "../u1-graph-model/graph-model.js";
 import { unresolvedItem } from "../u1-graph-model/status-model.js";
-import { estateNamespaces, placeUrl } from "./external-host.js";
+import { placeUrl } from "./external-host.js";
 import { authReferences, evidenceOf, kindOfReference, producedNode, referTo } from "./references.js";
 
 const GROUP = "cert-manager.io";
@@ -45,7 +45,6 @@ export const certManagerExtractor: Extractor = Object.freeze({
   name: "cert-manager",
   extract(objects: readonly RenderedObject[], ctx: ExtractContext): ExtractResult {
     const out = emptyResult();
-    const namespaces = estateNamespaces(objects);
     let read = 0;
 
     for (const cert of objects) {
@@ -71,7 +70,11 @@ export const certManagerExtractor: Extractor = Object.freeze({
       if (typeof secretName === "string") {
         const id = objectId("Secret", cert.namespace, secretName);
         if (!id.ok) {
-          out.unresolved.push(unresolvedItem(secretName, "invalid-reference", cert.renderedPath, "spec.secretName"));
+          out.unresolved.push(
+            unresolvedItem(secretName, "invalid-reference", cert.renderedPath, "spec.secretName", [], {
+              owner: cert.id,
+            }),
+          );
         } else {
           const node = producedNode(cert, "Secret", secretName);
           if (node !== null) out.nodes.push(node);
@@ -103,12 +106,7 @@ export const certManagerExtractor: Extractor = Object.freeze({
       }
       const block = getPath(spec, [type]);
       const host = (field: string, url: DataValue | undefined) => {
-        placeUrl(
-          out,
-          ctx,
-          { from: issuer.id, evidence: issuer, field, kind: "depends-on", namespaces, bareNamespace: null },
-          url,
-        );
+        placeUrl(out, ctx, { from: issuer.id, evidence: issuer, field, kind: "depends-on", bareNamespace: null }, url);
       };
       const refs = (block: DataValue | undefined, at: string) => {
         for (const r of authReferences(block, at)) {

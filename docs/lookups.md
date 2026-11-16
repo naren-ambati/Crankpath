@@ -66,3 +66,17 @@ Every read-only lookup the build made, with its date. Nothing was published or w
 | 2026-11-15 | `git ls-remote --tags https://github.com/external-secrets/external-secrets 'helm-chart-*'` and `'v1.*'` (read-only) | the newest chart tags listed include `helm-chart-2.9.0`; release tags include `v1.3.2`. The fixture's `external-secrets` Application names `helm-chart-2.9.0` and its hand-written Deployment the image tag `v1.3.2`, as placeholders of the shape; neither was rendered or fetched. |
 | 2026-11-15 | ConfigMap size (from the B0 row above: kubernetes/website `configmap.md`, "ConfigMap cannot exceed 1 MiB") | basis of `HCL_VALUE_BYTES` (1,048,576 bytes), the most text the Vault seal reader accepts. |
 | 2026-11-15 | `curl` (read-only) of https://data.iana.org/TLD/tlds-alpha-by-domain.txt into the shared cache | first line "# Version 2026111500, Last Updated Sun Nov 15 07:07:01 2026 UTC"; 1,436 top-level domains (151 of them `XN--` labels); sha256 `2d991942f2ed167166d5c8cc8420bc9db25788cdb9dc77cc48970e5a21923036`. Committed, lower-cased and sorted, as `src/u6-extractors-workload/root-zone-tlds.ts` with its version line: the list of delegated top-level domains that decides whether a two-label host can be a public name. |
+
+## B5 (2026-11-15): objects every cluster provides (OD-25, BR7.19; `src/u7-graph-analysis/cluster-provided.ts`)
+
+Read-only fetches of raw files from kubernetes/website `main` (`content/en/docs/...`) and kubernetes/kubernetes `master`, into a scratch folder outside the repository; only the names below were kept.
+
+| Date | Lookup | Result |
+|---|---|---|
+| 2026-11-15 | kubernetes/website `concepts/overview/working-with-objects/namespaces.md`, "Initial namespaces" | "Kubernetes starts with four initial namespaces": `default`, `kube-node-lease`, `kube-public`, `kube-system` |
+| 2026-11-15 | kubernetes/website `concepts/security/service-accounts.md`, "Default service accounts" | "Kubernetes automatically creates a ServiceAccount object named `default` for every namespace in your cluster" |
+| 2026-11-15 | kubernetes/kubernetes `pkg/controller/certificates/rootcacertpublisher/publisher.go` | `RootCACertConfigMapName = "kube-root-ca.crt"`: the root CA publisher keeps that ConfigMap in every namespace (the projected service-account volume in `reference/access-authn-authz/service-accounts-admin.md` reads it) |
+| 2026-11-15 | kubernetes/kubernetes `pkg/controlplane/controller/kubernetesservice/controller.go` | `kubernetesServiceName = "kubernetes"`, created in `metav1.NamespaceDefault`: the Service `default/kubernetes` |
+| 2026-11-15 | kubernetes/website `reference/access-authn-authz/rbac.md`, "User-facing roles" and the default bindings table | default ClusterRoles not `system:`-prefixed: `cluster-admin`, `admin`, `edit`, `view` (the table names the binding's subject, group `system:masters`, not its name). `system:` names are not Kubernetes object names crankpath accepts (B1 deviation 9), so they are not listed |
+| 2026-11-15 | kubernetes/kubernetes `plugin/pkg/auth/authorizer/rbac/bootstrappolicy/policy.go` | `rbacv1helpers.NewClusterBinding("cluster-admin").Groups(user.SystemPrivilegedGroup)`: the default ClusterRoleBinding is named `cluster-admin` |
+| 2026-11-15 | kubernetes/website `concepts/scheduling-eviction/pod-priority-preemption.md` | "Kubernetes already ships with two PriorityClasses: `system-cluster-critical` and `system-node-critical`" |

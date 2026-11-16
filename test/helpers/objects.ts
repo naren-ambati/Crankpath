@@ -7,7 +7,7 @@ import type { DataValue, ExtractContext, JobInfo, RenderedObject } from "../../s
 import { IN_CLUSTER } from "../../src/u1-graph-model/extractor.js";
 import { createRepoIdentity } from "../../src/u2-intake-config/repo-identity.js";
 import { buildObjects } from "../../src/u4-render-engine/rendered-set-builder.js";
-import { createHostMatcher } from "../../src/u6-extractors-workload/host-matcher.js";
+import { hostResolution } from "../../src/u6-extractors-workload/host-matcher.js";
 
 export interface ObjOptions {
   readonly file?: string;
@@ -75,5 +75,12 @@ export function context(
     )
     .map((o) => ({ id: o.id, name: o.name, namespace: o.namespace as string }));
   const identity = createRepoIdentity({ scannedUrl: null, scannedFrom: null, aliases: [], mappings: [] });
-  return { resolveRepo: identity.resolve, matchHost: createHostMatcher(services), config, jobs: jobMap };
+  const resolution = hostResolution(objects, services, config.matches);
+  return {
+    resolveRepo: identity.resolve,
+    matchHost: resolution.matching.match,
+    externalOf: resolution.externalOf,
+    config,
+    jobs: jobMap,
+  };
 }

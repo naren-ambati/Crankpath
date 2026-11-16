@@ -65,31 +65,84 @@ function project(report: Report): Json {
     cycles: r.cycles.map((c) => ({
       id: c.id,
       label: c.label,
+      labelBeforeCranks: c.labelBeforeCranks,
       nodes: [...c.nodes],
       edges: c.edges.map((e) => ({ ...e })),
       representative: [...c.representative],
       residual: c.residual === null ? null : [...c.residual],
+      residualLabel: c.residualLabel,
       crankedBy: [...c.crankedBy],
+      touchedBy: [...c.touchedBy],
+      introducedBy: [...c.introducedBy],
     })),
-    statuses:
-      r.statuses === null
-        ? null
-        : r.statuses.map((s) => ({ node: s.node, status: s.status, blockers: [...s.blockers] })),
+    statuses: r.statuses.map((s) => ({
+      node: s.node,
+      status: s.status,
+      reason: s.reason,
+      blockers: [...s.blockers],
+      via: s.via,
+    })),
+    statusCounts: { ...r.statusCounts },
     externals: r.externals.map((e) => ({ id: e.id, coldStart: e.coldStart, servedBy: e.servedBy })),
-    plan:
-      r.plan === null
-        ? null
-        : {
-            assumes: {
-              externals: [...r.plan.assumes.externals],
-              cranks: [...r.plan.assumes.cranks],
-              notModelled: [...r.plan.assumes.notModelled],
-            },
-            steps: r.plan.steps.map((s) => ({ ...s, nodes: [...s.nodes] })),
-            conflicts: [...r.plan.conflicts],
-            disclaimer: r.plan.disclaimer,
-            listedUnordered: r.plan.listedUnordered.map((l) => ({ ...l })),
-          },
+    cranks: r.cranks.map((c) => ({
+      id: c.crank,
+      by: c.by,
+      ref: c.ref,
+      keyPath: c.keyPath,
+      matched: c.matched,
+      createdNodes: [...c.createdNodes],
+      alreadyCreated: c.alreadyCreated,
+      reroutedEdges: c.reroutedEdges.map((e) => ({ from: e.from, to: e.to })),
+      removedEdges: c.removedEdges,
+    })),
+    unusedMatches: r.unusedMatches.map((m) => ({ keyPath: m.keyPath, host: m.host, node: m.node })),
+    matchOverrides: r.matchOverrides.map((o) => ({
+      keyPath: o.keyPath,
+      host: o.host,
+      extracted: { outcome: o.extracted.outcome, node: o.extracted.node, candidates: [...o.extracted.candidates] },
+      declared: o.declared,
+    })),
+    repoMappings: r.repoMappings.map((m) => ({ url: m.url, root: m.root, from: m.from, used: m.used })),
+    hiddenCycles: r.hiddenCycles.map((h) => ({
+      id: h.id,
+      label: h.label,
+      nodes: h.nodes,
+      edges: h.edges,
+      nodeIds: [...h.nodeIds],
+      hiddenBy: [...h.hiddenBy],
+    })),
+    plan: {
+      assumes: {
+        externals: [...r.plan.assumes.externals],
+        cranks: [...r.plan.assumes.cranks],
+        clusterProvided: [...r.plan.assumes.clusterProvided],
+        servedBy: [...r.plan.assumes.servedBy],
+        matchEntries: [...r.plan.assumes.matchEntries],
+        argocdNamespace: [...r.plan.assumes.argocdNamespace],
+        notModelled: [...r.plan.assumes.notModelled],
+      },
+      steps: r.plan.steps.map((st) => ({
+        no: st.no,
+        kind: st.kind,
+        nodes: [...st.nodes],
+        manual: st.manual,
+        why: st.why,
+        crank: st.crank,
+        ref: st.ref,
+      })),
+      conflicts: r.plan.conflicts.map((c) =>
+        c.kind === "sync-wave"
+          ? { kind: c.kind, job: c.job, fromWave: c.fromWave, toWave: c.toWave, from: null, to: null }
+          : { kind: c.kind, job: null, fromWave: null, toWave: null, from: c.from, to: c.to },
+      ),
+      disclaimer: r.plan.disclaimer,
+      listedUnordered: r.plan.listedUnordered.map((l) => ({
+        node: l.node,
+        status: l.status,
+        reason: l.reason,
+        blockers: [...l.blockers],
+      })),
+    },
     unresolved: r.unresolved.map((u) => ({
       subject: u.subject,
       why: u.why,
@@ -97,6 +150,7 @@ function project(report: Report): Json {
       field: u.field,
       candidates: [...u.candidates],
       candidatesTruncated: u.candidatesTruncated,
+      owner: u.owner,
       value: u.value,
     })),
     skipped: r.skipped.map((s) => ({ ...s })),

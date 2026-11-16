@@ -4,7 +4,7 @@
 // an UnresolvedItem with no conversion to a boolean; and the words that would claim a clean result
 // are named here so one guard can look for them.
 
-import type { NodeId } from "./graph-model.js";
+import { isNodeId, type NodeId } from "./graph-model.js";
 import { sortedUnique } from "./order.js";
 
 export type CycleLabel = "extracted" | "declared (unverified)" | "cranked";
@@ -43,8 +43,11 @@ export const UNRESOLVED_WHY = Object.freeze([
   "argocd-namespace-derived",
   "argocd-namespace-unknown",
   "conflicting-definitions",
+  "crank-target-unmatched",
+  "crank-unused",
   "credential-ambiguous",
   "credential-outside-argocd",
+  "credential-unreadable",
   "credential-url-unresolved",
   "declared-edge-endpoint-missing",
   "external-unspecified",
@@ -53,6 +56,7 @@ export const UNRESOLVED_WHY = Object.freeze([
   "host-unplaced",
   "invalid-reference",
   "invalid-sync-wave",
+  "match-limit",
   "namespace-unknown",
   "not-defined",
   "region-unresolved",
@@ -79,6 +83,21 @@ export interface UnresolvedItem {
   readonly candidatesTruncated: boolean;
   /** The repo text the item is about (a host that could not be placed), or null; quoted on output. */
   readonly value: string | null;
+  /**
+   * The node that holds what is unresolved (the object with a dropped reference, the end of a
+   * declared edge that exists), which is never startable; null for a run-level item that names no
+   * node of its own (a crank, a failed extractor, a spent match budget).
+   */
+  readonly owner: NodeId | null;
+}
+
+export interface UnresolvedOptions {
+  /** The owning node; defaults to the subject when the subject is a node id. Null: a run-level item. */
+  readonly owner?: NodeId | null;
+  /** True when more candidates exist than are listed. */
+  readonly candidatesTruncated?: boolean;
+  /** The repo text the item is about (a host that could not be placed), quoted on output. */
+  readonly value?: string | null;
 }
 
 export function unresolvedItem(
@@ -87,18 +106,19 @@ export function unresolvedItem(
   where: string,
   field: string | null,
   candidates: readonly NodeId[] = [],
-  candidatesTruncated = false,
-  value: string | null = null,
+  options: UnresolvedOptions = {},
 ): UnresolvedItem {
   if (!(UNRESOLVED_WHY as readonly string[]).includes(why)) throw new StatusConstructionError("unresolved why");
+  const owner = options.owner === undefined ? (isNodeId(subject) ? subject : null) : options.owner;
   return Object.freeze({
     subject,
     why,
     where,
     field,
     candidates: Object.freeze(sortedUnique(candidates)),
-    candidatesTruncated,
-    value,
+    candidatesTruncated: options.candidatesTruncated ?? false,
+    value: options.value ?? null,
+    owner,
   });
 }
 
@@ -139,6 +159,16 @@ export interface RunCounts {
   readonly edgesExtracted: number;
   readonly edgesDeclared: number;
   readonly nodes: number;
+  /**
+   * Declared facts of crankpath.yaml that change the extracted graph (match entries that override a
+   * host, declared edges kept): a gap, since the graph is then not only what was read (BR1.10).
+   */
+  readonly declaredFacts: number;
+  /**
+   * Declared facts the plan assumes (externals declared available or unavailable, `served_by`,
+   * matched cranks): listed and counted, never a gap by themselves.
+   */
+  readonly declaredAssumptions: number;
 }
 
 /** Why a run has gaps: fixed words, in this order. */
@@ -150,6 +180,7 @@ export const GAP_REASONS = Object.freeze([
   "timeouts",
   "no-dependency-edges",
   "run-limit",
+  "declared-facts",
   "not-computed",
 ] as const);
 export type GapReason = (typeof GAP_REASONS)[number] | "no-sources";
@@ -191,6 +222,7 @@ export function deriveRunStatus(counts: RunCounts, notComputed: readonly string[
     timeouts: counts.timeouts > 0,
     "no-dependency-edges": counts.edgesExtracted === 0,
     "run-limit": counts.runLimitFiles + counts.runLimitJobs + counts.runLimitEdges > 0,
+    "declared-facts": counts.declaredFacts > 0,
     "not-computed": notComputed.length > 0,
   };
   const reasons = GAP_REASONS.filter((r) => has[r]).sort();

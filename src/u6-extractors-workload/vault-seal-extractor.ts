@@ -31,7 +31,7 @@ import {
 import type { NodeId } from "../u1-graph-model/graph-model.js";
 import { makeEdge } from "../u1-graph-model/graph-model.js";
 import { unresolvedItem } from "../u1-graph-model/status-model.js";
-import { estateNamespaces, externalNode, placeHost, urlHost } from "./external-host.js";
+import { externalNode, placeHost, urlHost } from "./external-host.js";
 import { readSealStanzas, type SealStanza } from "./hcl-seal-reader.js";
 import { evidenceOf } from "./references.js";
 
@@ -71,7 +71,6 @@ export const vaultSealExtractor: Extractor = Object.freeze({
   name: "vault-seal",
   extract(objects: readonly RenderedObject[], ctx: ExtractContext): ExtractResult {
     const out = emptyResult();
-    const namespaces = estateNamespaces(objects);
     let read = 0;
     const byName = new Map<string, RenderedObject[]>();
     for (const o of objects) {
@@ -149,7 +148,7 @@ export const vaultSealExtractor: Extractor = Object.freeze({
             // Absent, or text that yields no host (quoted as the item's value).
             const text = typeof address === "string" && address !== "" ? address : null;
             out.unresolved.push(
-              unresolvedItem(owner, "address-missing", cm.renderedPath, `${at}.address`, [], false, text),
+              unresolvedItem(owner, "address-missing", cm.renderedPath, `${at}.address`, [], { value: text }),
             );
             continue;
           }
@@ -160,7 +159,6 @@ export const vaultSealExtractor: Extractor = Object.freeze({
             host,
             field: `${at}.address`,
             kind: "seals-with",
-            namespaces,
             bareNamespace: sts.namespace,
           });
         } else {

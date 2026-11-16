@@ -26,7 +26,7 @@ import {
 } from "../u1-graph-model/extractor.js";
 import { type IdResult, makeEdge, objectId } from "../u1-graph-model/graph-model.js";
 import { unresolvedItem } from "../u1-graph-model/status-model.js";
-import { estateNamespaces, placeUrl } from "./external-host.js";
+import { placeUrl } from "./external-host.js";
 import { authReferences, evidenceOf, kindOfReference, producedNode, referTo } from "./references.js";
 
 const GROUP = "external-secrets.io/";
@@ -79,7 +79,6 @@ export const secretStoreExtractor: Extractor = Object.freeze({
   name: "secret-stores",
   extract(objects: readonly RenderedObject[], ctx: ExtractContext): ExtractResult {
     const out = emptyResult();
-    const namespaces = estateNamespaces(objects);
     let read = 0;
 
     for (const es of objects) {
@@ -94,6 +93,8 @@ export const secretStoreExtractor: Extractor = Object.freeze({
             "invalid-reference",
             es.renderedPath,
             "spec.target.name",
+            [],
+            { owner: es.id },
           ),
         );
       } else if (target.policy !== "None") {
@@ -150,7 +151,7 @@ export const secretStoreExtractor: Extractor = Object.freeze({
         placeUrl(
           out,
           ctx,
-          { from: store.id, evidence: store, field, kind: "depends-on", namespaces, bareNamespace: null },
+          { from: store.id, evidence: store, field, kind: "depends-on", bareNamespace: null },
           getPath(block, serverPath),
         );
       }

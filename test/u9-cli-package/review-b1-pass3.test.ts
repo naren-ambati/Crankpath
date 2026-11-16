@@ -85,6 +85,8 @@ describe("M1: every run-limit refusal makes the counts a floor", () => {
     edgesExtracted: 3,
     edgesDeclared: 0,
     nodes: 4,
+    declaredFacts: 0,
+    declaredAssumptions: 0,
   };
   it.each(["runLimitFiles", "runLimitJobs", "runLimitEdges"] as const)("sets floor for %s", (k) => {
     expect(deriveRunStatus({ ...base, [k]: 1 }, []).floor).toBe(true);

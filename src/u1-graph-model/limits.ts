@@ -16,7 +16,9 @@ export type LimitUnit =
   | "files"
   | "milliseconds"
   | "objects"
-  | "lexemes";
+  | "lexemes"
+  | "entries"
+  | "steps";
 
 export interface DerivedLimit<U extends LimitUnit = LimitUnit> {
   readonly status: "derived";
@@ -53,6 +55,8 @@ export interface LimitSet {
   readonly mermaidMaxEdges: DerivedLimit<"edges">;
   readonly mermaidMaxTextChars: DerivedLimit<"characters">;
   readonly explainElementaryCycles: NotYetDerivedLimit<"cycles">;
+  readonly declaredEntries: DerivedLimit<"entries">;
+  readonly hostPatternComparisons: DerivedLimit<"steps">;
   readonly filesPerScan: NotYetDerivedLimit<"files">;
   readonly renderWallClock: NotYetDerivedLimit<"milliseconds">;
   readonly renderStdoutBytes: NotYetDerivedLimit<"bytes">;
@@ -186,7 +190,24 @@ export const LIMITS: LimitSet = freezeAll({
     derivedIn: "B6 step 0",
     why: "a VT100 screen is 24 lines (VT100 User Guide, chapter 1), but the lines the --explain listing itself uses are not designed yet.",
   },
-
+  declaredEntries: {
+    status: "derived",
+    value: Math.floor(APISERVER_MAX_REQUEST_BODY_BYTES / MIN_JSON_BYTES_PER_NODE),
+    unit: "entries",
+    protects: "work and output size the scanned repo's crankpath.yaml can cause through the number of its entries",
+    basis:
+      "crankpath.yaml is one document of at most expandedNodesPerDocument nodes (kube-apiserver MaxRequestBodyBytes 3 MiB / 2 bytes), and every entry of every section (an external, a match entry, a repos entry, an edge, a crank, one creates or reroutes target, a cluster, one label or annotation) is at least one node of it: no admitted file can hold more. ConfigReader counts them and refuses a file over the limit by name.",
+    date: DATE,
+  },
+  hostPatternComparisons: {
+    status: "derived",
+    value: Math.floor(APISERVER_MAX_REQUEST_BODY_BYTES / MIN_JSON_BYTES_PER_NODE),
+    unit: "steps",
+    protects: "the time a run spends comparing hosts with match: entries that hold a wildcard",
+    basis:
+      "the same basis as expandedNodesPerDocument: the wildcard work the match: entries of one admitted file may cause is held to the nodes one admitted document may hold, counted in steps actually done (one per entry consulted, a literal label's length, a wildcard label's pattern length times label length, the matcher's own table). Entries are indexed by literal suffix, so a host consults only those it ends in, and a host is compared once. A spent budget is a counted limit: the remaining wildcard work is not done, and every node is unverified.",
+    date: DATE,
+  },
   filesPerScan: {
     status: "notYetDerived",
     unit: "files",

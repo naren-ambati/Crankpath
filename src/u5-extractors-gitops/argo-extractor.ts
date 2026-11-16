@@ -24,7 +24,7 @@ import {
 import { makeEdge } from "../u1-graph-model/graph-model.js";
 import { unresolvedItem } from "../u1-graph-model/status-model.js";
 import { repoUrlHost } from "../u2-intake-config/repo-identity.js";
-import { estateNamespaces, placeHost } from "../u6-extractors-workload/external-host.js";
+import { placeHost } from "../u6-extractors-workload/external-host.js";
 
 export const SYNC_WAVE_ANNOTATION = "argocd.argoproj.io/sync-wave";
 const WAVE = /^[+-]?\d{1,15}$/;
@@ -67,7 +67,6 @@ export const argoExtractor: Extractor = Object.freeze({
   name: "argo",
   extract(objects: readonly RenderedObject[], ctx: ExtractContext): ExtractResult {
     const out = emptyResult();
-    const namespaces = estateNamespaces(objects);
     for (const object of objects) {
       let used = false;
       const file = object.origin.path ?? object.renderedPath;
@@ -124,7 +123,6 @@ export const argoExtractor: Extractor = Object.freeze({
           host,
           field,
           kind: "reads-source",
-          namespaces,
           bareNamespace: null,
         });
       }

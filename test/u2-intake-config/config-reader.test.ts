@@ -4,6 +4,8 @@ import path from "node:path";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { NO_DECLARED_FACTS } from "../../src/u1-graph-model/declared-facts.js";
 import { openRoot, type ScanRoot } from "../../src/u2-intake-config/bounded-reader.js";
+import { LIMITS } from "../../src/u1-graph-model/limits.js";
+import { withValue } from "../support/limits.js";
 import { configLocation, readConfig, validateConfig } from "../../src/u2-intake-config/config-reader.js";
 
 let base: string;
@@ -107,6 +109,12 @@ describe("crankpath.yaml: the full C2 key set (BR2.5 to BR2.7)", () => {
       "external.a.cold_start",
       "expected available or unavailable",
     ],
+    [
+      "an external with both cold_start and served_by",
+      "external:\n  a: {cold_start: available, served_by: 'Service/a/b'}\n",
+      "external.a",
+      "needs cold_start or served_by, not both",
+    ],
     ["a bad node id", "edges:\n  - {from: 'Service/x', to: 'Service/a/b', why: w}\n", "edges[0].from", "not a node id"],
     ["a missing why", "edges:\n  - {from: 'Service/a/b', to: 'Service/a/c'}\n", "edges[0].why", "expected a string"],
     ["a crank without by", "cranks:\n  - {creates: 'Secret/a/b'}\n", "cranks[0]", "a crank needs by"],
@@ -163,6 +171,19 @@ describe("crankpath.yaml: the full C2 key set (BR2.5 to BR2.7)", () => {
       ok: false,
       error: { keyPath: "cranks[0].creates", problem: "outside the scanned root" },
     });
+    // an absolute path, a parent segment inside a list, and a reroute target that is not an external name
+    expect(read('cranks:\n  - {creates: "render:/etc", by: me}\n')).toEqual({
+      ok: false,
+      error: { keyPath: "cranks[0].creates", problem: "outside the scanned root" },
+    });
+    expect(read('cranks:\n  - {creates: ["Secret/a/b", "render:x/../../y"], by: me}\n')).toEqual({
+      ok: false,
+      error: { keyPath: "cranks[0].creates[1]", problem: "outside the scanned root" },
+    });
+    expect(read('cranks:\n  - {reroutes: {node: "Application/a/b", to: "a b"}, by: me}\n')).toEqual({
+      ok: false,
+      error: { keyPath: "cranks[0].reroutes.to", problem: "not an external name" },
+    });
   });
   it("names a file-level problem with crankpath's words, never the parser's", () => {
     const bad = read("edges: [unclosed\n");
@@ -189,5 +210,21 @@ describe("crankpath.yaml: the full C2 key set (BR2.5 to BR2.7)", () => {
       error: { problem: "not readable", reasonWord: "not found" },
     });
     expect(configLocation(root, path.join(base, "nowhere", "x.yaml"), base)).toMatchObject({ problem: "not readable" });
+  });
+});
+
+describe("crankpath.yaml entry count (review M3, declaredEntries)", () => {
+  it("refuses a file with more entries than the derived limit, by name, and admits one at the limit", () => {
+    write(
+      'cranks:\n  - {creates: ["Secret/a/b", "Secret/a/c"], by: me}\nedges:\n  - {from: "Secret/a/b", to: "Secret/a/c", why: w}\n',
+    );
+    const loc = configLocation(root, undefined, base);
+    if (!("dir" in loc)) throw new Error("location");
+    // 1 crank + 2 creates + 1 edge = 4 entries
+    expect(readConfig(loc, root, withValue(LIMITS.declaredEntries, 4, "test")).ok).toBe(true);
+    expect(readConfig(loc, root, withValue(LIMITS.declaredEntries, 3, "test"))).toEqual({
+      ok: false,
+      error: { keyPath: null, problem: "more entries than the limit" },
+    });
   });
 });

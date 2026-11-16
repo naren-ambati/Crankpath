@@ -55,7 +55,12 @@ export const OPAQUE_REASONS = Object.freeze([
 export type OpaqueReason = (typeof OPAQUE_REASONS)[number];
 
 /** Node flags (C1): fixed words, sorted on output. */
-export const NODE_FLAGS = Object.freeze(["conflicting-definitions", "foreign-destination", "not-defined"] as const);
+export const NODE_FLAGS = Object.freeze([
+  "cluster-provided",
+  "conflicting-definitions",
+  "foreign-destination",
+  "not-defined",
+] as const);
 export type NodeFlag = (typeof NODE_FLAGS)[number];
 
 /** Where an edge's claim can be checked (BR1.1): all three strings are required. */

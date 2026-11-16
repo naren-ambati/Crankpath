@@ -26,7 +26,7 @@ import {
 } from "../u1-graph-model/extractor.js";
 import type { EdgeKind } from "../u1-graph-model/graph-model.js";
 import { unresolvedItem } from "../u1-graph-model/status-model.js";
-import { estateNamespaces, placeUrl } from "../u6-extractors-workload/external-host.js";
+import { placeUrl } from "../u6-extractors-workload/external-host.js";
 import { referTo } from "../u6-extractors-workload/references.js";
 
 const KUSTOMIZE = "kustomize.toolkit.fluxcd.io/";
@@ -56,7 +56,6 @@ export const fluxExtractor: Extractor = Object.freeze({
   name: "flux",
   extract(objects: readonly RenderedObject[], ctx: ExtractContext): ExtractResult {
     const out = emptyResult();
-    const namespaces = estateNamespaces(objects);
     let read = 0;
 
     const sourceRef = (o: RenderedObject, ref: DataValue | undefined, field: string, allowed: ReadonlySet<string>) => {
@@ -109,7 +108,7 @@ export const fluxExtractor: Extractor = Object.freeze({
         placeUrl(
           out,
           ctx,
-          { from: o.id, evidence: o, field, kind: "reads-source", namespaces, bareNamespace: null },
+          { from: o.id, evidence: o, field, kind: "reads-source", bareNamespace: null },
           getPath(o.body, field.split(".")),
         );
         const secret = getPath(o.body, ["spec", "secretRef"]);

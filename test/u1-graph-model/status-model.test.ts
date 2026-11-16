@@ -30,6 +30,8 @@ const CLEAN: RunCounts = {
   edgesExtracted: 3,
   edgesDeclared: 0,
   nodes: 4,
+  declaredFacts: 0,
+  declaredAssumptions: 0,
 };
 
 describe("node status (BR1.7, BR1.8)", () => {
@@ -52,6 +54,8 @@ describe("node status (BR1.7, BR1.8)", () => {
 describe("run status (BR1.10, AC1.3.4)", () => {
   it("is ANALYSED only with no gap of any kind", () => {
     expect(deriveRunStatus(CLEAN, []).state).toBe("ANALYSED");
+    // declared facts the plan only assumes (externals, served_by, cranks) are not a gap by themselves
+    expect(deriveRunStatus({ ...CLEAN, declaredAssumptions: 3 }, []).state).toBe("ANALYSED");
     expect(deriveRunStatus(CLEAN, []).reasons).toEqual([]);
   });
   it.each([
@@ -61,6 +65,7 @@ describe("run status (BR1.10, AC1.3.4)", () => {
     ["unreadable", { unreadableFiles: 1 }, "unreadable-files"],
     ["timeouts", { timeouts: 1 }, "timeouts"],
     ["no edges", { edgesExtracted: 0 }, "no-dependency-edges"],
+    ["relying on a declared fact", { declaredFacts: 1 }, "declared-facts"],
   ] as const)("has gaps when %s", (_name, change, reason) => {
     const s = deriveRunStatus({ ...CLEAN, ...change }, []);
     expect(s.state).toBe("ANALYSED WITH GAPS");

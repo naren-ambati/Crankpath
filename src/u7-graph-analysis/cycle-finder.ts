@@ -6,7 +6,14 @@
 //
 // Labels: components on extracted edges alone are `extracted`; a component of the full graph
 // (extracted plus declared) whose node set is not one of those needs a declared edge and is
-// `declared (unverified)`. A cycle never has two labels. `cranked` is B5's (CrankApplier).
+// `declared (unverified)`. A cycle never has two labels.
+//
+// Cranks (BR7.10, BR7.11, US7.4, ADR-012): after every crank is applied, the components are found
+// again on the crank-applied graph. A cycle none of whose nodes is still on a cycle there is
+// `cranked`, naming the cranks that touched it; one a crank touched but did not break keeps its
+// label and names its residual (the nodes still on a cycle); a cycle that exists only on the
+// crank-applied graph (a reroute to an external `served_by` an in-estate node can close one) is
+// reported too, `declared (unverified)`, naming the cranks that introduced it.
 
 import { createHash } from "node:crypto";
 import type { Edge, EdgeKind, EdgeSource, NodeId } from "../u1-graph-model/graph-model.js";
@@ -32,10 +39,21 @@ export interface Cycle {
   readonly representative: readonly NodeId[];
   /** The edge chosen for each step of the representative (extracted before declared, then by kind). */
   readonly representativeEdges: readonly EdgeRef[];
-  /** For a cranked cycle, the uncranked residual component (B5), else null. */
+  /**
+   * For a cycle a crank touched but did not break: its nodes still on a cycle of the
+   * crank-applied graph (uncranked, BR7.11); else null.
+   */
   readonly residual: readonly NodeId[] | null;
-  /** The cranks that break it (B5). */
+  /** The residual's own label: `extracted` when it stands on extracted edges alone; else null. */
+  readonly residualLabel: CycleLabel | null;
+  /** For a `cranked` cycle, the cranks that touched it (documented, not verified); else empty. */
   readonly crankedBy: readonly string[];
+  /** For an uncranked cycle, the cranks that touched it without breaking it; else empty. */
+  readonly touchedBy: readonly string[];
+  /** For a cycle that exists only once cranks are applied, the cranks whose reroutes close it; else empty. */
+  readonly introducedBy: readonly string[];
+  /** The label the cycle had before cranks were applied (equal to `label` unless it is `cranked`). */
+  readonly labelBeforeCranks: Exclude<CycleLabel, "cranked">;
 }
 
 /**
@@ -98,7 +116,7 @@ function preferEdge(a: EdgeRef, b: EdgeRef): number {
   return (KIND_ORDER.get(a.kind) ?? 0) - (KIND_ORDER.get(b.kind) ?? 0);
 }
 
-function cyclicComponents(ids: readonly NodeId[], edges: readonly Edge[]): NodeId[][] {
+export function cyclicComponents(ids: readonly NodeId[], edges: readonly Edge[]): NodeId[][] {
   const indexOf = new Map(ids.map((id, i) => [id, i]));
   const succ: Set<number>[] = ids.map(() => new Set<number>());
   const selfLoop = new Uint8Array(ids.length);
@@ -241,8 +259,149 @@ export function findCycles(nodeIds: readonly NodeId[], allEdges: readonly Edge[]
         representative: Object.freeze(rep.path),
         representativeEdges: Object.freeze(rep.steps),
         residual: null,
+        residualLabel: null,
         crankedBy: Object.freeze([] as string[]),
+        touchedBy: Object.freeze([] as string[]),
+        introducedBy: Object.freeze([] as string[]),
+        labelBeforeCranks: c.label as Exclude<CycleLabel, "cranked">,
       });
     })
     .sort((a, b) => compareCodePoints(a.id, b.id));
+}
+
+export interface CrankRelabelInput {
+  readonly nodeIds: readonly NodeId[];
+  /** The graph as read (to find which reported cycle holds a node). */
+  readonly edges: readonly Edge[];
+  /** The crank-applied graph's edges. */
+  readonly crankedEdges: readonly Edge[];
+  /** For each edge of the graph as read a crank removed (by `from\nto\nkind\nsource`), the crank. */
+  readonly removedBy: ReadonlyMap<string, string>;
+  /** For each `rerouted` edge a crank added (same key), the crank. */
+  readonly addedBy: ReadonlyMap<string, string>;
+}
+
+export interface CrankRelabelResult {
+  /** Every cycle (as read, relabelled; then any the cranks introduce), sorted by id. */
+  readonly cycles: readonly Cycle[];
+  /** For each node still on a cycle of the crank-applied graph, the id of the reported cycle naming it. */
+  readonly cycleOf: ReadonlyMap<NodeId, string>;
+}
+
+const keyOf = (e: { from: string; to: string; kind: string; source: string }) =>
+  `${e.from}\n${e.to}\n${e.kind}\n${e.source}`;
+
+/** The cranks that removed (or added) an edge of these: credit goes only to a crank that changed the cycle itself. */
+function cranksOn(
+  edges: readonly { from: string; to: string; kind: string; source: string }[],
+  by: ReadonlyMap<string, string>,
+): string[] {
+  const out = new Set<string>();
+  for (const e of edges) {
+    const c = by.get(keyOf(e));
+    if (c !== undefined) out.add(c);
+  }
+  return [...out].sort(compareCrankIds);
+}
+
+/** Crank ids `crank:<n>` in file order (numeric), other strings after, by code point. */
+export function compareCrankIds(a: string, b: string): number {
+  const na = /^crank:(\d+)$/.exec(a);
+  const nb = /^crank:(\d+)$/.exec(b);
+  if (na && nb) return Number(na[1]) - Number(nb[1]);
+  if (na) return -1;
+  if (nb) return 1;
+  return compareCodePoints(a, b);
+}
+
+/**
+ * Applies the crank-applied graph to the cycles found on the graph as read (BR7.10, BR7.11). The
+ * components are recomputed on the crank-applied graph; nothing is decided from which nodes a
+ * crank names alone (ADR-012: a crank cannot hide a cycle it does not break).
+ */
+export function relabelAfterCranks(cycles: readonly Cycle[], input: CrankRelabelInput): CrankRelabelResult {
+  const ids = [...input.nodeIds].sort(compareCodePoints);
+  const hardAfter = input.crankedEdges.filter((e) => !e.orderingOnly);
+  const after = cyclicComponents(ids, hardAfter);
+  const afterExtracted = new Set(
+    cyclicComponents(
+      ids,
+      hardAfter.filter((e) => e.source === "extracted"),
+    ).flat(),
+  );
+  const onCycleAfter = new Set(after.flat());
+
+  // Every node on a cycle of the graph as read lies in one component of the full graph, and that
+  // component is one reported cycle (labelled extracted when it equals an extracted component).
+  const before = cyclicComponents(
+    ids,
+    input.edges.filter((e) => !e.orderingOnly),
+  );
+  const reportedBySet = new Map(cycles.map((c) => [c.nodes.join("\n"), c.id]));
+  const componentOf = new Map<NodeId, number>();
+  before.forEach((c, i) => {
+    for (const n of c) componentOf.set(n, i);
+  });
+  const reportedOfComponent = before.map((c) => reportedBySet.get(c.join("\n")));
+
+  const cycleOf = new Map<NodeId, string>();
+  const introduced: { nodes: NodeId[]; edges: Edge[] }[] = [];
+  const afterBuckets = bucketEdges(after, hardAfter);
+  after.forEach((comp, i) => {
+    const first = componentOf.get(comp[0] as NodeId);
+    const inOne = first !== undefined && comp.every((n) => componentOf.get(n) === first);
+    // A reported cycle with exactly this node set names it best (an extracted cycle inside a
+    // larger declared component); else the reported component that holds it.
+    const reported = reportedBySet.get(comp.join("\n")) ?? (inOne ? reportedOfComponent[first as number] : undefined);
+    if (reported !== undefined) {
+      for (const n of comp) cycleOf.set(n, reported);
+    } else {
+      introduced.push({ nodes: comp, edges: afterBuckets[i] as Edge[] });
+    }
+  });
+
+  const relabelled: Cycle[] = cycles.map((c) => {
+    const still = c.nodes.filter((n) => onCycleAfter.has(n));
+    const touched = cranksOn(c.edges, input.removedBy);
+    if (still.length === 0) {
+      return Object.freeze({
+        ...c,
+        label: "cranked" as CycleLabel,
+        crankedBy: Object.freeze(touched),
+        labelBeforeCranks: c.labelBeforeCranks,
+      });
+    }
+    if (touched.length === 0) return c;
+    return Object.freeze({
+      ...c,
+      residual: Object.freeze(still),
+      residualLabel: (still.some((n) => afterExtracted.has(n)) ? "extracted" : "declared (unverified)") as CycleLabel,
+      touchedBy: Object.freeze(touched),
+    });
+  });
+
+  const newIds = cycleIds([...cycles.map((c) => c.nodes), ...introduced.map((x) => x.nodes)]).slice(cycles.length);
+  const added: Cycle[] = introduced.map((x, i) => {
+    const id = newIds[i] as string;
+    for (const n of x.nodes) cycleOf.set(n, id);
+    const rep = representativeOf(x.nodes, x.edges);
+    return Object.freeze({
+      id,
+      label: "declared (unverified)" as CycleLabel,
+      nodes: Object.freeze([...x.nodes]),
+      edges: Object.freeze(refsOf(x.edges)),
+      representative: Object.freeze(rep.path),
+      representativeEdges: Object.freeze(rep.steps),
+      residual: null,
+      residualLabel: null,
+      crankedBy: Object.freeze([] as string[]),
+      touchedBy: Object.freeze([] as string[]),
+      introducedBy: Object.freeze(cranksOn(x.edges, input.addedBy)),
+      labelBeforeCranks: "declared (unverified)" as const,
+    });
+  });
+  return {
+    cycles: Object.freeze([...relabelled, ...added].sort((a, b) => compareCodePoints(a.id, b.id))),
+    cycleOf,
+  };
 }

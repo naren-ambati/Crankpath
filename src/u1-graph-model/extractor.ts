@@ -9,6 +9,7 @@
 import type { ConfigDocument } from "./declared-facts.js";
 import type {
   Edge,
+  EdgeSource,
   ExternalNode,
   GraphNode,
   NodeFlag,
@@ -71,6 +72,29 @@ export interface HostMatch {
   readonly node: NodeId | null;
   /** Every candidate the host matches, sorted (more than one when ambiguous); HostMatcher lists them all. */
   readonly candidates: readonly NodeId[];
+  /**
+   * The source an edge made from this match must carry: `declared` when a `match:` entry of
+   * crankpath.yaml chose the node (the scanned repo supplies that file, so the edge is unverified),
+   * `extracted` when a Service matched by its DNS name. Every extractor passes it through.
+   */
+  readonly source: EdgeSource;
+  /** The key path of the `match:` entry that chose the node (`match[0]`), or null. */
+  readonly rule: string | null;
+}
+
+/** A `match:` entry that chose another node than the extracted rules would (listed per host). */
+export interface MatchOverride {
+  readonly keyPath: string;
+  /** The host, lower-cased (repo text, quoted on output). */
+  readonly host: string;
+  /** What the Service rules alone resolve the host to. */
+  readonly extracted: {
+    readonly outcome: HostMatch["outcome"];
+    readonly node: NodeId | null;
+    readonly candidates: readonly NodeId[];
+  };
+  /** The node the entry names. */
+  readonly declared: NodeId;
 }
 
 /** What a render job is, for the extractors that relate objects to the source that rendered them. */
@@ -91,6 +115,11 @@ export const IN_CLUSTER = "in-cluster";
 export interface ExtractContext {
   resolveRepo(url: string): RepoResolution;
   matchHost(query: HostQuery): HostMatch;
+  /**
+   * The external a host names when no Service answers it, or null (an in-cluster-looking name).
+   * The same function the HostMatcher was built with, so the two can never disagree (B5 review m5).
+   */
+  externalOf(host: string): NodeId | null;
   readonly config: ConfigDocument;
   readonly jobs: ReadonlyMap<string, JobInfo>;
 }

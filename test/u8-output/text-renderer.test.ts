@@ -44,7 +44,7 @@ describe("no-cycle wording (BR8.13, M9)", () => {
       "crankpath.yaml": SELF_AVAILABLE,
     });
     expect(line(text, "Cycles:")).toBe(
-      "Cycles: none found among 3 nodes and 2 edges read (0 nodes opaque; 0 unresolved items)",
+      "Cycles: none found among 3 nodes and 2 edges read (0 nodes opaque; 0 unresolved items; the result rests on 1 declared fact from crankpath.yaml)",
     );
     expect(text).not.toMatch(/Cycles: (?:none|0)\s*$/m);
   });
@@ -86,8 +86,13 @@ describe("opacity statement (FR4.4, M3)", () => {
       "crankpath.yaml": SELF_AVAILABLE,
     });
     expect(text).toContain("  (nothing opaque, nothing skipped)");
-    expect(line(text, "Run status:")).toBe("Run status: ANALYSED WITH GAPS");
-    expect(line(text, "  gaps:")).toBe("  gaps: node statuses and the restoration plan not computed in this build");
+    // every input read and analysed, nothing unresolved: the one case that may say ANALYSED (AC1.3.4);
+    // an external declared available is a plan assumption, listed below, never a gap by itself
+    expect(line(text, "Run status:")).toBe("Run status: ANALYSED");
+    expect(text).not.toContain("  gaps:");
+    expect(line(text, "Not verified:")).toBe(
+      "Not verified: 1 external declared in crankpath.yaml (not verified). Declared edges: 0 (unverified when present).",
+    );
   });
   it("lists a Kustomize root as a source this build does not render", () => {
     const text = scan({
@@ -142,13 +147,13 @@ describe("unresolved items, externals and declared edges", () => {
     expect(line(text, "Not verified:")).toContain("1 external unspecified");
     expect(line(text, "Not verified:")).toContain("Declared edges: 1 (unverified when present).");
   });
-  it("says cranks are declared and not applied in this build", () => {
+  it("applies a declared crank as a manual first step, documented and not verified", () => {
     const config = 'cranks:\n  - {creates: "ConfigMap/a/c", by: "a person, runbook step 1"}\n';
     const text = scan({ "apps/a.yaml": app("a", "cfg"), "cfg/cm.yaml": CM, "crankpath.yaml": config });
-    expect(line(text, "Not verified:")).toContain("1 crank declared and not applied in this build");
-    expect(line(text, "  gaps:")).toContain(
-      "cranks, node statuses and the restoration plan not computed in this build",
-    );
+    expect(line(text, "Not verified:")).toContain("1 crank documented (not verified)");
+    expect(line(text, "  step 1")).toBe('  step 1  manual  crank 1 by: "a person, runbook step 1"');
+    expect(line(text, "    creates:")).toBe('    creates: ConfigMap "a/c"');
+    expect(line(text, "  Assumed,")).toContain("1 crank (documented)");
   });
 });
 

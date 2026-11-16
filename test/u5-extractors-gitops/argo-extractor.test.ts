@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { NO_DECLARED_FACTS } from "../../src/u1-graph-model/declared-facts.js";
 import type { DataValue } from "../../src/u1-graph-model/extractor.js";
 import { argoExtractor } from "../../src/u5-extractors-gitops/argo-extractor.js";
 import { context, job, meta, obj } from "../helpers/objects.js";
@@ -105,5 +106,26 @@ describe("sync waves and destinations (BR5.3, BR5.4)", () => {
   });
   it("counts objects it has nothing to say about", () => {
     expect(run([obj(meta("ConfigMap", "x", "y"))]).r.ignoredKinds).toBe(1);
+  });
+});
+
+describe("Argo CD repoURL hosts matched by a match: entry (US2.3)", () => {
+  it("makes a declared edge to the node the entry names, never an extracted one", () => {
+    const a = app("a", { source: { repoURL: "https://github.com/acme/platform", path: "x" } });
+    const config = {
+      ...NO_DECLARED_FACTS,
+      matches: [{ host: "github.com", node: "mirror", order: 0, keyPath: "match[0]" }],
+    };
+    const r = argoExtractor.extract([a], context([a], [], config));
+    expect(r.edges.map((e) => [e.from, e.kind, e.to, e.source])).toEqual([
+      ["Application/argocd/a", "reads-source", "external:mirror", "declared"],
+    ]);
+    // without the entry, the same host is the external it names, extracted
+    expect(argoExtractor.extract([a], context([a])).edges.map((e) => [e.to, e.source])).toEqual([
+      ["external:github.com", "extracted"],
+    ]);
+    // an entry that names what extraction finds adds nothing declared
+    const agree = { ...config, matches: [{ host: "github.com", node: "github.com", order: 0, keyPath: "match[0]" }] };
+    expect(argoExtractor.extract([a], context([a], [], agree)).edges.map((e) => e.source)).toEqual(["extracted"]);
   });
 });
