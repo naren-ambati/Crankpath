@@ -1,0 +1,18 @@
+Trimmed copy of https://github.com/gitops-bridge-dev/gitops-bridge-argocd-control-plane-template
+
+Origin:     https://github.com/gitops-bridge-dev/gitops-bridge-argocd-control-plane-template
+Commit:     e6d355197ff3af8e6be09e1dea068dc12727a915 (2024-05-15)
+Copied:     2026-11-16, read-only shallow clone, by crankpath's build
+Licence:    Apache-2.0; the upstream LICENSE is copied unchanged beside this NOTICE as LICENSE.
+            The upstream repository has no NOTICE file at this commit.
+
+What is here: repo/ holds 35 files of the upstream repository, each byte-identical to the
+file at the commit above, at the same path. corpus.json lists them. No file was modified: the copy is
+trimmed by leaving files out, never by editing one, so no file carries a "Modified by crankpath" line
+(section 4(b) of the Apache License asks for one on a modified file; none is).
+
+What was trimmed: kept bootstrap/control-plane/addons/oss/, bootstrap/control-plane/clusters/, bootstrap/control-plane/exclude/ and the default values of the open-source addons under environments/default/addons/; removed the cloud-provider addons (bootstrap/control-plane/addons/aws/ and their values), the empty per-environment folders, hack/, README.md and .gitignore.
+
+Only corpus.json, expected.json and this NOTICE are crankpath's own work in this folder; they are
+licensed under Apache-2.0 like the rest of crankpath. The files under repo/ stay under the upstream
+licence. This folder is test data in the source repository and is not in the npm package.

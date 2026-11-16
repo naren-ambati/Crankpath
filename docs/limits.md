@@ -2,6 +2,8 @@
 
 Written in B0 (2026-11-15); the render limits derived in B2 step 0 (2026-11-15). Rule (OD-5, FR1.4, NFR5): no limit is picked. Each is derived from what it protects (two derivations rest on a stated choice, named in their rows: the half-stack reserve of `nestingDepth` and the reference machine of `lexemesPerFile`), from a dated lookup (`docs/lookups.md`) or a measurement made with a committed script, and a limit hit is a named, counted refusal, never silence and never a crash. A limit whose basis needs a real render or a measurement not made yet is **not yet derived**: in code (`src/u1-graph-model/limits.ts`) it has no value at all, so no unit can use it as a number (the type forbids it; `test/u1-graph-model/limits.test.ts` proves it). A test keeps this table and the code in step.
 
+These limits bound what one run reads and computes. What static analysis cannot see at all, whatever the limits, is in [what static analysis cannot see](what-it-cannot-see.md).
+
 ## The table
 
 | Limit | Value | Unit | Protects | Derived from (lookup or measurement, 2026-11-15) | Enforced by |
@@ -44,7 +46,9 @@ installed helm through crankpath's own CommandRunner (allowlist, environment, ca
 part 2 parses synthetic outputs of at most `renderStdoutBytes` with the built rendered-output
 parser and rendered-set builder, each in its own child process. Output of that run:
 
-```
+Measured output of `node scripts/measure-renders.mjs`, run 2026-11-15:
+
+```measurement
 node v22.23.2, darwin arm64, helm v4.3.2, kustomize v5.8.1
 first real renders (helm template --include-crds, 5 runs each):
   vault 0.34.1 as vault: ok, 47/48/56 ms, stdout 16590 bytes, stderr 0 bytes, 13 objects
@@ -116,7 +120,7 @@ What the run shows:
   own rendering varies, the floating entry `helm template: content differs between two renders`
   appears in the runs where crankpath's two renders happen to differ and not in the others. Observed
   on khuedoan/homelab at 8b9d40f (2026-11-16, B7): three charts vary (Go map order picks a Service
-  port); two were flagged in every run seen, one in 3 of 5, so that estate's JSON differs between
+  port); two were flagged in every run seen, one in 3 of 5 <!-- measured 2026-11-16 -->, so that estate's JSON differs between
   runs by one floating entry. The golden lane (`npm run verify:golden`) therefore compares the
   floating revisions of a reduced case without that render note. On a loaded machine a render can
   also reach `renderWallClock` or, through `helm dependency build`, a network failure: crankpath then
@@ -157,7 +161,9 @@ The five census estates (`docs/census.md`), every readable YAML file, measured w
 
 The derivation of `lexemesPerFile` uses part 1 of this run (`node scripts/measure-limits.mjs --part1`), after the third review found a heavier shape than the 23 measured before (nested empty flow sequences):
 
-```
+Measured output of `node scripts/measure-limits.mjs --part1`, run 2026-11-15:
+
+```measurement
 node v22.23.2, darwin arm64
 1. memory per lexeme (39 shapes, about 3 MB each, node, lexeme and depth limits lifted; every lexeme counted):
   anchored block items: 2999998 lexemes, ok, before the text 44 MiB, with it 56 MiB, peak 477 MiB, 147 bytes per lexeme
@@ -205,7 +211,9 @@ node v22.23.2, darwin arm64
 
 A complete run afterwards, with the derived limit built in (its part 1 gave 935 at most, below the 937 used):
 
-```
+Measured output of `node scripts/measure-limits.mjs`, run 2026-11-15 (the complete run):
+
+```measurement
 node v22.23.2, darwin arm64
 1. memory per lexeme (39 shapes, about 3 MB each, node, lexeme and depth limits lifted; every lexeme counted):
   anchored block items: 2999998 lexemes, ok, before the text 44 MiB, with it 56 MiB, peak 480 MiB, 148 bytes per lexeme
@@ -289,7 +297,9 @@ node v22.23.2, darwin arm64
 
 Part 3 again with the comma run at the limit added (`node scripts/measure-limits.mjs --part3`):
 
-```
+Measured output of `node scripts/measure-limits.mjs --part3`, run 2026-11-15:
+
+```measurement
 node v22.23.2, darwin arm64
 3. cost at the limits (child heap --max-old-space-size=2384; each file is the largest the limits accept, or one unit over):
   empty flow maps, several documents: 2581625 bytes, 2581625 lexemes, 3185 ms, ok, 1 documents, peak RSS 1213 MB
@@ -351,7 +361,9 @@ Files held parsed are charged 33 bytes per file byte (the worse of two measured 
 ### Measurement
 
 `npm run build && node scripts/measure-run-limits.mjs` on 2026-11-15 (Node 22.23.2, macOS arm64; each run a child process with `--max-old-space-size=8192` and no budget, the JSON output held in memory as `--out` does; peak is the child's maximum resident set size):
-```
+Measured output of `node scripts/measure-run-limits.mjs`, run 2026-11-15:
+
+```measurement
 baseline (thin-slice fixture): peak 51380224 bytes
 objects n=100: units 200000, input bytes 142890, nodes 200100, edges 200000, output 131357540 chars, peak 1400864768 bytes
 objects n=200: units 400000, input bytes 142890, nodes 400200, edges 400000, output 264033740 chars, peak 2736308224 bytes
@@ -365,7 +377,9 @@ files n=100: units 101778000, input bytes 101778000, nodes 1, edges 0, output 19
 files: 15.1 bytes per unit (peak difference over unit difference)
 ```
 and `node scripts/measure-run-limits.mjs files-flow` (the same day, added after the first run):
-```
+Measured output of `node scripts/measure-run-limits.mjs files-flow`, run 2026-11-15:
+
+```measurement
 baseline (thin-slice fixture): peak 50823168 bytes
 files-flow n=50: units 50000200, input bytes 50000200, nodes 1, edges 0, output 1979 chars, peak 1746141184 bytes
 files-flow n=100: units 100000400, input bytes 100000400, nodes 1, edges 0, output 1980 chars, peak 3369058304 bytes
@@ -377,7 +391,9 @@ Resident memory counts more than the old-generation heap the budget is taken fro
 
 Measured on 2026-11-15 (Node v22.23.2, macOS arm64), after the second review's fix (budget in steps, literal-suffix index); a one-off script over the built HostMatcher, kept outside the repository:
 
-```
+Measured output of the one-off script kept outside the repository, run 2026-11-15:
+
+```measurement
 all-wildcard 4 labels (review pass 2): 2000 entries, 800 hosts, 9 ms, budget spent: true
 all-wildcard 4 labels, distinct entries: 300000 entries, 2000 hosts, 11 ms, budget spent: true
 63-character star labels (first pass): 30000 entries, 2000 hosts, 9 ms, budget spent: true
@@ -397,7 +413,9 @@ B0 left `filesPerScan` and `generatedApplicationsPerApplicationSet` to B3 step 0
 ### Measurement
 
 `npm run build && CRANKPATH_MEASURE_TMP=<a scratch folder> node scripts/measure-scan-limits.mjs` on 2026-11-15 (Node 22.23.2, macOS arm64; each run a child process with `--max-old-space-size=8192` and no budget; the rate is the difference in peak resident memory between two sizes over the difference in files; the trees were generated in a scratch folder outside the repository):
-```
+Measured output of `node scripts/measure-scan-limits.mjs`, run 2026-11-15:
+
+```measurement
 empty-yaml n=50000: files hold no source 50000, peak 110493696 bytes
 empty-yaml n=100000: files hold no source 100000, peak 139329536 bytes
 empty-yaml: 576.7 bytes per file (peak difference over file difference)

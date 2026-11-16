@@ -132,7 +132,8 @@ crankpath runs with an environment allowlist (`PATH`, `HOME`, `LANG`, `LC_ALL`, 
 
 ## Example output
 
-From `npm run build && node scripts/action-local.mjs add-cycle add-crank gap-rise no-base`, run on 2026-11-16 (Node v22.23.2, git 2.55.0, macOS arm64); the harness prints the same bytes on every run. Each case's job summary is the Markdown the Action appends to `GITHUB_STEP_SUMMARY`.
+<!-- claim CL-9 -->
+From `npm run build && node scripts/action-local.mjs add-cycle add-crank gap-rise no-base`, run 2026-11-16 (Node v22.23.2, git 2.55.0, macOS arm64); the harness prints the same bytes on every run. Each case's job summary is the Markdown the Action appends to `GITHUB_STEP_SUMMARY`.
 
 ````text
 == case: add-cycle
@@ -167,6 +168,9 @@ Result: FAILED (new uncranked cycle)
 ```
 ````
 
+<!-- claim CL-9 -->
+Case `add-crank` of the same run, `node scripts/action-local.mjs add-cycle add-crank gap-rise no-base`, run 2026-11-16:
+
 ````text
 == case: add-crank
    A PR that adds the same cycle and a crank that breaks it: honoured, listed as documented by the PR author and not verified (BR10.3, BR10.10).
@@ -194,6 +198,9 @@ Result: NO_NEW_CYCLES_FOUND (not a pass; see the first line)
 ```
 ````
 
+<!-- claim CL-9 -->
+Case `gap-rise` of the same run, `node scripts/action-local.mjs add-cycle add-crank gap-rise no-base`, run 2026-11-16:
+
 ````text
 == case: gap-rise
    The head reads less than the base: the PR makes the file holding the Gitea cycle unreadable, so the cycle drops out of the head. NOT CHECKED naming the counts that rose, never cleared (M1).
@@ -216,6 +223,9 @@ Base: ANALYSED (0 opaque, 0 skipped).  Head: ANALYSED WITH GAPS (at least 0 opaq
 Result: NOT CHECKED (no comparison was made; the job is not green)
 ```
 ````
+
+<!-- claim CL-9 -->
+Case `no-base` of the same run, `node scripts/action-local.mjs add-cycle add-crank gap-rise no-base`, run 2026-11-16:
 
 ````text
 == case: no-base

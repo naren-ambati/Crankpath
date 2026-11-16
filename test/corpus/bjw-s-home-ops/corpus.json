@@ -1,0 +1,167 @@
+{
+  "copy": "bjw-s-home-ops",
+  "origin": "https://github.com/bjw-s-labs/home-ops",
+  "commit": "e6e44645283b5e138d5f4faa2e83e028947c702b",
+  "commitDate": "2026-11-16",
+  "fetched": "2026-11-16",
+  "licence": "Apache-2.0",
+  "licenceSha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+  "licenceCheck": "read in the upstream LICENSE at the commit on 2026-11-16: the Apache License, Version 2.0 text (without the appendix filled in); no NOTICE file upstream",
+  "shape": "Flux homelab (flux-operator): Kustomizations and Kustomize roots",
+  "scan": {
+    "path": "repo",
+    "repoUrl": "https://github.com/bjw-s-labs/home-ops"
+  },
+  "modified": [],
+  "trimmed": "kept kubernetes/flux/, kubernetes/apps/flux-system/, kubernetes/apps/cert-manager/kustomization.yaml, kubernetes/apps/cert-manager/cert-manager/, kubernetes/components/namespace/ and kubernetes/components/flux-alerts/; removed every other app and component under kubernetes/ (including kubernetes/apps/cert-manager/cert-manager-webhook-ovh/, which holds an e-mail address), kubernetes/bootstrap/, kubernetes/talos/, ansible/, docker/, openspec/, the assistant instruction files, README.md and the repository's tool configuration",
+  "kept": [
+    {
+      "path": "kubernetes/apps/cert-manager/cert-manager/app/grafanadashboard.yaml",
+      "sha256": "fee0736d9fa91f3f15327b9a9f4f23bf2a513a8d94880e587b05558a0b85d39b"
+    },
+    {
+      "path": "kubernetes/apps/cert-manager/cert-manager/app/grafanafolder.yaml",
+      "sha256": "e0e7b44e5b5b3f844178c2a2afeb1070e0a3763759880deed071b749e3c22b12"
+    },
+    {
+      "path": "kubernetes/apps/cert-manager/cert-manager/app/helmrelease.yaml",
+      "sha256": "635f07762645d07561eab0b3c65eba5f9ea13b6234a355f60aca499b286b7c9e"
+    },
+    {
+      "path": "kubernetes/apps/cert-manager/cert-manager/app/kustomization.yaml",
+      "sha256": "fe97a5a56ba89a72942ad5453dd658320871d55d1ddaf7976ac3e85c401cbb96"
+    },
+    {
+      "path": "kubernetes/apps/cert-manager/cert-manager/app/ocirepository.yaml",
+      "sha256": "1894d391f69176c28d5255e806bb175de96007d36efe38325c85a017d7718e3c"
+    },
+    {
+      "path": "kubernetes/apps/cert-manager/cert-manager/app/prometheusRule.yaml",
+      "sha256": "6f242a50f7b64e3ff136aca02a4950804d437de069e9e220442a9ee693ab1230"
+    },
+    {
+      "path": "kubernetes/apps/cert-manager/cert-manager/ks.yaml",
+      "sha256": "e677652bd9cf28d69f349a0f2d9fba4b2c7ecceae288e4cfbf55e105911fc40b"
+    },
+    {
+      "path": "kubernetes/apps/cert-manager/kustomization.yaml",
+      "sha256": "1fb3fd41e37a55888ae65a6acb756ead0c85bf2a34eb68afbe796b00a0650092"
+    },
+    {
+      "path": "kubernetes/apps/flux-system/flux-instance/app/github/kustomization.yaml",
+      "sha256": "ed074a31a89ec1b49b508c944ff4c4cf951de64d866ade9d63ece60dd117db69"
+    },
+    {
+      "path": "kubernetes/apps/flux-system/flux-instance/app/github/webhooks/externalsecret.yaml",
+      "sha256": "2630c64b59884f7a5de5486a05f1878a84468bd5e20584fdf423d0b8edab3007"
+    },
+    {
+      "path": "kubernetes/apps/flux-system/flux-instance/app/github/webhooks/httproute.yaml",
+      "sha256": "2f6b20465316184605af1ee8e4e9271a8f1c643fce91dbc1ce669a4ab53e0db0"
+    },
+    {
+      "path": "kubernetes/apps/flux-system/flux-instance/app/github/webhooks/kustomization.yaml",
+      "sha256": "e8f75e21a78064761c8bfbb176362d7da155b7c0a1c2e7c39f23f3de0bcf3dbe"
+    },
+    {
+      "path": "kubernetes/apps/flux-system/flux-instance/app/github/webhooks/receiver.yaml",
+      "sha256": "6f3a3a8a199c2986c0583a1518a0fc2dfdb89a6cacc98141fc380344478c3010"
+    },
+    {
+      "path": "kubernetes/apps/flux-system/flux-instance/app/helmrelease.yaml",
+      "sha256": "2b512ed353d3aa52d89972f8832197998b987ad1fe0d6d22f8ae751fc1061ad0"
+    },
+    {
+      "path": "kubernetes/apps/flux-system/flux-instance/app/kustomization.yaml",
+      "sha256": "abefcec5b4aaf0c8771df6e9f95ea9e6152f738d7ea7b287e2e462617f2794d6"
+    },
+    {
+      "path": "kubernetes/apps/flux-system/flux-instance/app/ocirepository.yaml",
+      "sha256": "07158a7cdc01de55b32c0f711260f3426fe196fce78bcd33024613657a82dfd1"
+    },
+    {
+      "path": "kubernetes/apps/flux-system/flux-instance/app/prometheusrule.yaml",
+      "sha256": "cf24e0fe602c94b925b8a22ec04c3d9524e68f5c17b258b29a19d4aea7ba012f"
+    },
+    {
+      "path": "kubernetes/apps/flux-system/flux-instance/ks.yaml",
+      "sha256": "5080d353eff93f8019d8f8d71da50b47a1782922f0fa5af05fa28029dc5ad538"
+    },
+    {
+      "path": "kubernetes/apps/flux-system/flux-operator/app/helmrelease.yaml",
+      "sha256": "645277ff2891006513ff67ad374ace89bcfcbdadc287f914093a80e94289cacd"
+    },
+    {
+      "path": "kubernetes/apps/flux-system/flux-operator/app/kustomization.yaml",
+      "sha256": "930dc9b99a83207f9f16830b4b30ac7b931b2a4cf083bc0178fe59ff38396c66"
+    },
+    {
+      "path": "kubernetes/apps/flux-system/flux-operator/app/ocirepository.yaml",
+      "sha256": "900f3b7e85613ca9fe743076004644a95b6416cd7f9cd3b7b52b374e53500160"
+    },
+    {
+      "path": "kubernetes/apps/flux-system/flux-operator/ks.yaml",
+      "sha256": "477e1eceac2a1551f917c8deaba930a05d9c1cbaaae555774f77af1502a07fa6"
+    },
+    {
+      "path": "kubernetes/apps/flux-system/konflate/app/externalsecret.yaml",
+      "sha256": "ae73a7bed484a07de6c540aba242181d7fa46d2cee4f9730d39a019beb29e7bb"
+    },
+    {
+      "path": "kubernetes/apps/flux-system/konflate/app/helmrelease.yaml",
+      "sha256": "e607bd49b3a5360a06ecab9324ee76e43a17f54d745c9cd3f37314b5f7860d97"
+    },
+    {
+      "path": "kubernetes/apps/flux-system/konflate/app/kustomization.yaml",
+      "sha256": "ef74cb0b009d8c6fbdff5009cc581583ad5689d8d3814f427000a8125e761af3"
+    },
+    {
+      "path": "kubernetes/apps/flux-system/konflate/app/ocirepository.yaml",
+      "sha256": "1f201d69ce190c5497de3ea4dc5910aff9cb180d1af73ff2336ecd8fabe0a6c1"
+    },
+    {
+      "path": "kubernetes/apps/flux-system/konflate/ks.yaml",
+      "sha256": "4266473634b7bd09b8abd811197a96405439f1191c99eb7b69ad770657ca098d"
+    },
+    {
+      "path": "kubernetes/apps/flux-system/kustomization.yaml",
+      "sha256": "c0e3734db012226442a782f3fc1bbadf82843f96e76f186a8b0ce5a5ebb7f544"
+    },
+    {
+      "path": "kubernetes/components/flux-alerts/alert.yaml",
+      "sha256": "c04a8bb2f7231c3551990548bfa7e7789997be46b0cd6215de7585dff1fc3911"
+    },
+    {
+      "path": "kubernetes/components/flux-alerts/kustomization.yaml",
+      "sha256": "35c9c70146150339212a0ab682bf975374ef5cafd12ccbd29ea13860ff0656e5"
+    },
+    {
+      "path": "kubernetes/components/flux-alerts/provider.yaml",
+      "sha256": "f8c40e44a32650daeebb00111acfd5a17af85259938bf67345a3ed5afc8faa31"
+    },
+    {
+      "path": "kubernetes/components/namespace/kustomization.yaml",
+      "sha256": "2d9d763f652a4946b4e0ced32f53a99c4e99fdbbef94d872e3567098a5795c41"
+    },
+    {
+      "path": "kubernetes/components/namespace/namespace.yaml",
+      "sha256": "ba856ea9cd0c45850f0e0c591e5310ef28e268578e174087bf4bb13340c58398"
+    },
+    {
+      "path": "kubernetes/flux/cluster/ks.yaml",
+      "sha256": "d487bd365736b7e9a0ab525dfa736331d927a52aed72052c5ba67d5d5251fe23"
+    },
+    {
+      "path": "kubernetes/flux/cluster/kustomization.yaml",
+      "sha256": "a17f510ccf50204cfe17bd9934d769fd02100eddf404c36222f3e19a7b13fdf0"
+    },
+    {
+      "path": "kubernetes/flux/cluster/pod-security-baseline/mutatingadmissionpolicy.yaml",
+      "sha256": "de963d36fbfedb4a91f59fa2ff5d622f64cc12ad16eb0da68f92daad81875060"
+    },
+    {
+      "path": "kubernetes/flux/cluster/pod-security-baseline/mutatingadmissionpolicybinding.yaml",
+      "sha256": "d4b24b952b2664f9345badc93b6c59a1d2032ede4d90c7c7cd402d448704d1a9"
+    }
+  ]
+}

@@ -1,0 +1,124 @@
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: external-dns
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: external-dns
+  namespace: external-dns
+spec:
+  refreshInterval: "5m"
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: 1password
+  target:
+    creationPolicy: Owner
+  data:
+    - secretKey: cloudflare-api-key
+      remoteRef:
+        key: external-dns
+        property: cloudflare-token
+    - secretKey: unifi-apikey
+      remoteRef:
+        key: external-dns
+        property: unifi-apikey
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: external-dns
+  namespace: argocd
+spec:
+  destination:
+    namespace: external-dns
+    server: https://kubernetes.default.svc
+  project: homelab
+  source:
+    chart: external-dns
+    repoURL: https://kubernetes-sigs.github.io/external-dns/
+    targetRevision: 1.23.0
+    helm:
+      valuesObject:
+        provider:
+          name: cloudflare
+        fullnameOverride: external-dns
+        policy: sync
+        registry: txt
+        txtOwnerId: kubernetes
+        sources:
+          - service
+          - crd
+        env:
+          - name: CF_API_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: external-dns
+                key: cloudflare-api-key
+        extraArgs:
+          - "--annotation-filter=external-dns.custom/type in (public)"
+  syncPolicy:
+    automated:
+      allowEmpty: true
+      prune: true
+      selfHeal: true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: external-dns-unifi
+  namespace: argocd
+spec:
+  destination:
+    namespace: external-dns
+    server: https://kubernetes.default.svc
+  project: homelab
+  source:
+    chart: external-dns
+    repoURL: https://kubernetes-sigs.github.io/external-dns/
+    targetRevision: 1.23.0
+    helm:
+      skipCrds: true
+      valuesObject:
+        provider:
+          name: webhook
+          webhook:
+            image:
+              repository: ghcr.io/home-operations/external-dns-unifi-webhook
+              tag: 0.10.14
+            env:
+              - name: UNIFI_HOST
+                value: https://192.168.1.1
+              - name: UNIFI_API_KEY
+                valueFrom:
+                  secretKeyRef:
+                    name: external-dns
+                    key: unifi-apikey
+            livenessProbe:
+              httpGet:
+                path: /healthz
+                port: http-webhook
+              initialDelaySeconds: 10
+              timeoutSeconds: 5
+            readinessProbe:
+              httpGet:
+                path: /readyz
+                port: http-webhook
+              initialDelaySeconds: 10
+              timeoutSeconds: 5
+        extraArgs:
+          - "--annotation-filter=external-dns.custom/type in (private)"
+        fullnameOverride: external-dns-unifi
+        policy: sync
+        registry: txt
+        txtOwnerId: kubernetes
+        sources:
+          - service
+          - ingress
+          - crd
+  syncPolicy:
+    automated:
+      allowEmpty: true
+      prune: true
+      selfHeal: true

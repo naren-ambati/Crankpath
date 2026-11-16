@@ -30,11 +30,7 @@ export type EdgeKind = (typeof EDGE_KINDS)[number];
 
 export type EdgeSource = "extracted" | "declared";
 
-/**
- * The fixed opacity reasons (FR4.1) plus `not-in-this-build`: a source kind this build does not
- * render or expand yet (Helm, Kustomize, ApplicationSet generators, Flux objects). Each later bolt
- * stops producing it for what it adds; the last one removes it from this list.
- */
+/** The fixed opacity reasons (FR4.1). */
 export const OPAQUE_REASONS = Object.freeze([
   "unreadable-repo",
   "private-chart",
@@ -50,7 +46,6 @@ export const OPAQUE_REASONS = Object.freeze([
   "remote-base",
   "foreign-destination",
   "unreadable-file",
-  "not-in-this-build",
 ] as const);
 export type OpaqueReason = (typeof OPAQUE_REASONS)[number];
 

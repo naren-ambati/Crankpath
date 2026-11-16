@@ -221,3 +221,13 @@ All read-only clones into the golden cache outside the repository (`CRANKPATH_GO
 | 2026-11-16 | `git clone --filter=blob:none --no-checkout https://github.com/khuedoan/homelab`, then `git rev-parse --verify 8b9d40f^{commit}` | `8b9d40f` is unique and resolves to `8b9d40f51e528bcc642ea9d052eecfc7c23b5cda` (committed 2026-11-02T08:41:37+07:00); `git ls-remote` does not list it (not a ref tip). GPL-3.0: ids and counts only, never committed |
 | 2026-11-16 | `git ls-tree` of that commit | 221 files; no plain Application, ApplicationSet, Flux Kustomization or HelmRelease document anywhere (the root ApplicationSet exists only in what `system/argocd`'s chart renders through its `argocd-apps` dependency) |
 | 2026-11-16 | `git ls-remote --exit-code https://github.com/hashicorp/vault-helm HEAD` | the golden lane's network probe; reachable |
+
+## B9 (2026-11-16): release checks
+
+| Date | Lookup | Result |
+|---|---|---|
+| 2026-11-16 | https://www.apache.org/licenses/LICENSE-2.0.txt (read-only fetch) | SHA-256 `cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30`; byte-identical to `LICENSE` (`cmp`). `scripts/check-pack.mjs` checks `LICENSE` against this hash. |
+| 2026-11-16 | `npm audit --json --omit=dev` and `npm audit --json` (registry read, run by `npm run release:check`) | 0 vulnerabilities in the runtime tree and 0 in the whole tree |
+| 2026-11-16 | `git clone --depth 1` (read-only, into the shared cache outside the repository) of https://github.com/fluxcd/flux2-kustomize-helm-example, https://github.com/gitops-bridge-dev/gitops-bridge-argocd-control-plane-template and https://github.com/bjw-s-labs/home-ops | HEAD commits 4f1a5b1051b469108d1bdf0ebec6c814427e3834 (2026-07-08), e6d355197ff3af8e6be09e1dea068dc12727a915 (2024-05-15), e6e44645283b5e138d5f4faa2e83e028947c702b (2026-11-16); each LICENSE read in full: the Apache License 2.0 text (the common copy without the leading blank line, SHA-256 `c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4`); no NOTICE file in any of them |
+| 2026-11-16 | acelinkio/argocd-homelab at 2f9aab023f92b6d73051bd86ec163a48a56dbe1e, from the census cache (fetched 2026-11-15) | LICENSE read in full: the MIT licence, "Copyright (c) 2023 acelinkio"; no NOTICE file |
+| 2026-11-16 | the real-discovery census (`node scripts/census-real.mjs`): crankpath's own read-only chart pulls (`helm pull`) and `repos:` fetches for the five OD-26 estates, into a cache outside the repository | every estate ran (exit 0, `ANALYSED WITH GAPS`); counts in `docs/census-2026-11-16-real.json` |

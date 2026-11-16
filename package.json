@@ -37,7 +37,11 @@
     "test": "vitest run",
     "check-tree": "node scripts/check-tree.mjs",
     "census": "node scripts/census.mjs",
-    "verify": "npm run typecheck && npm run lint && npm run build && vitest run --coverage && node scripts/check-tree.mjs",
+    "verify": "npm run typecheck && npm run lint && npm run build && vitest run --coverage && node scripts/release-checks.mjs",
+    "release:check": "npm run build && node scripts/release-checks.mjs --release",
+    "docs:check": "node scripts/check-docs.mjs",
+    "secret-grep": "node scripts/secret-grep.mjs",
+    "pack:check": "node scripts/check-pack.mjs",
     "verify:live": "npm run build && node scripts/live-render.mjs && node scripts/live-fetch.mjs",
     "verify:golden": "npm run build && node scripts/golden.mjs"
   },

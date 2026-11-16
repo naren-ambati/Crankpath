@@ -8,6 +8,7 @@
       "action/**",
       "vitest.config.ts",
       "!test/fixtures",
+      "!test/corpus",
       "!test/golden/*/expected.json",
       "!**/node_modules",
       "!**/dist",

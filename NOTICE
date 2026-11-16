@@ -5,7 +5,47 @@ This product is licensed under the Apache License, Version 2.0 (see LICENSE). It
 `crankpath`, which contains only crankpath's own code (dist/), README.md, CHANGELOG.md, LICENSE, this NOTICE and
 package.json.
 
-Third-party files in the source repository: none yet.
+Data source in the code
+=======================
+
+src/u6-extractors-workload/root-zone-tlds.ts (compiled into dist/) holds the list of top-level domains of the DNS
+root zone, lower-cased, from the registry's file https://data.iana.org/TLD/tlds-alpha-by-domain.txt, version line
+"Version 2026111500, Last Updated Sun Nov 15 07:07:01 2026 UTC", read on 2026-11-15 (docs/lookups.md). It is a
+factual registry list; the file states no licence. crankpath uses it to decide whether a two-label host name can be
+a public name.
+
+Third-party files in the source repository
+==========================================
+
+The source repository (not the npm package) holds trimmed copies of four public GitOps estates as test data, under
+test/corpus/<folder>/repo/. crankpath scans them in its tests to check that it handles real estates; they are never
+applied to a cluster. Each folder holds the upstream licence text copied unchanged as LICENSE and a NOTICE giving the
+origin, the commit, the date of the copy and what was trimmed; corpus.json lists every copied file with its SHA-256.
+The folder, origin, commit and licence of each, checked against its LICENSE text on 2026-11-16:
+
+  test/corpus/flux2-kustomize-helm-example/
+      https://github.com/fluxcd/flux2-kustomize-helm-example
+      commit 4f1a5b1051b469108d1bdf0ebec6c814427e3834   Apache-2.0
+
+  test/corpus/gitops-bridge-control-plane-template/
+      https://github.com/gitops-bridge-dev/gitops-bridge-argocd-control-plane-template
+      commit e6d355197ff3af8e6be09e1dea068dc12727a915   Apache-2.0
+
+  test/corpus/acelinkio-argocd-homelab/
+      https://github.com/acelinkio/argocd-homelab
+      commit 2f9aab023f92b6d73051bd86ec163a48a56dbe1e   MIT (Copyright (c) 2023 acelinkio)
+
+  test/corpus/bjw-s-home-ops/
+      https://github.com/bjw-s-labs/home-ops
+      commit e6e44645283b5e138d5f4faa2e83e028947c702b   Apache-2.0
+
+Every copied file is byte-identical to the upstream file at that commit: the copies are trimmed by leaving files out,
+never by editing one, so no file carries a "Modified by crankpath" line (section 4(b) of the Apache License asks for
+one on a modified file). None of the four upstream repositories has a NOTICE file to carry forward (section 4(d)):
+checked in each clone at the copied commit on 2026-11-16. Apache-2.0 and MIT files may be distributed with a work
+licensed under Apache-2.0 provided their licence is kept with them; it is kept beside each copy. Nothing in a corpus
+folder is relicensed: the files under repo/ stay under their upstream licence, and only corpus.json, expected.json and
+NOTICE in each folder are crankpath's own work.
 
 Dependencies installed from the npm registry (commander, yaml and the development tools) are not copied into this
 repository or into the package; their licences are in package-lock.json and in docs/lookups.md.

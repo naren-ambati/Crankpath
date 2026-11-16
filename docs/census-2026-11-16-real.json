@@ -1,0 +1,375 @@
+{
+  "label": "real-discovery",
+  "method": "the built crankpath over each checkout at its recorded commit, with helm, kustomize and the network; counts from its JSON report",
+  "toolchain": [
+    "helm v4.3.2, kustomize v5.8.1"
+  ],
+  "units": {
+    "d12": "Applications (generated ones included) and HelmReleases, plus each ApplicationSet or Flux Kustomization crankpath could not expand or read, counted once",
+    "allKinds": "every source crankpath counts: Applications, ApplicationSets, Flux Kustomizations, HelmReleases and Kustomize roots"
+  },
+  "threshold": "1/3",
+  "estates": [
+    {
+      "url": "https://github.com/gitops-bridge-dev/gitops-bridge",
+      "sha": "cac900a22e6b82fd011f0f5f94dc35a1614cf24d",
+      "exit": 0,
+      "d12": {
+        "total": 6,
+        "opaque": 6,
+        "fraction": 1,
+        "byReason": {
+          "cluster-inputs-missing": 4,
+          "unreadable-repo": 2
+        },
+        "byReasonKindField": {
+          "cluster-inputs-missing | ApplicationSet | spec.generators[0].clusters": 4,
+          "unreadable-repo | Application | spec.source.repoURL": 2
+        },
+        "opaqueCountedOnce": 4,
+        "atLeast": true,
+        "againstOneThird": "over one third"
+      },
+      "allKinds": {
+        "total": 6,
+        "opaque": 6,
+        "fraction": 1,
+        "byKind": {
+          "Application": 2,
+          "ApplicationSet": 4,
+          "HandAppliedChart": 0,
+          "HelmRelease": 0,
+          "Kustomization": 0,
+          "KustomizeRoot": 0
+        },
+        "byReason": {
+          "cluster-inputs-missing": 4,
+          "unreadable-repo": 2
+        },
+        "byReasonKindField": {
+          "cluster-inputs-missing | ApplicationSet | spec.generators[0].clusters": 4,
+          "unreadable-repo | Application | spec.source.repoURL": 2
+        },
+        "atLeast": true,
+        "againstOneThird": "over one third"
+      },
+      "runStatus": "ANALYSED WITH GAPS",
+      "gaps": [
+        "opaque-sources",
+        "skipped-objects",
+        "unresolved-items"
+      ],
+      "unreadableFiles": 0,
+      "timeouts": 0
+    },
+    {
+      "url": "https://github.com/mortennordbye/homelab",
+      "sha": "d1f07baeda9ccc196f17017bfaa547c867e0a768",
+      "exit": 0,
+      "d12": {
+        "total": 40,
+        "opaque": 30,
+        "fraction": 0.75,
+        "byReason": {
+          "unsupported-field": 29,
+          "unsupported-template": 1
+        },
+        "byReasonKindField": {
+          "unsupported-field | Application | helmCharts": 28,
+          "unsupported-field | Application | other field": 1,
+          "unsupported-template | ApplicationSet | spec.templatePatch": 1
+        },
+        "opaqueCountedOnce": 1,
+        "atLeast": true,
+        "againstOneThird": "over one third"
+      },
+      "allKinds": {
+        "total": 104,
+        "opaque": 60,
+        "fraction": 0.5769,
+        "byKind": {
+          "Application": 39,
+          "ApplicationSet": 2,
+          "HandAppliedChart": 0,
+          "HelmRelease": 0,
+          "Kustomization": 0,
+          "KustomizeRoot": 63
+        },
+        "byReason": {
+          "unsupported-field": 59,
+          "unsupported-template": 1
+        },
+        "byReasonKindField": {
+          "unsupported-field | Application | helmCharts": 28,
+          "unsupported-field | Application | other field": 1,
+          "unsupported-field | KustomizeRoot | helmCharts": 29,
+          "unsupported-field | KustomizeRoot | other field": 1,
+          "unsupported-template | ApplicationSet | spec.templatePatch": 1
+        },
+        "atLeast": true,
+        "againstOneThird": "over one third"
+      },
+      "runStatus": "ANALYSED WITH GAPS",
+      "gaps": [
+        "opaque-sources",
+        "skipped-objects",
+        "unreadable-files",
+        "unresolved-items"
+      ],
+      "unreadableFiles": 2,
+      "timeouts": 0
+    },
+    {
+      "url": "https://github.com/acelinkio/argocd-homelab",
+      "sha": "2f9aab023f92b6d73051bd86ec163a48a56dbe1e",
+      "exit": 0,
+      "d12": {
+        "total": 25,
+        "opaque": 4,
+        "fraction": 0.16,
+        "byReason": {
+          "unreadable-repo": 1,
+          "unsupported-field": 3
+        },
+        "byReasonKindField": {
+          "unreadable-repo | Application | spec.source.repoURL": 1,
+          "unsupported-field | Application | spec.source.repoURL": 2,
+          "unsupported-field | ApplicationSet | spec.generators[0].git.files": 1
+        },
+        "opaqueCountedOnce": 1,
+        "atLeast": true,
+        "againstOneThird": "not established (at or under one third of what was counted, a floor)"
+      },
+      "allKinds": {
+        "total": 25,
+        "opaque": 4,
+        "fraction": 0.16,
+        "byKind": {
+          "Application": 24,
+          "ApplicationSet": 1,
+          "HandAppliedChart": 0,
+          "HelmRelease": 0,
+          "Kustomization": 0,
+          "KustomizeRoot": 0
+        },
+        "byReason": {
+          "unreadable-repo": 1,
+          "unsupported-field": 3
+        },
+        "byReasonKindField": {
+          "unreadable-repo | Application | spec.source.repoURL": 1,
+          "unsupported-field | Application | spec.source.repoURL": 2,
+          "unsupported-field | ApplicationSet | spec.generators[0].git.files": 1
+        },
+        "atLeast": true,
+        "againstOneThird": "not established (at or under one third of what was counted, a floor)"
+      },
+      "runStatus": "ANALYSED WITH GAPS",
+      "gaps": [
+        "opaque-sources",
+        "skipped-objects",
+        "unresolved-items"
+      ],
+      "unreadableFiles": 0,
+      "timeouts": 0
+    },
+    {
+      "url": "https://github.com/ricsanfre/pi-cluster",
+      "sha": "adf08ec2915bfc39e720b36a610ecfc94cb00634",
+      "exit": 0,
+      "d12": {
+        "total": 62,
+        "opaque": 62,
+        "fraction": 1,
+        "byReason": {
+          "unreadable-repo": 62
+        },
+        "byReasonKindField": {
+          "unreadable-repo | Kustomization | spec.sourceRef.name": 62
+        },
+        "opaqueCountedOnce": 62,
+        "atLeast": true,
+        "againstOneThird": "over one third"
+      },
+      "allKinds": {
+        "total": 378,
+        "opaque": 78,
+        "fraction": 0.2063,
+        "byKind": {
+          "Application": 0,
+          "ApplicationSet": 0,
+          "HandAppliedChart": 0,
+          "HelmRelease": 0,
+          "Kustomization": 62,
+          "KustomizeRoot": 316
+        },
+        "byReason": {
+          "remote-base": 9,
+          "unreadable-file": 7,
+          "unreadable-repo": 62
+        },
+        "byReasonKindField": {
+          "remote-base | KustomizeRoot | resources[0]": 6,
+          "remote-base | KustomizeRoot | resources[1]": 3,
+          "unreadable-file | KustomizeRoot | no field": 7,
+          "unreadable-repo | Kustomization | spec.sourceRef.name": 62
+        },
+        "atLeast": true,
+        "againstOneThird": "not established (at or under one third of what was counted, a floor)"
+      },
+      "runStatus": "ANALYSED WITH GAPS",
+      "gaps": [
+        "opaque-sources",
+        "skipped-objects",
+        "unreadable-files",
+        "unresolved-items"
+      ],
+      "unreadableFiles": 14,
+      "timeouts": 0
+    },
+    {
+      "url": "https://github.com/niki-on-github/nixos-k3s",
+      "sha": "9318b97bfdb1c49bc844734d4301d9c0142cab3a",
+      "exit": 0,
+      "d12": {
+        "total": 178,
+        "opaque": 166,
+        "fraction": 0.9326,
+        "byReason": {
+          "cluster-created-values": 3,
+          "render-failed": 1,
+          "unreadable-repo": 6,
+          "unsupported-field": 156
+        },
+        "byReasonKindField": {
+          "cluster-created-values | HelmRelease | spec.valuesFrom[0].name": 3,
+          "render-failed | HelmRelease | no field": 1,
+          "unreadable-repo | Kustomization | spec.sourceRef.name": 6,
+          "unsupported-field | HelmRelease | spec.postRenderers": 4,
+          "unsupported-field | Kustomization | other field": 1,
+          "unsupported-field | Kustomization | spec.patches": 3,
+          "unsupported-field | Kustomization | spec.sourceRef.kind": 148
+        },
+        "opaqueCountedOnce": 158,
+        "atLeast": true,
+        "againstOneThird": "over one third"
+      },
+      "allKinds": {
+        "total": 326,
+        "opaque": 168,
+        "fraction": 0.5153,
+        "byKind": {
+          "Application": 0,
+          "ApplicationSet": 0,
+          "HandAppliedChart": 0,
+          "HelmRelease": 20,
+          "Kustomization": 158,
+          "KustomizeRoot": 148
+        },
+        "byReason": {
+          "cluster-created-values": 3,
+          "remote-base": 1,
+          "render-failed": 2,
+          "unreadable-repo": 6,
+          "unsupported-field": 156
+        },
+        "byReasonKindField": {
+          "cluster-created-values | HelmRelease | spec.valuesFrom[0].name": 3,
+          "remote-base | KustomizeRoot | resources[2]": 1,
+          "render-failed | HelmRelease | no field": 1,
+          "render-failed | KustomizeRoot | other field": 1,
+          "unreadable-repo | Kustomization | spec.sourceRef.name": 6,
+          "unsupported-field | HelmRelease | spec.postRenderers": 4,
+          "unsupported-field | Kustomization | other field": 1,
+          "unsupported-field | Kustomization | spec.patches": 3,
+          "unsupported-field | Kustomization | spec.sourceRef.kind": 148
+        },
+        "atLeast": true,
+        "againstOneThird": "over one third"
+      },
+      "runStatus": "ANALYSED WITH GAPS",
+      "gaps": [
+        "opaque-sources",
+        "skipped-objects",
+        "unreadable-files",
+        "unresolved-items"
+      ],
+      "unreadableFiles": 2,
+      "timeouts": 0
+    }
+  ],
+  "failedEstates": 0,
+  "total": {
+    "d12": {
+      "total": 311,
+      "opaque": 268,
+      "fraction": 0.8617,
+      "byReason": {
+        "cluster-created-values": 3,
+        "cluster-inputs-missing": 4,
+        "render-failed": 1,
+        "unreadable-repo": 71,
+        "unsupported-field": 188,
+        "unsupported-template": 1
+      },
+      "byReasonKindField": {
+        "cluster-created-values | HelmRelease | spec.valuesFrom[0].name": 3,
+        "cluster-inputs-missing | ApplicationSet | spec.generators[0].clusters": 4,
+        "render-failed | HelmRelease | no field": 1,
+        "unreadable-repo | Application | spec.source.repoURL": 3,
+        "unreadable-repo | Kustomization | spec.sourceRef.name": 68,
+        "unsupported-field | Application | helmCharts": 28,
+        "unsupported-field | Application | other field": 1,
+        "unsupported-field | Application | spec.source.repoURL": 2,
+        "unsupported-field | ApplicationSet | spec.generators[0].git.files": 1,
+        "unsupported-field | HelmRelease | spec.postRenderers": 4,
+        "unsupported-field | Kustomization | other field": 1,
+        "unsupported-field | Kustomization | spec.patches": 3,
+        "unsupported-field | Kustomization | spec.sourceRef.kind": 148,
+        "unsupported-template | ApplicationSet | spec.templatePatch": 1
+      },
+      "atLeast": true,
+      "againstOneThird": "over one third"
+    },
+    "allKinds": {
+      "total": 839,
+      "opaque": 316,
+      "fraction": 0.3766,
+      "byReason": {
+        "cluster-created-values": 3,
+        "cluster-inputs-missing": 4,
+        "remote-base": 10,
+        "render-failed": 2,
+        "unreadable-file": 7,
+        "unreadable-repo": 71,
+        "unsupported-field": 218,
+        "unsupported-template": 1
+      },
+      "byReasonKindField": {
+        "cluster-created-values | HelmRelease | spec.valuesFrom[0].name": 3,
+        "cluster-inputs-missing | ApplicationSet | spec.generators[0].clusters": 4,
+        "remote-base | KustomizeRoot | resources[0]": 6,
+        "remote-base | KustomizeRoot | resources[1]": 3,
+        "remote-base | KustomizeRoot | resources[2]": 1,
+        "render-failed | HelmRelease | no field": 1,
+        "render-failed | KustomizeRoot | other field": 1,
+        "unreadable-file | KustomizeRoot | no field": 7,
+        "unreadable-repo | Application | spec.source.repoURL": 3,
+        "unreadable-repo | Kustomization | spec.sourceRef.name": 68,
+        "unsupported-field | Application | helmCharts": 28,
+        "unsupported-field | Application | other field": 1,
+        "unsupported-field | Application | spec.source.repoURL": 2,
+        "unsupported-field | ApplicationSet | spec.generators[0].git.files": 1,
+        "unsupported-field | HelmRelease | spec.postRenderers": 4,
+        "unsupported-field | Kustomization | other field": 1,
+        "unsupported-field | Kustomization | spec.patches": 3,
+        "unsupported-field | Kustomization | spec.sourceRef.kind": 148,
+        "unsupported-field | KustomizeRoot | helmCharts": 29,
+        "unsupported-field | KustomizeRoot | other field": 1,
+        "unsupported-template | ApplicationSet | spec.templatePatch": 1
+      },
+      "atLeast": true,
+      "againstOneThird": "over one third"
+    }
+  }
+}

@@ -124,10 +124,9 @@
         "offline",
         "remote-base",
         "foreign-destination",
-        "unreadable-file",
-        "not-in-this-build"
+        "unreadable-file"
       ],
-      "description": "Why a source could not be read or rendered (FR4.1). `not-in-this-build` names a source kind this build does not render yet and is removed by the build that renders it."
+      "description": "Why a source could not be read or rendered (FR4.1)."
     },
     "suggestion": {
       "type": [

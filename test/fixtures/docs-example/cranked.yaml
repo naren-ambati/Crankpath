@@ -1,0 +1,11 @@
+# The first install, written down: Argo CD reads the gitea Application from the GitHub copy of
+# this repository until Gitea runs, then the source is switched back.
+external:
+  github.com:
+    cold_start: available
+cranks:
+  - reroutes:
+      node: Application/argocd/gitea
+      to: github.com
+    by: "first install: point Application argocd/gitea at the GitHub copy, sync, then switch it back to Gitea"
+    ref: docs/bootstrap.md

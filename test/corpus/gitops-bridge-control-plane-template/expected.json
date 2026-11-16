@@ -1,0 +1,82 @@
+{
+  "noTools": {
+    "exit": 0,
+    "state": "ANALYSED WITH GAPS",
+    "floor": true,
+    "reasons": [
+      "no-dependency-edges",
+      "opaque-sources",
+      "skipped-objects"
+    ],
+    "sourcesByKind": {
+      "Application": 0,
+      "ApplicationSet": 1,
+      "HandAppliedChart": 0,
+      "HelmRelease": 0,
+      "Kustomization": 0,
+      "KustomizeRoot": 0
+    },
+    "opaqueByReason": {
+      "cluster-inputs-missing": 1
+    },
+    "unreadableByReason": {},
+    "skippedByReason": {
+      "no-namespace": 20
+    },
+    "unresolvedByWhy": {},
+    "nodes": 1,
+    "edges": 0,
+    "cycles": [],
+    "statusCounts": {
+      "blocked": 0,
+      "startable": 0,
+      "unverified": 1
+    },
+    "planSteps": 0,
+    "undeployedKustomizeRoots": 0,
+    "toolMissing": {
+      "helm": 0,
+      "kustomize": 0
+    }
+  },
+  "testedPair": {
+    "exit": 0,
+    "state": "ANALYSED WITH GAPS",
+    "floor": true,
+    "reasons": [
+      "no-dependency-edges",
+      "opaque-sources",
+      "skipped-objects"
+    ],
+    "sourcesByKind": {
+      "Application": 0,
+      "ApplicationSet": 1,
+      "HandAppliedChart": 0,
+      "HelmRelease": 0,
+      "Kustomization": 0,
+      "KustomizeRoot": 0
+    },
+    "opaqueByReason": {
+      "cluster-inputs-missing": 1
+    },
+    "unreadableByReason": {},
+    "skippedByReason": {
+      "no-namespace": 20
+    },
+    "unresolvedByWhy": {},
+    "nodes": 1,
+    "edges": 0,
+    "cycles": [],
+    "statusCounts": {
+      "blocked": 0,
+      "startable": 0,
+      "unverified": 1
+    },
+    "planSteps": 0,
+    "undeployedKustomizeRoots": 0,
+    "toolMissing": {
+      "helm": 0,
+      "kustomize": 0
+    }
+  }
+}

@@ -180,7 +180,7 @@ describe("flags (C6, FR9.1)", () => {
     expect(r.code).toBe(0);
     expect(unwrapText(r.stdout)).toContain('  external "github.com"  available (declared, not verified)');
     expect(run([root, "--config", "facts.yaml"], root).stderr).toBe(
-      "error: invalid crankpath.yaml (not readable: not found)\n",
+      'error: invalid --config file "facts.yaml" (not readable: not found)\n',
     );
   });
   it("prints help on --help with exit 0", () => {

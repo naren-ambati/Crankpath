@@ -181,11 +181,21 @@ interface SourceEntry {
   readonly object: RenderedObject;
 }
 
-function configMessage(error: { keyPath: string | null; problem: string; reasonWord?: string }): string {
-  if (error.keyPath !== null)
-    return `${quote("error: invalid crankpath.yaml at key path", error.keyPath, "terminal")} (${error.problem})`;
+/**
+ * The config error line. It names the file read: `crankpath.yaml` for the default file, or the
+ * `--config` path as given (the user's input, quoted and escaped like any text).
+ */
+function configMessage(
+  error: { keyPath: string | null; problem: string; reasonWord?: string },
+  configPath: string | undefined,
+): string {
+  const subject =
+    configPath === undefined
+      ? "error: invalid crankpath.yaml"
+      : quote("error: invalid --config file", configPath, "terminal");
+  if (error.keyPath !== null) return `${subject} ${quote("at key path", error.keyPath, "terminal")} (${error.problem})`;
   const word = error.reasonWord === undefined ? "" : `: ${error.reasonWord}`;
-  return `error: invalid crankpath.yaml (${error.problem}${word})`;
+  return `${subject} (${error.problem}${word})`;
 }
 
 const CACHE_PROBLEMS = {
@@ -336,16 +346,19 @@ function runScan(
   }
 
   const location = configLocation(root, options.config, options.cwd);
-  if (!("dir" in location)) return usage(configMessage(location));
+  if (!("dir" in location)) return usage(configMessage(location, options.config));
   const read = readConfig(location, root);
-  if (!read.ok) return usage(configMessage(read.error));
+  if (!read.ok) return usage(configMessage(read.error, options.config));
   const config: ConfigDocument = read.config;
   for (const m of config.repos) {
     if (m.readFrom === null || m.readFrom === "") continue;
     const sub = openRoot(path.join(root.real, ...m.readFrom.split("/")));
     if (!sub.ok || sub.root.real !== path.join(root.real, ...m.readFrom.split("/"))) {
       return usage(
-        configMessage({ keyPath: `${m.keyPath}.read_from`, problem: "not a directory inside the scanned root" }),
+        configMessage(
+          { keyPath: `${m.keyPath}.read_from`, problem: "not a directory inside the scanned root" },
+          options.config,
+        ),
       );
     }
     // Two entries naming one directory (mirror URLs of one checkout) share its root: config

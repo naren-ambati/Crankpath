@@ -14,7 +14,7 @@ This is the reference for crankpath's JSON report, schema version 1, frozen in B
 
 - **Additive changes keep `schemaVersion`**: a new field, or a new word in a word list (a new edge kind, opacity reason or unresolved reason). Consumers must ignore fields they do not know, and must treat a word they do not know as not verified (never as a pass).
 - **Breaking changes raise `schemaVersion`**: a field removed, renamed or retyped (its JSON type changed, including a field that could be `null` and no longer can, or the reverse).
-- A word that no build produces any more may leave its list without a version change (no consumer can be handed it). The schema-diff test compares field paths and JSON types only, so it does not flag a word removed from a list (B6 review n1). `not-in-this-build` is such a word: it names a source kind this build does not render yet, and the build that renders the last of them removes it.
+- A word that no build produces any more may leave its list without a version change (no consumer can be handed it). The schema-diff test compares field paths and JSON types only, so it does not flag a word removed from a list (B6 review n1). The early builds' interim reason `not-in-this-build` (a source kind not yet rendered or expanded) was such a word: once ApplicationSet generators and repository fetches were built (B3), no build produced it, and B9 removed it from the list with `schemaVersion` kept at 1.
 
 ## What is in the Report but not in the JSON
 
@@ -130,7 +130,7 @@ Paths use `.` for an object's field and `[]` for each element of an array. "Word
 | `nodes[].opaque.field` | null or string | The field crankpath could not use (repo keys possible: data, never instructions). |
 | `nodes[].opaque.lostEdges` | array | What could not be seen; never empty. |
 | `nodes[].opaque.lostEdges[]` | string | one entry |
-| `nodes[].opaque.reason` | string | The opacity reason. Words: `unreadable-repo`, `private-chart`, `encrypted-values`, `cluster-created-values`, `cluster-inputs-missing`, `unsupported-template`, `unsupported-field`, `tool-missing`, `render-failed`, `limit`, `offline`, `remote-base`, `foreign-destination`, `unreadable-file`, `not-in-this-build`. |
+| `nodes[].opaque.reason` | string | The opacity reason. Words: `unreadable-repo`, `private-chart`, `encrypted-values`, `cluster-created-values`, `cluster-inputs-missing`, `unsupported-template`, `unsupported-field`, `tool-missing`, `render-failed`, `limit`, `offline`, `remote-base`, `foreign-destination`, `unreadable-file`. |
 | `nodes[].opaque.suggestion` | null or object | A suggested `repos:` entry, or null. |
 | `nodes[].opaque.suggestion.readFrom` | string | The suggested `read_from` path. |
 | `nodes[].opaque.suggestion.url` | string | The repoURL, userinfo removed. |
@@ -157,7 +157,7 @@ Paths use `.` for an object's field and `[]` for each element of an array. "Word
 | `opaque[].lostEdges` | array | What could not be seen; never empty. |
 | `opaque[].lostEdges[]` | string | one entry |
 | `opaque[].node` | null or string | The opaque node, or null for a Kustomize root. |
-| `opaque[].reason` | string | The opacity reason. Words: `unreadable-repo`, `private-chart`, `encrypted-values`, `cluster-created-values`, `cluster-inputs-missing`, `unsupported-template`, `unsupported-field`, `tool-missing`, `render-failed`, `limit`, `offline`, `remote-base`, `foreign-destination`, `unreadable-file`, `not-in-this-build`. |
+| `opaque[].reason` | string | The opacity reason. Words: `unreadable-repo`, `private-chart`, `encrypted-values`, `cluster-created-values`, `cluster-inputs-missing`, `unsupported-template`, `unsupported-field`, `tool-missing`, `render-failed`, `limit`, `offline`, `remote-base`, `foreign-destination`, `unreadable-file`. |
 | `opaque[].suggestion` | null or object | A suggested `repos:` entry, or null. |
 | `opaque[].suggestion.readFrom` | string | The suggested `read_from` path. |
 | `opaque[].suggestion.url` | string | The repoURL, userinfo removed. |

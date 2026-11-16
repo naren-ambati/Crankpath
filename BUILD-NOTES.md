@@ -2000,3 +2000,382 @@ State determinism as it is: the output is byte-identical for the same inputs and
 ### What changes in meaning
 - crankpath: a crankpath.yaml with two cranks that apply one `render:` path differently, accepted before (the first won silently), is now refused (exit 1). Nothing else in crankpath's output changes.
 - The golden harness: a reduced form with a foreign string fails; a pin needs the reviewed digests; mutations must hit named cycles and opaque nodes; the homelab expected files changed form (not content).
+
+## B9 (corpus, docs and release checks), part 1: before B3, B7 and B8 land
+
+Built on `main` 955014c on 2026-11-16, steps (1) to (3) of the lead's order of work. The census re-run with real discovery, the README's real-discovery opacity figure, the homelab section's ids and counts, the removal of `not-in-this-build`, the `docs/action.md` link and the final `npm pack` listing wait for B3, B7 and B8 (see "Waiting").
+
+### Built
+- **Release checks (US12.3, OD-28, OD-23)**, each importable and run in-process by `scripts/release-checks.mjs`, which prints one line per check (`PASS`, `FAIL`, `NOT RUN`, `SKIPPED`) and a summary that counts a check not run or skipped apart from a pass. `npm run verify` now ends with it (replacing the bare check-tree call); `npm run release:check` builds and runs it with `--release`.
+  - `scripts/check-docs.mjs`: relative links and anchors (GitHub slugs), links into the design workspace refused, every Markdown file outside `test/`, `reviews/`, BUILD-NOTES and CLAUDE.md reachable from README.md, Mermaid fences parsed structurally (supported header, flowchart statements, balanced brackets and quotes, closed subgraphs) and followed by `Text fallback:`, output fences captioned with the command in a code span and `run YYYY-MM-DD` (real, not after today), claim markers `<!-- claim CL-n -->` on every output fence and every prose cycle id or opacity count, the claim map complete both ways with each row naming an existing, not skipped `it()`/`test()` and a real run date, the README order (first section the opacity statement, second the homelab cycles, BR12.1), a forbidden-claims list in crankpath's prose (NFR3), the D11 document set (BR12.2), and pending hooks `<!-- pending: ... -->` (listed offline, failures with `--release`).
+  - `scripts/secret-grep.mjs`: credential shapes (GitHub, npm, AWS, Slack, Google, private keys, JSON web tokens, Authorization headers, an assigned `CRANKPATH_TOKEN_*` value) over the tree and over the files of the package packed by `npm pack --ignore-scripts --offline` into a temporary directory (removed); e-mail addresses in the package and in Markdown outside `test/`; check-tree's personal-path, host and login rules over the package. The denylist comes only from `CRANKPATH_DENYLIST_FILE`: unset, missing, unreadable, not a file, or holding no term is `NOT RUN` with the reason, offline reported and never passed, with `--release` a failure; a denylist file inside the repository is a finding; terms are matched folded (NFKC, format characters removed, case-insensitive) in contents, file names, every commit message and author/committer field of HEAD's history and the local git config; a finding names the place and the term's number, never the term.
+  - `scripts/check-pack.mjs`: `npm pack --dry-run --json` lists only `dist/**`, README.md, CHANGELOG.md, LICENSE, NOTICE and package.json, and holds each and the bin; LICENSE's SHA-256 equals the Apache License 2.0 text fetched from apache.org (`docs/lookups.md`); no licence file other than the root LICENSE and `test/corpus/<copy>/LICENSE` beside a NOTICE; package.json licence, not private, repository/homepage/bugs as set, `files` exactly as set, no install/pack/publish/version lifecycle script and no script that publishes, pushes or tags (BR12.5); exact-pinned dependencies equal to the lockfile; lockfile v3, every package from registry.npmjs.org with a sha512 integrity, no runtime package with an install script, the one development package with one (`fsevents`) named, and `.npmrc ignore-scripts=true` required.
+  - In `release-checks.mjs`: `interim-reason` (the B1 opacity reason `not-in-this-build` in any file under `src/` or `dist/`; blocks a release only), and in release mode only `npm-audit` (runtime and whole tree; any runtime vulnerability fails; no answer from the registry is NOT RUN) and `goldens` (`npm run verify:golden`: exit 0 PASS, exit 2 SKIPPED, otherwise FAIL; no such script NOT RUN; OD-23: a skipped golden cannot satisfy v0.1.0). The release mode ends with the reminder that name availability on npm and GitHub is re-checked by hand (W12.1).
+- **Corpus (US11.7, OD-21, C11)**: four trimmed copies under `test/corpus/<copy>/`: `flux2-kustomize-helm-example` (fluxcd, Apache-2.0), `gitops-bridge-control-plane-template` (gitops-bridge-dev, Apache-2.0), `acelinkio-argocd-homelab` (MIT; also a census estate), `bjw-s-home-ops` (bjw-s-labs, Apache-2.0). Each holds `repo/` (133 files in all, byte-identical to the upstream files at the recorded commit, checked with `git show <commit>:<path>` for every file), the upstream LICENSE unchanged (checked the same way), a NOTICE (origin, commit, copy date, licence, what was trimmed, that no file was modified), `corpus.json` (the manifest: origin, commit, licence and its dated check, every kept file with its SHA-256) and `expected.json`. The root NOTICE lists the four and the IANA root-zone list (B4's `root-zone-tlds.ts`) as a data source with its version line. `test/u11-validation-harness/corpus.test.ts` checks the count (3 to 5), licence hygiene, the file set and hashes, and the expected outcome (counts and cycle ids only) in two offline lanes: no tools (always) and the tested pair (`ctx.skip()` unless crankpath reports helm v4.3.2 and kustomize v5.8.1). Biome now skips `test/corpus`.
+- **Docs (US12.1, US12.2, D11)**: README restructured (the opacity statement first with the static census figure and a pending hook for the real-discovery figure, then the two homelab cycles in words with a pending hook for the golden's ids; a documentation index linking every doc); `docs/concepts.md`, `docs/crankpath-yaml.md` (every C2 key, rule and example; pending hooks for what `fetch: true`, `clusters:` and the hand-applied `render:<path>` root do once B3 and B7 land), `docs/write-your-cranks.md`, `docs/what-it-cannot-see.md` (linked from `docs/limits.md`), `docs/claims.md` (7 claims), `SECURITY.md` (contact placeholder; a pending hook for the git fetch forms and the per-host token rule), `CONTRIBUTING.md`, `CHANGELOG.md`. Every quoted output is from a real run of the built CLI on 2026-11-16 in a new fixture written for the docs, `test/fixtures/docs-example/` (crankpath's own estate: Gitea serves Argo CD, plus `cranked.yaml` and `invalid.yaml`); `test/u12-docs-release/doc-claims.test.ts` re-runs each captioned command in-process and requires each quote to be a contiguous run of the output's lines, checks the README's census sentence against the committed census JSON, and checks that every `crankpath.yaml` example in the reference is accepted by the reader.
+
+### Verified
+- `npm run verify` on 2026-11-16 (Node v22.23.2, macOS arm64, helm v4.3.2 and kustomize v5.8.1 on PATH), exit 0:
+  ```
+  Checked 189 files in 189ms. No fixes applied.
+   Test Files  85 passed (85)
+        Tests  1477 passed (1477)
+  Statements   : 94.66% ( 5732/6055 )
+  Branches     : 87.57% ( 4181/4774 )
+  Functions    : 98.16% ( 804/819 )
+  Lines        : 96.2% ( 4893/5086 )
+  PASS     check-tree      547 files read, 0 finding(s)
+  PASS     check-docs      48 Markdown files, 7 claim(s) mapped, 0 problem(s), 7 pending
+  PASS     secret-grep     547 files in the tree, 149 in the package, 0 finding(s)
+  NOT RUN  denylist        CRANKPATH_DENYLIST_FILE is unset
+  PASS     check-pack      149 files would ship, 0 problem(s)
+  FAIL     interim-reason  "not-in-this-build" is still in 7 file(s) under src/ and dist/ (blocks a release only)
+  NOT RUN  npm-audit       release only (a registry call)
+  NOT RUN  goldens         release only (needs helm and the network)
+  release checks: 4 passed, 0 failed, 1 failing a release only, 3 not run, 0 skipped; a check not run or skipped is not a pass
+  ```
+- `npm run release:check` on 2026-11-16 (after step 1), exit 1, as it must be before B3/B7/B8: check-docs FAIL (pending hooks and missing documents), denylist NOT RUN, interim-reason FAIL, `npm-audit` PASS (`vulnerabilities runtime: 0 ...; all: 0 ...`), goldens NOT RUN (`there is no verify:golden script in this build`).
+- Tests that can fail: each check-docs, secret-grep, check-pack and release-checks rule has a broken case and a passing twin; hand mutations (each reverted, 2026-11-16) turned tests red: the release-mode denylist rule removed (1), orphan claim rows not flagged (1), a missing D11 document not failing release mode (1), `private: true` accepted (1), a future caption date accepted (2), an exit-2 golden counted as a fail instead of SKIPPED (1); a corpus file edited by one word (3 red: hash and both lanes); a quoted plan line edited in `docs/write-your-cranks.md` (1 red); a claim marker removed (2 check-docs failures).
+- Found while writing the docs: a pending hook holding `>` (`render:<path>`) was not detected, so a release could have passed it; the pattern now ends at the first `-->`, with a regression test. A forbidden-claims pattern matched the kind name `Certificate`; narrowed to `certify/certified/certifies`.
+
+### Deviations from the design and why
+1. **AC12.3.1 and BR12.4 as written (`private`, `UNLICENSED`, no LICENSE) are superseded** by the owner's Apache-2.0 decision of 2026-11-15: check-pack checks Apache-2.0, not private, and the root LICENSE byte-identical to the Apache text.
+2. **The claim map covers every output claim, not only the README's** (BR12.3 names the README): a claim id is required on every output fence and every prose cycle id or opacity count in any user document. "Last verified run" is the date the claim was last compared with a real run; the named test runs in the same `npm run verify` that checks the map, so a row cannot name a failing test and pass.
+3. **Records are exempt from the content rules**: `docs/design/`, `docs/research.md`, `docs/lookups.md` and `docs/census.md` (the census record has its own test). They must still be reachable and their links must resolve.
+4. **The forbidden-claims list** (NFR3.1's "forbidden-claims list") is `no cycles`, `GREEN`, `certified`, `guarantee`, `all clear`, `bulletproof`, read in prose only, not after a negation ("cannot guarantee"). It is a pragmatic list, not a proof that a document claims nothing more than its tests.
+5. **Corpus layout**: C11 puts the licence as `LICENSE.<upstream>`; the copy is `test/corpus/<copy>/repo/` with `LICENSE` (the upstream text unchanged), `NOTICE`, `corpus.json` and `expected.json` beside it, so crankpath scans `repo/` and never reads the manifest or the expectation as part of the estate.
+6. **No corpus file is modified**: copies are trimmed by leaving files out only, so no file needs a "Modified by crankpath" line; dangling references to left-out files are part of each copy's expected outcome. The corpus test requires such a line on any file a manifest ever lists as modified.
+7. **Corpus expectations are offline**: renders that need a chart fetch are opaque `offline` in the tested-pair lane; no corpus expectation needs the network, so none waits for the golden lane. Kustomize renders are asserted in the tested-pair lane only.
+8. **The e-mail rule** applies to the package and to Markdown outside `test/`, not to test sources (tests hold URL userinfo such as `git@github.com` and `pw@example.org` by design).
+9. **A placeholder token value** (words and hyphens, as the tests plant) is not a token shape: the assigned-token rule needs 20 or more token characters with a letter and a digit. A real token with no digit is a stated blind spot.
+
+### Decisions taken for the owner
+- **Corpus choice**: three of the research's candidates were available as Apache-2.0 at HEAD (each LICENSE read in full on 2026-11-16) and are used; the fourth copy is acelinkio/argocd-homelab (MIT), a census estate, for an Argo CD homelab with Applications and Helm charts. Trims left out vendor-named folders where cheap (gitops-bridge's cloud-provider addons, acelinkio's `1passwordconnect`) and bjw-s's `cert-manager-webhook-ovh` (it holds an e-mail address).
+- **The documentation example is crankpath's own fixture** (`test/fixtures/docs-example/`), not a corpus copy, so the docs' quoted outputs are small, stable and free of anyone else's text.
+- **`release:check` fails today** on purpose (pending hooks, `docs/action.md` missing, the denylist not run, the interim reason, no golden lane): every item is one the remaining bolts or the owner close.
+
+### Observations for the lead (not changed: outside B9)
+- In gitops-bridge's template, the ApplicationSets have no `metadata.namespace`, and crankpath skips them as `no-namespace` (20 skipped objects; one ApplicationSet with a namespace is counted). Argo CD applies an ApplicationSet in the namespace its parent deploys it to; whether B3 should take that namespace from the deploying source is B3's call.
+- With `--config <file>`, a validation error still named the file `crankpath.yaml` although the file read was another one. Fixed in part 2 at the lead's request (below).
+- The census and corpus runs show `opaque` counts for Helm sources as `tool-missing` or `offline`; the real-discovery census (with the network) will be the first count that renders charts from the network.
+
+### Waiting (after the lead's go to merge `main`)
+- B3: re-run the census with real discovery over the five OD-26 estates (`docs/census-<date>-real.json`, `docs/census.md` both figures side by side), fill the README's opacity statement, re-observe the corpus expectations (ApplicationSet expansion changes gitops-bridge and acelinkio), the `fetch:`/`clusters:` sections of the reference, SECURITY's fetch and token paragraph, and confirm `interim-reason` passes (or remove the last uses of `not-in-this-build` if any remain).
+- B7: the homelab section's cycle ids, labels and edge counts from the golden (ids and counts only), the `render:<path>` hand-applied root in the reference, and the golden lane (`npm run verify:golden`) that `release:check` runs.
+- B8: link `docs/action.md` from the README and check it against the docs rules.
+- Then `npm pack` locally (not published) and the tarball listing recorded here, and the final `release:check` run.
+
+### Unverified
+- The Mermaid check is structural only; no diagram was rendered by Mermaid itself (as in B6).
+- `npm audit` ran once (2026-11-16, 0 vulnerabilities); its result changes with the registry's advisories.
+- The denylist part has run only against made-up test terms; it has never run with the owner's file.
+- The corpus tested-pair lane ran on this machine only.
+
+## B9 part 2: after B3 (`ede1900`), at the lead's request
+
+### Built
+- **Merge of `main`** (`dde88f2`): conflicts only in `package.json` (B9's verify and release scripts kept, B3's `verify:live` with `live-fetch.mjs` kept), `docs/lookups.md` and BUILD-NOTES (main's B3 sections first, then B9's). After the merge, 4 corpus tests failed, as expected: the two copies with ApplicationSets changed.
+- **Corpus re-observed** (`a49f4c9`): gitops-bridge's ApplicationSet is now `cluster-inputs-missing` (no `clusters:` block); acelinkio's is `unsupported-field` (`spec.generators[0].git.files`: a generator file with more than one YAML document). The other two copies did not change.
+- **The interim reason is gone** (`a49f4c9`): `not-in-this-build` is removed from `OPAQUE_REASONS`, from the schema's word list and from its description. `docs/json-output.md` was regenerated and its compatibility note says why `schemaVersion` stays 1 (no build produces the word since B3). `test/u12-docs-release/interim-reason.test.ts` failed (2 of 2) before the removal: it fails while any file under `src/` names the word, or the schema lists it. The release check `interim-reason` now passes.
+- **Docs after B3**: the reference's `fetch: true` and `clusters:` sections, SECURITY's git forms, token rule and "a failed fetch is not an absent repository" are written from the build and `docs/fetching.md`; README links `docs/fetching.md` (it was unreachable after the merge).
+- **The `--config` error names the file read** (`cd666d5`): `error: invalid --config file "<path as given>" at key path ...` (the path is quoted and escaped); the default file keeps `invalid crankpath.yaml`. `test/u9-cli-package/config-file-name.test.ts` had 3 of 4 tests red before the fix. One B1 expectation in `cli.test.ts` was updated, and the CL-5 quote was re-run.
+- **The census with real discovery** (OD-19): `scripts/census-real.mjs` runs the built crankpath over the five checkouts at their recorded commits (a checkout at another commit is refused), with helm, kustomize and the network, and no `crankpath.yaml` or alias. It counts from the JSON report (`docs/census-2026-11-16-real.json`, `label: real-discovery`). `docs/census.md` section 5 holds both figures side by side per estate and in total, against one third, with what changed and why. `test/u11-validation-harness/census-real.test.ts` covers the record (adds up, fixed words only, stated in section 5 as the JSON has it) and the summary function. README's opacity statement now leads with the real figure (claim CL-8).
+
+### The census figures (run 2026-11-16, helm v4.3.2, kustomize v5.8.1; a second run and a German-locale run byte-identical)
+| Estate | Static estimate | Real, D12 units | Real, all source kinds |
+|---|---|---|---|
+| gitops-bridge-dev/gitops-bridge | at least 29 of 29 (1) | at least 6 of 6 (1) | at least 6 of 6 (1) |
+| mortennordbye/homelab | at least 1 of 2 (0.5) | at least 30 of 40 (0.75) | at least 60 of 104 (0.5769) |
+| acelinkio/argocd-homelab | at least 4 of 25 (0.16) | at least 4 of 25 (0.16) | at least 4 of 25 (0.16) |
+| ricsanfre/pi-cluster | at least 32 of 36 (0.8889) | at least 62 of 62 (1) | at least 78 of 378 (0.2063) |
+| niki-on-github/nixos-k3s | at least 110 of 122 (0.9016) | at least 166 of 178 (0.9326) | at least 168 of 326 (0.5153) |
+| **Total** | at least 176 of 214 (0.8224) | **at least 268 of 311 (0.8617), over one third** | at least 316 of 839 (0.3766), over one third |
+
+Top reasons (D12 units): unsupported-field 188 (148 Flux Kustomizations whose source kind is not `GitRepository`, 28 Applications with kustomize `helmCharts`), unreadable-repo 71 (62 pi-cluster Kustomizations naming the bootstrap-created `flux-system` GitRepository), cluster-inputs-missing 4, cluster-created-values 3, render-failed 1, unsupported-template 1.
+
+### Verified
+- `npm run verify` on 2026-11-16, exit 0:
+  ```
+  Checked 214 files in 84ms. No fixes applied.
+   Test Files  100 passed (100)
+        Tests  1700 passed (1700)
+  Statements   : 94.42% ( 7031/7446 )
+  Branches     : 88.09% ( 5246/5955 )
+  Functions    : 97.96% ( 915/934 )
+  Lines        : 96.41% ( 5996/6219 )
+  PASS     check-tree      586 files read, 0 finding(s)
+  PASS     check-docs      53 Markdown files, 8 claim(s) mapped, 0 problem(s), 3 pending
+  PASS     secret-grep     586 files in the tree, 159 in the package, 0 finding(s)
+  NOT RUN  denylist        CRANKPATH_DENYLIST_FILE is unset
+  PASS     check-pack      159 files would ship, 0 problem(s)
+  PASS     interim-reason  "not-in-this-build" is in no file under src/ or dist/
+  NOT RUN  npm-audit       release only (a registry call)
+  NOT RUN  goldens         release only (needs helm and the network)
+  release checks: 5 passed, 0 failed, 3 not run, 0 skipped; a check not run or skipped is not a pass
+  ```
+
+### Deviations and decisions
+- **Two census figures, not one.** The D12 denominator (OD-19) is kept as the headline. With real discovery an unexpandable ApplicationSet, and an unreadable Flux Kustomization, each count **once** (not once per generator): crankpath's report has no per-generator count of an opaque ApplicationSet. An opaque Flux Kustomization counts because the HelmReleases it holds are behind it. Both make the figure a floor. crankpath's own opacity line (all five source kinds, FR4.4) is given beside it.
+- **No declared facts in the census**: each estate runs as published, so an estate that needs an alias or a `clusters:` block to be read shows that need as opacity. A census with declared facts would measure the facts, not the tool.
+- **The v1.1 pick (owner item)**: the static estimate put cluster-created Secrets first; with real discovery, the top walls are Flux sources other than `GitRepository`, Helm inflation in kustomize, and bootstrap-created GitRepositories. Recorded in `docs/census.md` section 5. D12 stays a scope decision.
+
+### Still waiting (B7, B8; marked pending)
+- B7: the homelab cycle ids and counts in the README, the `render:<path>` hand-applied root in the reference, the golden lane for `release:check`.
+- B8: `docs/action.md` and its README link.
+- Then `npm pack` with the listing recorded, and the final `release:check`.
+
+### Unverified
+- The census ran on this machine only, once with the network (the later runs were from crankpath's chart cache). A chart repository's content can change between runs for a floating version.
+
+## B9 part 3: after B8 (`8aba087`)
+
+- **Merge of `main`** (`a83c139`): conflicts only in README (B9's README kept; B8's Action sentence is now in "Using it", linked to `docs/action.md`), `docs/lookups.md` and BUILD-NOTES (main's B8 section first, then B9's).
+- **`docs/action.md` under the docs rules.** It is linked from README (documentation index and "Using it") and from the CHANGELOG. Its four quoted harness runs each get a caption with the command and `run 2026-11-16`; the first caption said `run on 2026-11-16`, which the rule does not read as a run date. Each also gets claim marker CL-9, mapped to B8's own test `test/u10-github-action/action-local.test.ts`, "quotes the harness output of a real run, byte for byte". check-docs now also accepts a `node scripts/` harness in a caption's code span as the command (a test added). The doc-set rule has no missing document left.
+- README "Using it" states determinism as B7 found it: byte-identical for the same inputs and tool versions, except where a chart's own rendering varies (crankpath renders twice and flags what it sees).
+- `npm run verify` on 2026-11-16, exit 0: Test Files 108 passed (108), Tests 1886 passed (1886); Statements 94.31%, Branches 87.8%, Functions 97.82%, Lines 96.24%. Release checks: check-tree, check-docs (59 Markdown files, 9 claims mapped, 0 problems, 2 pending: the homelab section and `render:<path>`, both B7), secret-grep, check-pack and interim-reason PASS. Denylist NOT RUN (unset); npm-audit and goldens NOT RUN (release only).
+- Still waiting: B7 (the homelab README section from the pinned goldens, the `render:<path>` reference, the golden lane), then `npm pack` and the final `release:check`.
+
+## B9 part 4: after B7 (`7ee652f`); the package and the release check
+
+### Built
+- **Merge of `main`** (`8578de8`): conflicts in `package.json` (B7's `verify:golden` added beside B9's scripts), `biome.json` (both exclusions), `docs/lookups.md` and BUILD-NOTES. BUILD-NOTES was rebuilt as main's file followed by the B9 sections, because a three-way resolution had dropped part of B7's section. The resulting file holds every line of main's. B7 adds the source kind `HandAppliedChart`; the four corpus expectations and the real census record gain its zero count. I re-ran the census on 2026-11-16 after the merge: every other count is unchanged.
+- **The homelab section** (`751ab2e`) states the two pinned goldens, with ids and counts only.
+  - As published: `NOTHING ANALYSED`, with the 31 chart directories nothing deploys listed. The README says plainly that the research's uncranked expectation was a hand trace that rendered `system/argocd` by hand.
+  - With the bootstrap crank: one component `c-35843cd4` of 12 nodes and 22 edges, all extracted, holding both research cycles; `cranked (was extracted)`; plan step 1 the manual crank; `ANALYSED WITH GAPS`.
+  - Claims CL-10 and CL-11 are checked against the pinned `expected.json` files, including the four research edges inside the component. The goldens themselves are re-run by the golden lane under `release:check`.
+- **`render:<path>` of a directory applied by hand**, with the crank keys `namespace:` and `release:`, is in `docs/crankpath-yaml.md`, whose examples are validated by CL-7, and in a new section of `docs/write-your-cranks.md`. No pending hook is left in any user document.
+- **The golden lane in `release:check`**: `release-checks.mjs` already ran `npm run verify:golden` when the script exists, and B7 added it.
+- **A verdict line** is now the last result line: `release check: FAILED, blocked by <check> <result>, ...`, or `nothing blocks`. Before it, a release run that failed only on the denylist printed `0 failed, 1 not run` above exit 1, which did not say why it failed. A test was added.
+
+### `npm pack` (local, not published), 2026-11-16
+`npm pack --ignore-scripts --json --pack-destination <scratch folder outside the repository>`, exit 0: `crankpath-0.1.0.tgz`, 274,039 bytes (unpacked 965,321), 159 entries, shasum `5a09af24260a28ec8491ea22c3a74ed7539c8dbf`. `dist/` holds no file without a source in `src/`. The listing (`tar -tzf`, the `package/` prefix removed, sorted):
+```
+CHANGELOG.md
+LICENSE
+NOTICE
+README.md
+dist/u1-graph-model/declared-facts.d.ts
+dist/u1-graph-model/declared-facts.js
+dist/u1-graph-model/extractor.d.ts
+dist/u1-graph-model/extractor.js
+dist/u1-graph-model/graph-model.d.ts
+dist/u1-graph-model/graph-model.js
+dist/u1-graph-model/limits.d.ts
+dist/u1-graph-model/limits.js
+dist/u1-graph-model/order.d.ts
+dist/u1-graph-model/order.js
+dist/u1-graph-model/run-limits.d.ts
+dist/u1-graph-model/run-limits.js
+dist/u1-graph-model/safe-text.d.ts
+dist/u1-graph-model/safe-text.js
+dist/u1-graph-model/status-model.d.ts
+dist/u1-graph-model/status-model.js
+dist/u1-graph-model/vocabulary.d.ts
+dist/u1-graph-model/vocabulary.js
+dist/u2-intake-config/bounded-reader.d.ts
+dist/u2-intake-config/bounded-reader.js
+dist/u2-intake-config/config-reader.d.ts
+dist/u2-intake-config/config-reader.js
+dist/u2-intake-config/repo-identity.d.ts
+dist/u2-intake-config/repo-identity.js
+dist/u2-intake-config/tree-walk.d.ts
+dist/u2-intake-config/tree-walk.js
+dist/u3-discovery-expansion/flux-planner.d.ts
+dist/u3-discovery-expansion/flux-planner.js
+dist/u3-discovery-expansion/generator-expander.d.ts
+dist/u3-discovery-expansion/generator-expander.js
+dist/u3-discovery-expansion/generator-paths.d.ts
+dist/u3-discovery-expansion/generator-paths.js
+dist/u3-discovery-expansion/generator-template.d.ts
+dist/u3-discovery-expansion/generator-template.js
+dist/u3-discovery-expansion/plan-common.d.ts
+dist/u3-discovery-expansion/plan-common.js
+dist/u3-discovery-expansion/render-job.d.ts
+dist/u3-discovery-expansion/render-job.js
+dist/u3-discovery-expansion/render-planner.d.ts
+dist/u3-discovery-expansion/render-planner.js
+dist/u3-discovery-expansion/source-discovery.d.ts
+dist/u3-discovery-expansion/source-discovery.js
+dist/u4-render-engine/chart-cache.d.ts
+dist/u4-render-engine/chart-cache.js
+dist/u4-render-engine/command-runner.d.ts
+dist/u4-render-engine/command-runner.js
+dist/u4-render-engine/flux-substitution.d.ts
+dist/u4-render-engine/flux-substitution.js
+dist/u4-render-engine/git-runner.d.ts
+dist/u4-render-engine/git-runner.js
+dist/u4-render-engine/go-keys.d.ts
+dist/u4-render-engine/go-keys.js
+dist/u4-render-engine/helm-renderer.d.ts
+dist/u4-render-engine/helm-renderer.js
+dist/u4-render-engine/kustomize-renderer.d.ts
+dist/u4-render-engine/kustomize-renderer.js
+dist/u4-render-engine/plain-renderer.d.ts
+dist/u4-render-engine/plain-renderer.js
+dist/u4-render-engine/private-copy.d.ts
+dist/u4-render-engine/private-copy.js
+dist/u4-render-engine/render-io.d.ts
+dist/u4-render-engine/render-io.js
+dist/u4-render-engine/rendered-output.d.ts
+dist/u4-render-engine/rendered-output.js
+dist/u4-render-engine/rendered-set-builder.d.ts
+dist/u4-render-engine/rendered-set-builder.js
+dist/u4-render-engine/renderers.d.ts
+dist/u4-render-engine/renderers.js
+dist/u4-render-engine/repo-fetcher.d.ts
+dist/u4-render-engine/repo-fetcher.js
+dist/u4-render-engine/template-scan.d.ts
+dist/u4-render-engine/template-scan.js
+dist/u4-render-engine/toolchain.d.ts
+dist/u4-render-engine/toolchain.js
+dist/u4-render-engine/url-guard.d.ts
+dist/u4-render-engine/url-guard.js
+dist/u4-render-engine/work-dir.d.ts
+dist/u4-render-engine/work-dir.js
+dist/u4-render-engine/yaml-shape.d.ts
+dist/u4-render-engine/yaml-shape.js
+dist/u5-extractors-gitops/argo-extractor.d.ts
+dist/u5-extractors-gitops/argo-extractor.js
+dist/u5-extractors-gitops/controller-signatures.d.ts
+dist/u5-extractors-gitops/controller-signatures.js
+dist/u5-extractors-gitops/credential-extractor.d.ts
+dist/u5-extractors-gitops/credential-extractor.js
+dist/u5-extractors-gitops/flux-extractor.d.ts
+dist/u5-extractors-gitops/flux-extractor.js
+dist/u5-extractors-gitops/index.d.ts
+dist/u5-extractors-gitops/index.js
+dist/u6-extractors-workload/cert-manager-extractor.d.ts
+dist/u6-extractors-workload/cert-manager-extractor.js
+dist/u6-extractors-workload/cloud-identity.d.ts
+dist/u6-extractors-workload/cloud-identity.js
+dist/u6-extractors-workload/external-host.d.ts
+dist/u6-extractors-workload/external-host.js
+dist/u6-extractors-workload/hcl-seal-reader.d.ts
+dist/u6-extractors-workload/hcl-seal-reader.js
+dist/u6-extractors-workload/host-matcher.d.ts
+dist/u6-extractors-workload/host-matcher.js
+dist/u6-extractors-workload/index.d.ts
+dist/u6-extractors-workload/index.js
+dist/u6-extractors-workload/references.d.ts
+dist/u6-extractors-workload/references.js
+dist/u6-extractors-workload/root-zone-tlds.d.ts
+dist/u6-extractors-workload/root-zone-tlds.js
+dist/u6-extractors-workload/secret-store-extractor.d.ts
+dist/u6-extractors-workload/secret-store-extractor.js
+dist/u6-extractors-workload/vault-seal-extractor.d.ts
+dist/u6-extractors-workload/vault-seal-extractor.js
+dist/u6-extractors-workload/workload-refs.d.ts
+dist/u6-extractors-workload/workload-refs.js
+dist/u7-graph-analysis/analysis.d.ts
+dist/u7-graph-analysis/analysis.js
+dist/u7-graph-analysis/cluster-provided.d.ts
+dist/u7-graph-analysis/cluster-provided.js
+dist/u7-graph-analysis/crank-applier.d.ts
+dist/u7-graph-analysis/crank-applier.js
+dist/u7-graph-analysis/cycle-finder.d.ts
+dist/u7-graph-analysis/cycle-finder.js
+dist/u7-graph-analysis/graph-builder.d.ts
+dist/u7-graph-analysis/graph-builder.js
+dist/u7-graph-analysis/match-overrides.d.ts
+dist/u7-graph-analysis/match-overrides.js
+dist/u7-graph-analysis/plan-builder.d.ts
+dist/u7-graph-analysis/plan-builder.js
+dist/u7-graph-analysis/reachability.d.ts
+dist/u7-graph-analysis/reachability.js
+dist/u8-output/elementary-cycles.d.ts
+dist/u8-output/elementary-cycles.js
+dist/u8-output/explain-renderer.d.ts
+dist/u8-output/explain-renderer.js
+dist/u8-output/json-renderer.d.ts
+dist/u8-output/json-renderer.js
+dist/u8-output/mermaid-renderer.d.ts
+dist/u8-output/mermaid-renderer.js
+dist/u8-output/report-assembler.d.ts
+dist/u8-output/report-assembler.js
+dist/u8-output/report-model.d.ts
+dist/u8-output/report-model.js
+dist/u8-output/text-layout.d.ts
+dist/u8-output/text-layout.js
+dist/u8-output/text-renderer.d.ts
+dist/u8-output/text-renderer.js
+dist/u9-cli-package/cli-shell.d.ts
+dist/u9-cli-package/cli-shell.js
+dist/u9-cli-package/cli.d.ts
+dist/u9-cli-package/cli.js
+dist/u9-cli-package/library.d.ts
+dist/u9-cli-package/library.js
+dist/u9-cli-package/pipeline-runner.d.ts
+dist/u9-cli-package/pipeline-runner.js
+dist/u9-cli-package/run-budget.d.ts
+dist/u9-cli-package/run-budget.js
+package.json
+```
+
+### `npm run release:check`, 2026-11-16
+Run as `CRANKPATH_GOLDEN_CACHE=<the shared golden cache> npm run release:check` (helm v4.3.2, kustomize v5.8.1, git 2.55.0, the network). Exit 1, and the only blocker is the denylist, NOT RUN because `CRANKPATH_DENYLIST_FILE` is unset. The owner supplies the file; no name is ever written into the repository. Every other check passed, including all 19 golden-lane checks and npm audit:
+```
+PASS     check-tree      681 files read, 0 finding(s)
+PASS     check-docs      67 Markdown files, 11 claim(s) mapped, 0 problem(s), 0 pending
+PASS     secret-grep     681 files in the tree, 159 in the package, 0 finding(s)
+NOT RUN  denylist        CRANKPATH_DENYLIST_FILE is unset
+PASS     check-pack      159 files would ship, 0 problem(s)
+PASS     interim-reason  "not-in-this-build" is in no file under src/ or dist/
+PASS     npm-audit       vulnerabilities runtime: 0 (critical 0, high 0, moderate 0, low 0, info 0); all: 0 (critical 0, high 0, moderate 0, low 0, info 0)
+PASS     goldens         golden lane: 19 passed, 0 failed, 0 skipped
+release checks (release mode): 7 passed, 0 failed, 1 not run, 0 skipped; a check not run or skipped is not a pass
+release check: FAILED, blocked by denylist NOT RUN
+Not checked here: whether the name crankpath is still free on npm and GitHub (re-check by hand before the go). Nothing was published.
+```
+The one detail line: `check-pack  note node_modules/fsevents (development only) has an install script; .npmrc ignore-scripts=true keeps it from running`.
+
+### `npm run verify`, 2026-11-16, exit 0
+- Test Files 112 passed (112).
+- Tests 1968 passed, 4 skipped (1972). The 4 skipped are B7's goldens that need helm and the network, run by the golden lane above.
+- Coverage: Statements 94.34%, Branches 87.79%, Functions 97.83%, Lines 96.26%.
+- check-tree, check-docs (67 Markdown files, 11 claims mapped, 0 problems, 0 pending), secret-grep, check-pack and interim-reason PASS. The denylist is NOT RUN. `offline checks: nothing blocks`.
+
+### For the owner before the go
+- Supply `CRANKPATH_DENYLIST_FILE` and re-run `npm run release:check`.
+- Re-check by hand that the name `crankpath` is still free on npm and GitHub.
+- Fill SECURITY's contact placeholder.
+- The release round rewrites the README to the sibling projects' standard. Its claims are mapped in `docs/claims.md` and must stay mapped.
+
+## B9 review fixes (review `reviews/bolt-9-review.md`: 1 Major, 6 Minor, 3 Nit; lead decisions of 2026-11-16)
+
+The tests were written before the fixes and seen red, except where a fix is only wording. The reviewer's mutations now turn tests red.
+- **M1, platforms.** README, SECURITY and what-it-cannot-see now say macOS arm64 is the only platform this build ran on. Linux and x64 are intended (D2) and have not been run; Windows is not supported. A test in `doc-claims.test.ts` refuses any sentence of a user doc that names Linux or x64 without saying it was not run (or is unverified). Its twin shows that the old sentences are refused.
+- **m1, a denylist hit never prints a path.** A denylist finding is now `denylist term #N found in tree entry K (its contents, line L; path withheld)`, or `... (its path; path withheld)`, or `package entry K`, or `commit <sha> (its message or author fields, line L)`, or `the local git config`. Any other finding whose path holds a term shows the entry number in place of the path. Tests check that no output line holds the term, for a file name holding it and for a credential finding in such a file. The entry number is the file's position in the `git ls-files` listing (or the package listing).
+- **m2, every fence of a user doc has a kind.** A fence with no info string or `text` (or `crankpath-output`) is output: it needs a caption with its command and run date and a claim marker, whatever its lines say. A code fence (yaml, json, mermaid, ts, bash, ...) whose content is crankpath's output counts as output too. Two other kinds exist:
+  - `measurement`: the dated output of a measuring script. It needs its command in a code span (or the words "outside the repository") and a date, but no claim row, since a timing is not a claim a test reproduces.
+  - `illustration`: may hold no line crankpath prints.
+
+  Any other info string fails. The eight measurement fences of `docs/limits.md` are now `measurement` fences with a caption naming the script and the date. The CL-5 and CL-6 fences were already captioned and marked, and now fall under the rule by kind, not by luck. A prose count of the form `N of M <word>` needs a claim marker, or, for a count that is not a cycle id, a dated `<!-- measured YYYY-MM-DD -->` marker. B7's "one in 3 of 5" render observation carries one. CONTRIBUTING and `docs/claims.md` describe the kinds.
+- **m3, the gate and npm audit are tested.** `releaseChecks()` runs offline and in release mode on a small git repository, with a fake `npm` on PATH (via the `env` that `audit()` and `goldens()` now take):
+  - the denylist NOT RUN blocks only the release run;
+  - with a term file the denylist row is PASS;
+  - a golden that exits 2 is SKIPPED and blocks.
+
+  `audit()` is tested for PASS, FAIL (a runtime vulnerability) and NOT RUN (no answer). A term planted in a commit message is found. The reviewer's mutations each turn tests red: `blocking: false` (2 red), commits not scanned (1 red), and audit always PASS (1 red).
+- **m4, corpus licences by hash.** Each `corpus.json` gains `licenceSha256`, computed from `git show <commit>:LICENSE` in the upstream clone. The corpus test fails when a copied LICENSE differs from it; a one-word edit turns it red.
+- **m5, the census prose is backed by the record.** The real census JSON gains `byReasonKindField`, per estate and in total, for both figures (reason, source kind, and field). The field is shown only in crankpath's own field notation; any other field is counted as `other field`, so no text of an estate enters the record. The JSON was re-run twice on 2026-11-16 from the caches, byte-identical; every count is unchanged.
+  - `census-real.test.ts` checks each breakdown figure in the prose of `docs/census.md` section 5 against the record (148, 62, 28 and 29, 39, 4, 20, 3).
+  - The README now names the three largest reasons with their counts, in the record's order (148, 68, 28; claim CL-12, mapped to `census-real.test.ts`). Before, its order did not follow the counts.
+  - `docs/claims.md` says which tests hold the census record.
+- **m6, README links in the package.** The packed README's relative links (to `docs/`, BUILD-NOTES, SECURITY, CONTRIBUTING) point at files that are not in the package. npm's registry page resolves relative README links against the `repository` field (`github.com/naren-ambati/crankpath`), so they work once that repository is published with these files on its default branch; that npm behaviour was not looked up for this note. Every relative link resolves inside the repository (check-docs), so none breaks on GitHub. No change: the release round rewrites the README.
+- **n1, the census wording.** `docs/census.md` section 5 says why each figure is a floor: every unit an opaque source hides is opaque too, and units in unreadable files make only the opaque count a floor, not the share. It also says why D12 units and all source kinds disagree (pi-cluster: 62 of 62 against 78 of 378). The README says each estate ran "with only its own URL as `--repo-url`, no `crankpath.yaml` and no `--repo-alias`".
+- **n2, what ships and what is checked.** check-pack refuses a `dist/` file that is not a `.js` or `.d.ts` compiled from a source under `src/`; a planted `dist/extra-secret.txt` and a stale `dist/gone.js` both fail. `interim-reason` fails when `src/` is absent.
+- **n3** (the design workspace is tracked on `main` and would ship if the repository itself were published) is the lead's call before any publication of the repository; no change here.
+
+### Verified
+`npm run verify` on 2026-11-16, exit 0:
+```
+ Test Files  112 passed (112)
+      Tests  1983 passed | 4 skipped (1987)
+Statements   : 94.34% ( 8010/8490 )
+Branches     : 87.79% ( 5947/6774 )
+Functions    : 97.83% ( 1086/1110 )
+Lines        : 96.26% ( 6837/7102 )
+PASS     check-docs      68 Markdown files, 12 claim(s) mapped, 0 problem(s), 0 pending
+offline checks: nothing blocks
+```
+check-tree, secret-grep, check-pack and interim-reason PASS. The denylist is NOT RUN (unset). The 4 skipped tests are B7's network goldens.

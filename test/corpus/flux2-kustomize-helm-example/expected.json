@@ -1,0 +1,86 @@
+{
+  "noTools": {
+    "exit": 0,
+    "state": "ANALYSED WITH GAPS",
+    "floor": false,
+    "reasons": [
+      "opaque-sources",
+      "unresolved-items"
+    ],
+    "sourcesByKind": {
+      "Application": 0,
+      "ApplicationSet": 0,
+      "HandAppliedChart": 0,
+      "HelmRelease": 3,
+      "Kustomization": 3,
+      "KustomizeRoot": 7
+    },
+    "opaqueByReason": {
+      "tool-missing": 10,
+      "unsupported-field": 3
+    },
+    "unreadableByReason": {},
+    "skippedByReason": {},
+    "unresolvedByWhy": {
+      "conflicting-definitions": 3,
+      "invalid-reference": 6,
+      "not-defined": 3
+    },
+    "nodes": 9,
+    "edges": 5,
+    "cycles": [],
+    "statusCounts": {
+      "blocked": 0,
+      "startable": 0,
+      "unverified": 9
+    },
+    "planSteps": 0,
+    "undeployedKustomizeRoots": 7,
+    "toolMissing": {
+      "helm": 3,
+      "kustomize": 7
+    }
+  },
+  "testedPair": {
+    "exit": 0,
+    "state": "ANALYSED WITH GAPS",
+    "floor": false,
+    "reasons": [
+      "opaque-sources",
+      "unresolved-items"
+    ],
+    "sourcesByKind": {
+      "Application": 0,
+      "ApplicationSet": 0,
+      "HandAppliedChart": 0,
+      "HelmRelease": 3,
+      "Kustomization": 3,
+      "KustomizeRoot": 7
+    },
+    "opaqueByReason": {
+      "offline": 3,
+      "unsupported-field": 3
+    },
+    "unreadableByReason": {},
+    "skippedByReason": {},
+    "unresolvedByWhy": {
+      "conflicting-definitions": 3,
+      "invalid-reference": 6,
+      "not-defined": 3
+    },
+    "nodes": 9,
+    "edges": 5,
+    "cycles": [],
+    "statusCounts": {
+      "blocked": 0,
+      "startable": 0,
+      "unverified": 9
+    },
+    "planSteps": 0,
+    "undeployedKustomizeRoots": 7,
+    "toolMissing": {
+      "helm": 0,
+      "kustomize": 0
+    }
+  }
+}

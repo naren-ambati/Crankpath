@@ -1,0 +1,159 @@
+{
+  "copy": "gitops-bridge-control-plane-template",
+  "origin": "https://github.com/gitops-bridge-dev/gitops-bridge-argocd-control-plane-template",
+  "commit": "e6d355197ff3af8e6be09e1dea068dc12727a915",
+  "commitDate": "2024-05-15",
+  "fetched": "2026-11-16",
+  "licence": "Apache-2.0",
+  "licenceSha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+  "licenceCheck": "read in the upstream LICENSE at the commit on 2026-11-16: the Apache License, Version 2.0 text (without the appendix filled in); no NOTICE file upstream",
+  "shape": "Argo CD: ApplicationSets with cluster generators (gitops-bridge)",
+  "scan": {
+    "path": "repo",
+    "repoUrl": "https://github.com/gitops-bridge-dev/gitops-bridge-argocd-control-plane-template"
+  },
+  "modified": [],
+  "trimmed": "kept bootstrap/control-plane/addons/oss/, bootstrap/control-plane/clusters/, bootstrap/control-plane/exclude/ and the default values of the open-source addons under environments/default/addons/; removed the cloud-provider addons (bootstrap/control-plane/addons/aws/ and their values), the empty per-environment folders, hack/, README.md and .gitignore",
+  "kept": [
+    {
+      "path": "bootstrap/control-plane/addons/oss/addons-argo-cd-appset.yaml",
+      "sha256": "f7ee1008930ed2153d4d78e5968dac44c53a6d9c118f14b32665212ba88745ed"
+    },
+    {
+      "path": "bootstrap/control-plane/addons/oss/addons-argo-events-appset.yaml",
+      "sha256": "996936eac08caa9d436945429ada7490801b7fad69cddce4602f10a40c20fd15"
+    },
+    {
+      "path": "bootstrap/control-plane/addons/oss/addons-argo-rollouts-appset.yaml",
+      "sha256": "baf89514cb026bed529626d0f57736688d8f3c99f558c3f36c188363824b9d81"
+    },
+    {
+      "path": "bootstrap/control-plane/addons/oss/addons-argo-workflows-appset.yaml",
+      "sha256": "6590d22f1dfa1fa2b352671baba031802168981eeafb41f298819c890d8d64dc"
+    },
+    {
+      "path": "bootstrap/control-plane/addons/oss/addons-cert-manager-appset.yaml",
+      "sha256": "cf0d03113c007f3685d914a5ab14d40e10401949d4bbb773074bc6ba2b27168d"
+    },
+    {
+      "path": "bootstrap/control-plane/addons/oss/addons-cluster-proportional-autoscaler-appset.yaml",
+      "sha256": "f737684f24267391b32fa870efd073dc50a8d9deedc4fe15073531bd858cd8e8"
+    },
+    {
+      "path": "bootstrap/control-plane/addons/oss/addons-crossplane-appset.yaml",
+      "sha256": "ee2e77df2b7d758eab6a450ce7b6271cd81cdb4fc5b54c5740abf38264036b8b"
+    },
+    {
+      "path": "bootstrap/control-plane/addons/oss/addons-crossplane-helm.yaml",
+      "sha256": "6fd3d6249b228cb1fb71120d22da779cca30749a8ccba6f10963591a3b70e180"
+    },
+    {
+      "path": "bootstrap/control-plane/addons/oss/addons-crossplane-kubernetes.yaml",
+      "sha256": "99452b03855669de4dc4229f0f957dd4a3bc33c810099295421be60819032791"
+    },
+    {
+      "path": "bootstrap/control-plane/addons/oss/addons-gatekeeper-appset.yaml",
+      "sha256": "d8ba3ec15078c9ace0fa7d1c346d4b8493656454ea2351c38f17f17cae385e5a"
+    },
+    {
+      "path": "bootstrap/control-plane/addons/oss/addons-gpu-operator-appset.yaml",
+      "sha256": "6a8cd3efda46fb4fc0403ccb9ef3db91a6989190c62668347172fec1eadb2db9"
+    },
+    {
+      "path": "bootstrap/control-plane/addons/oss/addons-ingress-nginx-appset.yaml",
+      "sha256": "db3d0b1fe0626efbb9210168381e51aec8187295279fa249465d6d54b909e979"
+    },
+    {
+      "path": "bootstrap/control-plane/addons/oss/addons-keda-appset.yaml",
+      "sha256": "4ade8a2a88c7ad5a44c0703576e9bf0737daadfd4f73aa7472bc365e0a83273c"
+    },
+    {
+      "path": "bootstrap/control-plane/addons/oss/addons-kube-prometheus-stack-appset.yaml",
+      "sha256": "5cba86e9acead30ae75dfa2344b657b2749f8e3eb58c59408c8fcbc31e3d3cfb"
+    },
+    {
+      "path": "bootstrap/control-plane/addons/oss/addons-kyverno-appset.yaml",
+      "sha256": "f3433a772ede4e64490a7ddfd34d8398e0b794af0ae1eaf934a4d18cc822bf98"
+    },
+    {
+      "path": "bootstrap/control-plane/addons/oss/addons-metrics-server-appset.yaml",
+      "sha256": "04ba75e30c9a88bae38e7cb555e0aad732f7d3016b4bfc1089edb581256f4760"
+    },
+    {
+      "path": "bootstrap/control-plane/addons/oss/addons-prometheus-adapter-appset.yaml",
+      "sha256": "4d3ddf98320b923317aea8134d640c65a6daf0416187c6b60bb075a7c84b1b1c"
+    },
+    {
+      "path": "bootstrap/control-plane/addons/oss/addons-secrets-store-csi-driver-appset.yaml",
+      "sha256": "84261f66fdc00f38452fde86fc01e8fdd4745ab93a302d1181662aa6485e6686"
+    },
+    {
+      "path": "bootstrap/control-plane/addons/oss/addons-vpa-appset.yaml",
+      "sha256": "0649820e954ab89a8a79aa10986f4ede65c97203079383ad3a040ef98efc4c3e"
+    },
+    {
+      "path": "bootstrap/control-plane/clusters/clusters-appset.yaml",
+      "sha256": "dd16249695a1b72889ca2d6c96ee09093cf359257af977b6dbf8e72b259dfeff"
+    },
+    {
+      "path": "bootstrap/control-plane/exclude/bootstrap.yaml",
+      "sha256": "9a3245552d04023bacf1e69e95e47ea781a5535c4be147d91fcdc9e66c28f1b4"
+    },
+    {
+      "path": "environments/default/addons/argo-cd/values.yaml",
+      "sha256": "a498a108e2bacd24ae26e24a0700ae9ea6ebb7201d00e60f1fe02754a4f5e9be"
+    },
+    {
+      "path": "environments/default/addons/argo-rollouts/values.yaml",
+      "sha256": "d1b13cdc521a94cca090fa2f32ece009bfbebf24a464000e6ace5a910e776dd0"
+    },
+    {
+      "path": "environments/default/addons/argo-workflows/values.yaml",
+      "sha256": "f46b70898f611ab972e635171f1173278cc6603c76e8cc87bce55b4a59122bbc"
+    },
+    {
+      "path": "environments/default/addons/cert-manager/values.yaml",
+      "sha256": "d1b13cdc521a94cca090fa2f32ece009bfbebf24a464000e6ace5a910e776dd0"
+    },
+    {
+      "path": "environments/default/addons/crossplane/resources/values.yaml",
+      "sha256": "d1b13cdc521a94cca090fa2f32ece009bfbebf24a464000e6ace5a910e776dd0"
+    },
+    {
+      "path": "environments/default/addons/crossplane/values.yaml",
+      "sha256": "d1b13cdc521a94cca090fa2f32ece009bfbebf24a464000e6ace5a910e776dd0"
+    },
+    {
+      "path": "environments/default/addons/gatekeeper/values.yaml",
+      "sha256": "d1b13cdc521a94cca090fa2f32ece009bfbebf24a464000e6ace5a910e776dd0"
+    },
+    {
+      "path": "environments/default/addons/ingress-nginx/values.yaml",
+      "sha256": "d1b13cdc521a94cca090fa2f32ece009bfbebf24a464000e6ace5a910e776dd0"
+    },
+    {
+      "path": "environments/default/addons/keda/values.yaml",
+      "sha256": "d1b13cdc521a94cca090fa2f32ece009bfbebf24a464000e6ace5a910e776dd0"
+    },
+    {
+      "path": "environments/default/addons/kube-prometheus-stack/values.yaml",
+      "sha256": "d1b13cdc521a94cca090fa2f32ece009bfbebf24a464000e6ace5a910e776dd0"
+    },
+    {
+      "path": "environments/default/addons/kyverno/resources/values.yaml",
+      "sha256": "d1b13cdc521a94cca090fa2f32ece009bfbebf24a464000e6ace5a910e776dd0"
+    },
+    {
+      "path": "environments/default/addons/metrics-server/values.yaml",
+      "sha256": "d1b13cdc521a94cca090fa2f32ece009bfbebf24a464000e6ace5a910e776dd0"
+    },
+    {
+      "path": "environments/default/addons/secrets-store-csi-driver/values.yaml",
+      "sha256": "d1b13cdc521a94cca090fa2f32ece009bfbebf24a464000e6ace5a910e776dd0"
+    },
+    {
+      "path": "environments/default/addons/vpa/values.yaml",
+      "sha256": "d1b13cdc521a94cca090fa2f32ece009bfbebf24a464000e6ace5a910e776dd0"
+    }
+  ]
+}

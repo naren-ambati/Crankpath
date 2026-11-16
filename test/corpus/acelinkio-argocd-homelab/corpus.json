@@ -1,0 +1,159 @@
+{
+  "copy": "acelinkio-argocd-homelab",
+  "origin": "https://github.com/acelinkio/argocd-homelab",
+  "commit": "2f9aab023f92b6d73051bd86ec163a48a56dbe1e",
+  "commitDate": "2026-10-28",
+  "fetched": "2026-11-16",
+  "licence": "MIT",
+  "licenceSha256": "d47cbdee465184579e27eba0a7f12e9db799fbe4f27ce5cd492225283c70445b",
+  "licenceCheck": "read in the upstream LICENSE at the commit on 2026-11-16: the MIT licence text with its copyright line; no NOTICE file upstream",
+  "shape": "Argo CD homelab: Applications with Helm charts, one ApplicationSet (also a census estate, OD-26)",
+  "scan": {
+    "path": "repo",
+    "repoUrl": "https://github.com/acelinkio/argocd-homelab"
+  },
+  "modified": [],
+  "trimmed": "kept every .yaml file under pineapp/ except pineapp/1passwordconnect/; removed pineapp/'s Markdown and .temp/.tmp files, docs/, terraform/, .github/, .vscode/, README.md and .gitignore",
+  "kept": [
+    {
+      "path": "pineapp/argocd/manifest.yaml",
+      "sha256": "55d9582651caf6f01a9a0d4a6801633b2531120fef4030caec3c26205840d30e"
+    },
+    {
+      "path": "pineapp/authentik/manifest.yaml",
+      "sha256": "87548c7bb0228e0f58d99fbb2d289550781c50505254d629ed107d959c7961d6"
+    },
+    {
+      "path": "pineapp/cert-manager/manifest.yaml",
+      "sha256": "01ce7290fd413de09aae63b278bcfe4aad107f8f2a2ec23266adf835fea14049"
+    },
+    {
+      "path": "pineapp/certificate/manifest.yaml",
+      "sha256": "cd246f997095034b828b7c7ec980c703737e9cebdc0b5929a0693a6a810fd332"
+    },
+    {
+      "path": "pineapp/clickhouse-operator/manifest.yaml",
+      "sha256": "4b03959b45d6698fa5e532bf0b701545a306777ce9ba21bc6057b28335275f11"
+    },
+    {
+      "path": "pineapp/crossplane-system/manifest.yaml",
+      "sha256": "e87078a8c91110d04b1be3626806c34e6ef38614c1f7a93eda868e04a883467e"
+    },
+    {
+      "path": "pineapp/cyberchef/manifest.yaml",
+      "sha256": "b80e7cf2c94429e11de822c9851d7b375d821acbed5b0f7e50e50ce95c0c6cac"
+    },
+    {
+      "path": "pineapp/envoy-gateway/manifest.yaml",
+      "sha256": "7ff610ed5d1e3ad02b3b78d9800edc6212904040a174be8333dc6a2b56763666"
+    },
+    {
+      "path": "pineapp/external-dns/manifest.yaml",
+      "sha256": "4b6c1fc867ea984ede795633bc18d952e1c28ea94617f4b442564037901f02e2"
+    },
+    {
+      "path": "pineapp/external-secrets/manifest.yaml",
+      "sha256": "b2a049105020fa411c8c1301da18294208b840ab973453efd47c2360c16649d8"
+    },
+    {
+      "path": "pineapp/gateway/manifest.yaml",
+      "sha256": "829b3866e3c609f2a4fa302a04c58bcbacf05079116e96bfe0abf23d64e6b22b"
+    },
+    {
+      "path": "pineapp/grafana-operator/manifest.yaml",
+      "sha256": "12802e1a4c520fb0dce4badabc06aea304abc018c6c5681a580b8073e160a612"
+    },
+    {
+      "path": "pineapp/jellyfin/wip.yaml",
+      "sha256": "bb288c1dbee4d8371431c3e70e81710b637df96f0f4a2e6ece6f4afeb7dedca5"
+    },
+    {
+      "path": "pineapp/komga/manifest.yaml",
+      "sha256": "2150348a512cda7d94b5f4b384ebae1132ff43ba391c8f53cea2df5f79af8e48"
+    },
+    {
+      "path": "pineapp/kube-system/manifest.yaml",
+      "sha256": "940c558330416c0a08d869e010a3ffcbf4d207d94cf28a2b2e3cede6081d0b74"
+    },
+    {
+      "path": "pineapp/kyoo-dev/manifest.yaml",
+      "sha256": "2fa128db6b051db3559483a060c65ba2a10f928f72a33cec96bef91ad59b26a0"
+    },
+    {
+      "path": "pineapp/kyoo/manifest.yaml",
+      "sha256": "236d50874b977715e3c12e60e9ac6c96bcd41af8781fe55bf735b49d2b503b78"
+    },
+    {
+      "path": "pineapp/longhorn-system/manifest.yaml",
+      "sha256": "c09b729cbd79b502ab456cb42eb43e844bb9ee0a3c32229b603d316455b30982"
+    },
+    {
+      "path": "pineapp/mailpit/manifest.yaml",
+      "sha256": "8ff8ad20b277927241f6e0f6412f68b202d70e8f9c7217995628d4dea5c81f5c"
+    },
+    {
+      "path": "pineapp/manyfold/manifest.yaml",
+      "sha256": "57fe8d428ca6f94e56abc288457a9aa3692ac667f22a0fc20f427c7f8d666097"
+    },
+    {
+      "path": "pineapp/matrix/graveyard.yaml",
+      "sha256": "2e07faf44bad1126a51d7dfe6baf1b62bf8f3190c367f3bf2325841aa1df5575"
+    },
+    {
+      "path": "pineapp/mealie/manifest.yaml",
+      "sha256": "730e555ff1a758f1a5418767737d2d5369dd6c30d0c1189e9e8ca8dbe3448975"
+    },
+    {
+      "path": "pineapp/miniflux/manifest.yaml",
+      "sha256": "ea84bdc7026f1d37ac9a36bc1f7f5bb2bf0483c0b628d798af0d47aa1204242b"
+    },
+    {
+      "path": "pineapp/observability/graveyard.yaml",
+      "sha256": "438796a848c4aa3b893e40de7fe145a286a48f3bfaa4ce9fcf4881bf744edea8"
+    },
+    {
+      "path": "pineapp/observability/manifest.yaml",
+      "sha256": "00ac5afb4d0af4d4891769180900fb7c28054f8c1eaf0ceb29a98db52e179998"
+    },
+    {
+      "path": "pineapp/opentelemetry-operator/manifest.yaml",
+      "sha256": "7fae8da2486776d51c826f66b4e8ac99bcd56a45e3a39201e8bedc57533b9649"
+    },
+    {
+      "path": "pineapp/postgres-operator/manifest.yaml",
+      "sha256": "920cef2d4e280b528bd3ea9ffb71719d7ac39c4565cb450da8791d496a72cb4c"
+    },
+    {
+      "path": "pineapp/postgres/manifest.yaml",
+      "sha256": "b37e42f2a98d6d9e744948db1416ca179b74dec54d04bdd315f1989d760ff836"
+    },
+    {
+      "path": "pineapp/reloader/manifest.yaml",
+      "sha256": "2c90d86d0ab4c2380725285895c3d08a6e12b687f674b634e6a92c91f90788a7"
+    },
+    {
+      "path": "pineapp/ryot/manifest.yaml",
+      "sha256": "b0c98f9e3841f5ceb288c4aa0c6511751e9a24f0e34611f205141cede6c47eb9"
+    },
+    {
+      "path": "pineapp/test-zone/manifest.yaml",
+      "sha256": "66b97579cfcb546eee625c9be21653d089e594ad566b99b806719675bade26bd"
+    },
+    {
+      "path": "pineapp/tf-workspace/manifest.yaml",
+      "sha256": "5098e97c0f66385295ec98e2a41e25eb91752b7596887f7093caa8d11a823ffb"
+    },
+    {
+      "path": "pineapp/traefik/graveyard.yaml",
+      "sha256": "597c2b45222195aa03efb549bdf14fc4b8ae83f6fee7cf14cfaaf273a85cf383"
+    },
+    {
+      "path": "pineapp/vikunja/manifest.yaml",
+      "sha256": "cda507b398ba49abeb243b4b9dcfe05cb09d24715b725b826628d0fe16f31fb8"
+    },
+    {
+      "path": "pineapp/zot/manifest.yaml",
+      "sha256": "629c620e6295971cd515abbf615ffe04e1ff9383f4ad5d2d3b9280e7cb6d6245"
+    }
+  ]
+}

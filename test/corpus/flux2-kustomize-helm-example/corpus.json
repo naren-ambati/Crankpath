@@ -1,0 +1,123 @@
+{
+  "copy": "flux2-kustomize-helm-example",
+  "origin": "https://github.com/fluxcd/flux2-kustomize-helm-example",
+  "commit": "4f1a5b1051b469108d1bdf0ebec6c814427e3834",
+  "commitDate": "2026-07-08",
+  "fetched": "2026-11-16",
+  "licence": "Apache-2.0",
+  "licenceSha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+  "licenceCheck": "read in the upstream LICENSE at the commit on 2026-11-16: the Apache License, Version 2.0 text (without the appendix filled in); no NOTICE file upstream",
+  "shape": "Flux: Kustomizations, HelmReleases, Kustomize roots (staging and production overlays)",
+  "scan": {
+    "path": "repo",
+    "repoUrl": "https://github.com/fluxcd/flux2-kustomize-helm-example"
+  },
+  "modified": [],
+  "trimmed": "kept apps/, clusters/ and infrastructure/ whole; removed README.md, LICENSE (copied beside the copy, unchanged), .github/, scripts/, .gitignore, .sourceignore and .fluxschema.yml (CI, docs and tool configuration, no GitOps objects)",
+  "kept": [
+    {
+      "path": "apps/base/podinfo/kustomization.yaml",
+      "sha256": "6b978df80186e03e379260e8704000809117d3cb9b3a1da0e059f0fa00a52303"
+    },
+    {
+      "path": "apps/base/podinfo/namespace.yaml",
+      "sha256": "c5b9c744a748c623b498a9aed35f9f0ba23686132ddc74c90a594c06907e54f3"
+    },
+    {
+      "path": "apps/base/podinfo/release.yaml",
+      "sha256": "fc48beb0d3ce478a3489c8c1cbf1c3a4cdeb7360fcf1d6de0f8f3bc4feabd246"
+    },
+    {
+      "path": "apps/base/podinfo/repository.yaml",
+      "sha256": "066e8ff449d657ac2232cc2d814466adeddd94e9196a1b192906f11cccc2a2b0"
+    },
+    {
+      "path": "apps/production/kustomization.yaml",
+      "sha256": "1bfdce02bfa2ebc0f6a7b50dff984de20556ceceb89fb4db04011dd82d61edc3"
+    },
+    {
+      "path": "apps/production/podinfo-values.yaml",
+      "sha256": "2c0276fc4c2cb595ccb29f45436b9034524b94f97890a02cef1281f5470536e5"
+    },
+    {
+      "path": "apps/staging/kustomization.yaml",
+      "sha256": "1bfdce02bfa2ebc0f6a7b50dff984de20556ceceb89fb4db04011dd82d61edc3"
+    },
+    {
+      "path": "apps/staging/podinfo-values.yaml",
+      "sha256": "30d496e8c1ff931fd7e29ec7dd63bd93c71dbc550eb76dd8cfd7f3bb42ff6c4d"
+    },
+    {
+      "path": "clusters/production/apps.yaml",
+      "sha256": "d64a4cba21e3332baa3abb923c6a807bae1cae32bb8cdd655964e10e0a9cfcb5"
+    },
+    {
+      "path": "clusters/production/artifacts.yaml",
+      "sha256": "ad591b84b62f38ffef2729d72f1ad31798d9b5add9b60066033cb142d05cef9f"
+    },
+    {
+      "path": "clusters/production/flux-system/gotk-components.yaml",
+      "sha256": "469e70a3e9bef64e5f7e5ed418477f8286865034292905c44a9489127c7e6a62"
+    },
+    {
+      "path": "clusters/production/flux-system/gotk-sync.yaml",
+      "sha256": "469e70a3e9bef64e5f7e5ed418477f8286865034292905c44a9489127c7e6a62"
+    },
+    {
+      "path": "clusters/production/flux-system/kustomization.yaml",
+      "sha256": "267201f1191abfa1b487a8a996c56428ec7adac53896f0f15a9c179a852b6526"
+    },
+    {
+      "path": "clusters/production/infrastructure.yaml",
+      "sha256": "3b21cdc5077c50b94018e9fc5ae7b0ead711d0b799a128c60bfcc815459f8e5e"
+    },
+    {
+      "path": "clusters/staging/apps.yaml",
+      "sha256": "09150754a2774cc9d72001a42436ce01a16f8130f5c18cb1fa3e7447c3220bca"
+    },
+    {
+      "path": "clusters/staging/artifacts.yaml",
+      "sha256": "0239195168c7e6b7a7fbdbb0bc39fe5891dff7dda328c99335616f802a7c3e45"
+    },
+    {
+      "path": "clusters/staging/flux-system/gotk-components.yaml",
+      "sha256": "469e70a3e9bef64e5f7e5ed418477f8286865034292905c44a9489127c7e6a62"
+    },
+    {
+      "path": "clusters/staging/flux-system/gotk-sync.yaml",
+      "sha256": "469e70a3e9bef64e5f7e5ed418477f8286865034292905c44a9489127c7e6a62"
+    },
+    {
+      "path": "clusters/staging/flux-system/kustomization.yaml",
+      "sha256": "267201f1191abfa1b487a8a996c56428ec7adac53896f0f15a9c179a852b6526"
+    },
+    {
+      "path": "clusters/staging/infrastructure.yaml",
+      "sha256": "aab1ad922b8fe9a75f1483190b0fd1a4656278c93fcab9bd6dda26479cdfe846"
+    },
+    {
+      "path": "infrastructure/configs/cluster-issuers.yaml",
+      "sha256": "97d62e3aeda6f5631f64d082e43cf0afd4bba738aaec10dc9a95eebc15079565"
+    },
+    {
+      "path": "infrastructure/configs/gateway.yaml",
+      "sha256": "82adc3219008a4b0c4005a476ba0de00a73d9a8ce7a6e6fd646727d2fe8e6772"
+    },
+    {
+      "path": "infrastructure/configs/kustomization.yaml",
+      "sha256": "a4aed3667a489cea35c3784da4a27206ea24621fa9b7407fc8c4ca88595d8357"
+    },
+    {
+      "path": "infrastructure/controllers/cert-manager.yaml",
+      "sha256": "4b052bd717e8fd8a4404be3934b4f6d570c9519031571bb4c05e5bfbeee364cd"
+    },
+    {
+      "path": "infrastructure/controllers/envoy-gateway.yaml",
+      "sha256": "b8e25cfb1f8472b823054fcb5aefda64136f4a0b523eb9dd4540ab8ac1588c1e"
+    },
+    {
+      "path": "infrastructure/controllers/kustomization.yaml",
+      "sha256": "ca27c6dc6006cfc64913309afe198573df7e8c5dacb7cf405f2c2398cbe85c5d"
+    }
+  ]
+}

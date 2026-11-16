@@ -1,6 +1,6 @@
 # Day-1 census (D12, OD-19, OD-26): the opaque share of five public estates
 
-This file is the census record. Its first two sections, the five estates and the classifier's rules, were written and committed before the first count (BR11.18, OD-26) and are kept as written. The independent review of B0 then found that the rules were not conservative in six cases and that the label `static upper bound` was not earned; section 2a lists the rule amendments made after the review, as such, and section 3 gives the result of re-running the amended rules on the same five estates at the same commits. Section 4 keeps the first count, now superseded.
+This file is the census record. Its first two sections, the five estates and the classifier's rules, were written and committed before the first count (BR11.18, OD-26) and are kept as written. The independent review of B0 then found that the rules were not conservative in six cases and that the label `static upper bound` was not earned; section 2a lists the rule amendments made after the review, as such, and section 3 gives the result of re-running the amended rules on the same five estates at the same commits. Section 4 keeps the first count, now superseded. Section 5 is the census re-run with real discovery (B9, OD-19), side by side with the static estimate.
 
 ## 1. The five estates (OD-26 record)
 
@@ -142,3 +142,42 @@ What D12 was said to make of it then: The total is over one third, so:
 - the README must state opacity first, before the two homelab cycles (the release round rewrites the README; recorded for the owner in `BUILD-NOTES.md`);
 - the owner picks the v1.1 item for the top reason: `cluster-created-values` maps to the v1.1 item "values held in encrypted or cluster-created Secrets" (here: Flux `postBuild.substituteFrom` naming a Secret created outside the repository); the second reason, `cluster-inputs-missing`, maps to "ApplicationSet cluster generators without a `clusters:` block" (the MVP's `clusters:` block is the planned answer for it);
 - B1 proceeds either way.
+
+## 5. The census with real discovery (B9, OD-19)
+
+Run on 2026-11-16 (Node 22.23.2, helm v4.3.2, kustomize v5.8.1, macOS arm64, with the network) by the built crankpath itself, over the same five checkouts (verified at the recorded commits; a checkout at any other commit is refused):
+
+```
+npm run build && node scripts/census-real.mjs --out docs/census-2026-11-16-real.json
+```
+
+A second run from the same caches, and a third under `LANG=de_DE.UTF-8 LC_ALL=de_DE.UTF-8`, wrote byte-identical JSON (`cmp`). The committed result is `docs/census-2026-11-16-real.json`, labelled `real-discovery`; every figure below is copied from it. crankpath ran with no `crankpath.yaml` of its own and no `--repo-alias`: each estate as it is published, with only its own URL.
+
+Two figures per estate, both against the one-third threshold of D12:
+
+- **D12 units** (the census's own denominator, OD-19): Applications (the ones crankpath generated from ApplicationSets included) and HelmReleases, plus each ApplicationSet or Flux Kustomization crankpath could not expand or read, counted once, since it stands for the Applications or HelmReleases it would have given. Counting it once makes the figure a floor (`at least`).
+- **All source kinds** (crankpath's own opacity line, FR4.4): every Application, ApplicationSet, Flux Kustomization, HelmRelease and Kustomize root.
+
+| Estate | Commit | Static estimate (section 3) | Real discovery, D12 units | Against one third | Real reasons (D12 units) | Real discovery, all source kinds |
+|---|---|---|---|---|---|---|
+| gitops-bridge-dev/gitops-bridge | cac900a2 | at least 29 of 29 (1) | at least 6 of 6 (1) | over one third | cluster-inputs-missing 4, unreadable-repo 2 | at least 6 of 6 (1) |
+| mortennordbye/homelab | d1f07bae | at least 1 of 2 (0.5) | at least 30 of 40 (0.75) | over one third | unsupported-field 29, unsupported-template 1 | at least 60 of 104 (0.5769) |
+| acelinkio/argocd-homelab | 2f9aab02 | at least 4 of 25 (0.16) | at least 4 of 25 (0.16) | not established (at or under one third of what was counted, a floor) | unsupported-field 3, unreadable-repo 1 | at least 4 of 25 (0.16) |
+| ricsanfre/pi-cluster | adf08ec2 | at least 32 of 36 (0.8889) | at least 62 of 62 (1) | over one third | unreadable-repo 62 | at least 78 of 378 (0.2063) |
+| niki-on-github/nixos-k3s | 9318b97b | at least 110 of 122 (0.9016) | at least 166 of 178 (0.9326) | over one third | unsupported-field 156, unreadable-repo 6, cluster-created-values 3, render-failed 1 | at least 168 of 326 (0.5153) |
+
+Why each figure is a floor, and why the two can disagree. A unit crankpath could not expand or read (an ApplicationSet, a Flux Kustomization) is counted once and is opaque; every unit it hides sits behind an opaque source and is opaque too, so adding the hidden units would raise the opaque count and the total by the same number, and a share over one third would stay over it. Units in files crankpath could not read at all are not counted, and could be either; for those, only the opaque count is a floor, not the share. The two figures count different things: D12 units count only Applications, HelmReleases and the sources that stand for them, while all source kinds also count every Kustomize root, which crankpath builds on its own whether or not anything deploys it. pi-cluster shows the difference: its 62 Flux Kustomizations are all unreadable (62 of 62 D12 units, over one third), while its 316 Kustomize roots are mostly readable, which brings the all-kinds share down to 0.2063; with the floor, that is not established either way.
+
+**Total with real discovery: at least 268 of 311 D12 units are opaque, 0.8617, over one third** (static estimate: at least 176 of 214, 0.8224). Over all source kinds, crankpath's own opacity line: at least 316 of 839 sources, 0.3766, over one third. Every run's status is `ANALYSED WITH GAPS`, and every figure is a floor.
+
+Top reasons over the five (D12 units): unsupported-field 188, unreadable-repo 71, cluster-inputs-missing 4, cluster-created-values 3, render-failed 1, unsupported-template 1. Over all source kinds: unsupported-field 218, unreadable-repo 71, remote-base 10, unreadable-file 7, cluster-inputs-missing 4, cluster-created-values 3, render-failed 2, unsupported-template 1.
+
+What changed from the static estimate, and why:
+- **Kustomize patches and patched-in `postBuild` blocks are no longer guessed at.** The static rules made 32 pi-cluster HelmReleases and 29 nixos-k3s sources opaque because a static reading cannot apply a patch; crankpath renders kustomize, so those rules are gone. The real count finds other, larger walls instead.
+- **Flux sources that are not a GitRepository.** 148 of nixos-k3s's Kustomizations read from a source kind other than `GitRepository` (`spec.sourceRef.kind`), which crankpath does not read: `unsupported-field`. This is now the largest single reason.
+- **A bootstrap-created GitRepository.** All 62 of pi-cluster's Kustomizations name the `flux-system` GitRepository, which the Flux bootstrap creates in the cluster and the repository does not define: `unreadable-repo`. The HelmReleases they hold (the static estimate found them in the files) are behind them and uncounted, so pi-cluster's D12 figure is the 62 Kustomizations, each counted once.
+- **Helm inflation in kustomize.** 28 of mortennordbye/homelab's generated Applications (and 29 Kustomize roots) use kustomize `helmCharts`, which crankpath never enables: `unsupported-field`. The static count saw 2 units there, because it did not expand the `git` generators; crankpath generated 39 Applications from them.
+- **ApplicationSets are counted once each, not once per generator.** gitops-bridge's 4 cluster-generator ApplicationSets are `cluster-inputs-missing` (no `clusters:` block) and count 4 units; the static estimate counted its 24 generators.
+- **The cluster-created values shrank, because what held them is now unread.** crankpath reached 20 of nixos-k3s's HelmReleases (the static estimate counted 122 units there): most sit behind the Kustomizations of the source-kind wall above, so their values are never looked at. The static estimate's 81 `cluster-created-values` were among those (not checked one by one); 3 HelmReleases with values from a ConfigMap the repository does not define remain.
+
+**What D12 makes of it.** With real discovery the share is still over one third in total, by D12 units and by all source kinds alike; by D12 units four of the five estates are over it (acelinkio/argocd-homelab is not established), by all source kinds three (pi-cluster and acelinkio are not established). The README states opacity first. The top reasons have changed: the owner's v1.1 pick should now weigh Flux sources other than `GitRepository` and Helm inflation in kustomize (both `unsupported-field`) and bootstrap-created GitRepositories (`unreadable-repo`, which a crank or a declared mapping can answer), not the cluster-created Secrets the static estimate put first. D12 stays a scope decision, not a stop.
