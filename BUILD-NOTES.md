@@ -2595,3 +2595,16 @@ Each fix that involves code has a test that was seen failing first.
 2. Create `CRANKPATH_DENYLIST_FILE` outside the repository and run `npm run release:check` until it passes.
 3. Re-check that the npm name `crankpath` and the GitHub name are free.
 4. Push, only when you say go: the coordinator removes the design workspace kept in the local history (as for the sibling project), then from the checkout, create an empty repository at github.com/naren-ambati/crankpath, `git remote add origin https://github.com/naren-ambati/crankpath.git` and `git push -u origin main` (main only; the local `bolt/*` and `release/*` branches hold design-workspace files and unredacted review text and must never be pushed). Then follow `docs/release-checklist.md` (private vulnerability reporting, the golden and live lanes on a machine with helm and network, the tag and publish).
+
+## Publish preparation (2026-11-16)
+
+Before the first push, as for the owner's sibling project mel-check:
+
+- **The design tool's workspace left the tree and the history.** Its agent, stage and hook files, the design records and the bootstrap note were development tooling, not something users need, and the owner wants none of it published. The decisions, vision and technical environment the design rested on are `docs/design/` (plain copies). The design workspace itself is kept by the owner outside the repository.
+- **History rewritten once** with git filter-repo: the three commits that touched only the removed files are gone (19 commits became 16); every commit is by naren-ambati. Older hashes quoted in this file map to the current ones through `docs/history/commit-map.txt`.
+- **Scan before the push:** the tree, every commit message and the whole history for the owner's employer name, personal home path, machine hostname and e-mail: 0 hits outside the removed workspace.
+- **Verified from a fresh clone of the rewritten history** (a different parent folder, `npm ci --ignore-scripts`, helm v4.3.2, kustomize v5.8.1), 2026-11-16:
+  - `npm run verify`: exit 0; 2053 tests passed, 4 skipped (the goldens, run by their own lane); release checks in verify mode 7 passed, 3 not run by design.
+  - `npm run verify:golden`: 19 passed, 0 failed, 0 skipped.
+  - `npm run release:check` with the owner's denylist supplied through `CRANKPATH_DENYLIST_FILE` (kept outside the repository): 10 passed, 0 failed, 0 not run; the denylist check covered files, names, all 16 commits and the git config.
+- Pushed as `main` only; the local `bolt/*` and `release/*` branches stay local. Nothing is on npm; the release workflow runs only on a pushed `v*` tag (`docs/release-checklist.md`).

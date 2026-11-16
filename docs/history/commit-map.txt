@@ -1,0 +1,27 @@
+# Commit map for the history rewrite of 2026-11-16
+#
+# Before the first push the design workspace (its tool files, design records and bootstrap note)
+# was removed from every commit with git filter-repo. Older hashes quoted in BUILD-NOTES.md and
+# docs/ are the left column; the right column is the commit in the published history. "pruned"
+# marks a commit that touched only removed files.
+#
+# old      new
+0a2e47979  5123ec4db
+1df4b0a1c  421b21902
+23e6f95d3  726381e1e
+25fede261  4e06494cb
+3eda7492e  pruned  Independent review of the design design: fix 13 Major findings, add OD
+76c5feaaa  58e6803c6
+7ee652fb6  9f6fd39ed
+82c9a27e1  6b7952c82
+8aba0871a  7651c5531
+955014ceb  f50894cad
+ad0a19c2c  b346e5ff3
+b735eb6f1  eeee7d33b
+b7ae93db5  66ae135dc
+c2f501e05  pruned  Pre-load design answers: standing answers, project rules and team prac
+c7cb222ee  163a172bb
+d48991a0a  1c3f0f79c
+d4901b298  pruned  Add complete design design for crankpath v0.1 (design only)
+df1724c7d  dfa2c21a5
+ede1900b9  60bba292e
