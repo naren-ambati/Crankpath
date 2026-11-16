@@ -1227,3 +1227,27 @@ Tests written first: `test/u8-output/review-b6-pass2.test.ts` and `test/u9-cli-p
 ### What changes in meaning
 - A kustomization or configuration file with any YAML tag or directive, or with an escaped or multi-line quoted or plain scalar, is `unsupported-field` before kustomize runs. Before, it was judged on the reader's values, and kustomize could decode a tagged value into a URL and fetch it.
 - The configuration-file refusal's detail is new (one sentence for URLs and paths).
+
+## Lead decisions and process (2026-11-15, build lead on Opus 5.5)
+
+The owner was away for the whole build; every point below was decided by the lead for the owner, following the design's recommendation where it has one, and is listed again in "State for the owner".
+
+**Process.**
+- The local default branch was renamed from `master` to `main` (no history change), because the brief and the push steps name `main`.
+- Bolts ran in parallel where the unit graph allows, one builder per bolt in its own worktree and one reviewer per pass: B1 started on B0's unmerged tip, and B2, B4 and B5 started together on B1's unmerged tip; each merged `main` into its branch before its squash-merge. Builders were Opus 5.5, reviewers Sonnet 5.5. Integration order on `main`: B0, B1, B4, then B2 and B5.
+- Review passes: B0 three, B1 three, B4 three, B2 and B5 two each before merge (each further pass was run because a fix changed what a result means). Every Major and Minor finding was fixed with a regression test seen failing first, or recorded with a reason.
+
+**Decisions taken for the owner.**
+- OD-26, the five census estates: chosen by a rule written before any count (most-starred permissive, non-archived Flux or Argo CD estates outside the research's six, one gitops-bridge with `$values`): gitops-bridge-dev/gitops-bridge, mortennordbye/homelab, acelinkio/argocd-homelab, ricsanfre/pi-cluster, niki-on-github/nixos-k3s (commits and reasons in `docs/census.md`). Owner to confirm or replace.
+- D12: the static estimate is over one third (at least 176 of 214 counted units, 0.8224), so the README states opacity first; the v1.1 item to pull forward for the top reason (values from cluster-created or encrypted Secrets) is the owner's pick, recommended as the census's top reason.
+- OD-13: Homebrew offered helm v4.3.2 on 2026-11-15, not the design's v4.3.1; the tested pair is helm v4.3.2 with kustomize v5.8.1.
+- m11: the homelab golden's committed expected output holds node ids and counts only; nothing else from the GPL-3.0 repository is committed.
+- OD-28: the release check reads `CRANKPATH_DENYLIST_FILE`; unset it prints NOT RUN and the release mode fails; the owner supplies the file.
+- OD-10: the `repos: {fetch: true}` form is kept (the recommendation).
+- Every other open decision OD-1 to OD-30 follows its recommendation.
+- Declared facts and the run status: a declared fact that changes the extracted graph (a `match:` override, a declared edge) is a gap; externals declared available, `served_by` and cranks are plan assumptions that are always listed but are not gaps by themselves (BR1.10's three counts stay the definition of a gap).
+- Argo CD's control-plane namespace is derived from the estate (exact install-object names, corroborated by the Applications' namespace) or assumed from the Applications' common namespace, and always listed; credentials elsewhere make no edge.
+- Hosts that could be in-cluster are unresolved items, never externals; a two-label host is external only when its last label is a delegated top-level domain in the dated IANA root-zone list.
+- Memory: one heap figure (the default V8 heap of the smallest hosted runner) is the only budget; per-file and per-render parse transients are charged before parsing, held costs after; every refusal is a counted `limit` and makes counts a floor.
+
+**Progress (lead, 2026-11-16, after a quota stop).** On `main`: B0, B1, B4, B5, B6, B2. In flight: B3 (fixes and integration with B2 done at 9d1de5c; second review pass to re-run), B8 (second pass fixes interrupted mid-work; resumed), B7 (Vault goldens observed with real helm, reviewed by the lead for the owner and pinned at 0b3ebbc; the homelab golden waits for B3 and for the `render:<path>` hand-applied-root rule below). Lead decision for B7 (homelab): at 8b9d40f nothing in the estate deploys `system/argocd`, whose chart renders the root ApplicationSet, so without a crank the run is NOTHING ANALYSED; following FR7.4, a `creates: render:<path>` crank names a chart or Kustomize directory applied by hand at bootstrap, crankpath renders it as a hand-applied root and graphs what it leads to; undeployed chart and Kustomize directories are listed with that suggestion, never graphed without a crank. The research's uncranked homelab expectation was a hand trace that rendered `system/argocd` by hand. The B8 gap rule is per item: any head gap item absent from the base makes the Action NOT_CHECKED.
