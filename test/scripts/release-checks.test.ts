@@ -165,6 +165,15 @@ describe("releaseChecks, the gate npm run release:check runs (review m3)", () =>
     expect(verdictLine(release.results, true)).toContain("denylist NOT RUN");
   });
 
+  it("runs check-images and check-examples as blocking rows: a tree without examples fails the offline run", () => {
+    const root = repo();
+    const offline = releaseChecks({ root, env: { PATH: PATH_WITH(fakeNpm()) } });
+    expect(row(offline, "check-images")).toMatchObject({ result: "PASS", blocking: true });
+    expect(row(offline, "check-examples")).toMatchObject({ result: "FAIL", blocking: true });
+    expect(offline.ok).toBe(false);
+    expect(verdictLine(offline.results, false)).toContain("check-examples FAIL");
+  });
+
   it("passes the denylist row when a term file is given and no term is found, and blocks a skipped golden", () => {
     const root = repo();
     const dir = fakeNpm();

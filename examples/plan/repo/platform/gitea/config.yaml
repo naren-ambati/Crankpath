@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gitea-config
+  namespace: gitea
+data:
+  APP_NAME: example
+---
+# Secret data is discarded when read: this value never appears in any output.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: gitea-admin
+  namespace: gitea
+type: Opaque
+stringData:
+  password: example-value-never-printed

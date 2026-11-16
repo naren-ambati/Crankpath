@@ -1,0 +1,23 @@
+{
+ "id": "homelab-golden",
+ "title": "khuedoan/homelab at 8b9d40f, ids and counts only",
+ "caption": "The golden lane's pinned reduced output (node ids and counts only; no text of the GPL-3.0 repository): without a crank NOTHING ANALYSED, with the bootstrap crank one component of 12 nodes and 22 edges holding both cycles, cranked.",
+ "alt": "Two terminal commands printing parts of the golden lane's reduced JSON: the uncranked homelab golden is NOTHING ANALYSED with 31 chart directories undeployed; the cranked golden has one cycle c-35843cd4, cranked, was extracted, with its 12 node ids and edge count 22",
+ "version": "0.1.0",
+ "capturedAt": "2026-11-16T21:43:02.565Z",
+ "load": "15:43  up 2 days,  4:56, 2 users, load averages: 1.51 9.71 12.23",
+ "commands": [
+  {
+   "command": "cat test/golden/homelab/expected.json | sed -n -e '/\"state\"/p' -e '/\"undeployed\"/,/}/p'",
+   "exit": 0,
+   "seconds": 0.01,
+   "output": "    \"state\": \"NOTHING ANALYSED\",\n  \"undeployed\": {\n    \"charts\": 31,\n    \"kustomizeRoots\": 0\n  },\n"
+  },
+  {
+   "command": "cat test/golden/homelab-cranked/expected.json | sed -n -e '/\"state\"/p' -e '/^  \"cycles\": \\[/,/^  \\],/p' | sed -e '/\"edges\": \\[/,/^      \\],/d'",
+   "exit": 0,
+   "seconds": 0.01,
+   "output": "    \"state\": \"ANALYSED WITH GAPS\",\n  \"cycles\": [\n    {\n      \"id\": \"c-35843cd4\",\n      \"label\": \"cranked\",\n      \"labelBeforeCranks\": \"extracted\",\n      \"nodes\": [\n        \"Application/argocd/argocd\",\n        \"Application/argocd/gitea\",\n        \"Application/argocd/global-secrets\",\n        \"ApplicationSet/argocd/root\",\n        \"ClusterSecretStore/global-secrets\",\n        \"Deployment/gitea/gitea\",\n        \"ExternalSecret/gitea/gitea-admin-secret\",\n        \"Secret/gitea/gitea\",\n        \"Secret/gitea/gitea-admin-secret\",\n        \"Secret/gitea/gitea-init\",\n        \"Secret/gitea/gitea-inline-config\",\n        \"Service/gitea/gitea-http\"\n      ],\n      \"edgeCount\": 22,\n      \"crankedBy\": [\n        \"crank:1\"\n      ],\n      \"introducedBy\": []\n    }\n  ],\n"
+  }
+ ]
+}

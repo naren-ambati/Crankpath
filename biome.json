@@ -6,6 +6,7 @@
       "test/**",
       "scripts/**",
       "action/**",
+      "docs/images/*.mjs",
       "vitest.config.ts",
       "!test/fixtures",
       "!test/corpus",

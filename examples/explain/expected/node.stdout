@@ -1,0 +1,32 @@
+crankpath 0.1.0 explain: "Application/argocd/notes"
+scanned: repo "http://gitea-http.gitea:3000/ops/thin-slice" (from --repo-url)
+    commit: not read in this build  floating: no
+Run status: ANALYSED
+
+node Application "argocd/notes"
+  read from: file: "apps/notes.yaml"  document: 1  read directly from the
+      repository
+  status: blocked  reason: cycle  1 blocker: cycle c-d8197e7d  via
+      Service "gitea/gitea-http"
+  on a cycle: no
+  dependencies: 1 edge, each with where it was read:
+    edge 1 of 1  Application "argocd/notes" reads source from
+        Service "gitea/gitea-http"  (reads-source, extracted)
+      file: "apps/notes.yaml"  line: not recorded
+      field: "spec.source.repoURL"
+      rendered path: "apps/notes.yaml#1"
+  dependents: 1 edge
+    ConfigMap "notes/notes" deployed by it  (deployed-by, extracted)
+  unresolved items on it: 0
+  self-management: none named (it is on no cycle)
+  plan: not ordered (blocked or unverified)
+
+Assumed, not verified by crankpath: 0 externals declared available; 0 externals
+    served by an in-estate node; 0 cranks (documented); 0 match entries; 0
+    objects every cluster provides; and the 5 not-modelled items below. Every
+    start step is relative to these and to the edges read.
+Not modelled (5 items): a running Argo CD or Flux controller is assumed;
+    dependencies only visible at runtime are not seen; the content of opaque
+    nodes is not seen; the revision each Application names is taken to be the
+    files as read; repository credentials not defined in the estate are not
+    seen.

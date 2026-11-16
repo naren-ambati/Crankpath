@@ -1,0 +1,69 @@
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: selfsigned
+  namespace: wiki
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: wiki-tls
+  namespace: wiki
+spec:
+  secretName: wiki-tls
+  dnsNames:
+    - wiki.example.org
+  issuerRef:
+    name: selfsigned
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: wiki-config
+  namespace: wiki
+data:
+  SITE_NAME: example wiki
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wiki
+  namespace: wiki
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: wiki
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: wiki
+    spec:
+      containers:
+        - name: wiki
+          image: example.org/images/wiki:1.0
+          envFrom:
+            - configMapRef:
+                name: wiki-config
+          volumeMounts:
+            - name: tls
+              mountPath: /tls
+      volumes:
+        - name: tls
+          secret:
+            secretName: wiki-tls
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: wiki
+  namespace: wiki
+spec:
+  selector:
+    app.kubernetes.io/name: wiki
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8080

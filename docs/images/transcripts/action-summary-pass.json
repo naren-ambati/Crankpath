@@ -1,0 +1,18 @@
+{
+ "id": "action-summary-pass",
+ "title": "The Action on a pull request that adds no cycle",
+ "caption": "The same harness on its unrelated-change fixture: NO_NEW_CYCLES_FOUND, which says it is not a pass and why. Not a run on a GitHub-hosted runner.",
+ "alt": "GitHub job summary written by the crankpath Action for the unrelated-change fixture: crankpath: NO_NEW_CYCLES_FOUND (not a pass), the old cycle c-d8197e7d still there and not new, base and head ANALYSED",
+ "version": "0.1.0",
+ "capturedAt": "2026-11-16T21:43:07.776Z",
+ "load": "15:43  up 2 days,  4:56, 2 users, load averages: 1.47 9.56 12.16",
+ "commands": [
+  {
+   "command": "node scripts/action-local.mjs unrelated-change",
+   "exit": 0,
+   "seconds": 0.96,
+   "output": "== case: unrelated-change\n   An unrelated change: the head changes a ConfigMap value only; the Gitea cycle the base already had is still there and does not fail the check (BR10.2).\nexit status: 0\noutputs (GITHUB_OUTPUT):\n  result=NO_NEW_CYCLES_FOUND\n  new-cycles=0\nannotations (workflow commands on standard output): 0\njob summary (GITHUB_STEP_SUMMARY):\n## crankpath: NO_NEW_CYCLES_FOUND (not a pass)\n\ncrankpath 0.1.0; base commit 4800de6d55e3 (the merge base of base-ref \"4800de6d55e3f4c15316fc87cbe39476bb08696b\" and the head); head commit 8179283afa73.\n\n```text\nNo new uncranked cycle found. Not a pass: 1 uncranked cycle the base already had is still there.\nUncranked cycles the base already had: 1 (not new, so they do not fail this check)\n  cycle c-d8197e7d  label: extracted  edges: 8\nCranks, declared edges and externals added by this pull request: 0\nBase: ANALYSED (0 opaque, 0 skipped).  Head: ANALYSED (0 opaque, 0 skipped).\nResult: NO_NEW_CYCLES_FOUND (not a pass; see the first line)\n```\n\n"
+  }
+ ],
+ "summary": "## crankpath: NO_NEW_CYCLES_FOUND (not a pass)\n\ncrankpath 0.1.0; base commit 4800de6d55e3 (the merge base of base-ref \"4800de6d55e3f4c15316fc87cbe39476bb08696b\" and the head); head commit 8179283afa73.\n\n```text\nNo new uncranked cycle found. Not a pass: 1 uncranked cycle the base already had is still there.\nUncranked cycles the base already had: 1 (not new, so they do not fail this check)\n  cycle c-d8197e7d  label: extracted  edges: 8\nCranks, declared edges and externals added by this pull request: 0\nBase: ANALYSED (0 opaque, 0 skipped).  Head: ANALYSED (0 opaque, 0 skipped).\nResult: NO_NEW_CYCLES_FOUND (not a pass; see the first line)\n```\n"
+}

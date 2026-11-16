@@ -1,0 +1,44 @@
+# A Flux HelmRelease whose values come from a Secret encrypted with sops: crankpath does not
+# decrypt, so what the values would make the chart depend on is not seen.
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: HelmRepository
+metadata:
+  name: charts
+  namespace: flux-system
+spec:
+  url: https://charts.example.org
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: monitoring
+  namespace: monitoring
+spec:
+  interval: 10m
+  chart:
+    spec:
+      chart: monitoring
+      version: 1.2.3
+      sourceRef:
+        kind: HelmRepository
+        name: charts
+        namespace: flux-system
+  valuesFrom:
+    - kind: Secret
+      name: monitoring-values
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: monitoring-values
+  namespace: monitoring
+type: Opaque
+stringData:
+  values.yaml: ENC[AES256_GCM,data:bm90IHJlYWwgY2lwaGVydGV4dA==,iv:AAAAAAAAAAAAAAAAAAAAAA==,tag:AAAAAAAAAAAAAAAAAAAAAA==,type:str]
+sops:
+  age:
+    - recipient: age1examplerecipientnotarealkey0000000000000000000000000000000
+      enc: example
+  lastmodified: "2026-11-01T00:00:00Z"
+  mac: ENC[AES256_GCM,data:ZXhhbXBsZQ==,iv:AAAAAAAAAAAAAAAAAAAAAA==,tag:AAAAAAAAAAAAAAAAAAAAAA==,type:str]
+  version: 3.9.0

@@ -2379,3 +2379,82 @@ PASS     check-docs      68 Markdown files, 12 claim(s) mapped, 0 problem(s), 0 
 offline checks: nothing blocks
 ```
 check-tree, secret-grep, check-pack and interim-reason PASS. The denylist is NOT RUN (unset). The 4 skipped tests are B7's network goldens.
+
+## Release round: examples, screenshots, tour
+
+Branch `release/examples-images`, started at `main` 7ee652f (every bolt but B9). Parts 1 (examples) and 2 (the capture and render tooling) were built before B9 landed; part 3 (below) after the merge of `main` c7cb222.
+
+### Built
+- **Examples** (`examples/`, one directory per scenario, every estate crankpath's own): `thin-slice` (text and JSON), `crank` (the thin slice without and with `examples/crank/crankpath.yaml`), `declared` (a Vault TLS cycle that exists only with a declared edge), `plan` (16 nodes, an 11-step plan whose step 1 is the one manual crank, nothing unordered), `opaque` (an unreadable mirror repository with its suggested `repos:` entry, sops-encrypted HelmRelease values, an alias bomb refused by the limit), `exit-codes` (0, 1 for a bad `crankpath.yaml` and for an unknown format, 2 for nothing to analyse), `refusals` (a symlink, a path out of the root, a file over `fileBytes` made sparse at run time by `examples/refusals/make-copy.mjs`, hostile names), `mermaid`, `explain` (every cycle and one node), `no-color` (`--no-color` and `NO_COLOR=1`).
+- **Written expectations first**: `examples/expected.json` (exit code; stdout and stderr facts: whole lines, substrings, absences, line-start counts, empty, `sameAs`) was committed in `1c9b2cf` before any example ran. Every later change is in its `edits` list with the reason (five: one no-cycle wording, two outcome words, one fact split by the 80-column wrap, one estate change that altered what the example shows, one symlink target fixed with byte-identical output).
+- **The examples lane** `scripts/examples-lib.mjs` (+ `.d.mts`): one run = the built CLI from the repository root, node alone on PATH, `{tmp}` a fresh directory, an optional `setup` script; the facts check, the byte-for-byte comparison with `examples/<example>/expected/<run>.stdout|.stderr`, and the doc-quote helpers. `scripts/examples.mjs` checks every offline run, `--pin` writes a pin only from a run that meets every written fact (a failing run is printed in full and not pinned), `--doc` rewrites every quote in `docs/examples.md` from the pinned file its marker names.
+- **The test** `test/examples/examples.test.ts` (in `npm run verify`): every offline run (21) byte for byte with its exit code and facts; `sameAs` pins equal; the directory list equals `expected.json`; no stale pin; every quote in `docs/examples.md` equals its pinned output; every example named in the doc and every `examples/` path it names exists; the homelab numbers in the doc equal the pinned goldens; colour on a pseudo-terminal through Python's `pty` (needs python3 3.10 or later, else skipped and reported skipped); and three tests that the checks can fail (a changed estate fails its pin, each fact kind reports a breaking text, a misspelt fact or lane is a shape problem).
+- **`docs/examples.md`**: one section per example with the command, the pinned output (each fence's caption names the command and `run 2026-11-16`, with a claim marker for B9's docs check), what it shows, and the homelab golden as ids and counts only, pointing at `npm run verify:golden`.
+- **Capture and render tooling**: `docs/images/capture.mjs` runs each of 15 scenarios with the built CLI (`sh -c 'set -o pipefail; { ... } 2>&1'`, PATH = node's directory, `/usr/bin`, `/bin`; `crankpath` and `python3` expanded to the built CLI and to a python3 3.10 or later), stores `transcripts/<id>.json` (`id`, `title`, `caption`, `alt`, `version`, `capturedAt`, `load` from `uptime`, per command `command`, `exit`, `seconds`, `output`; `summary` for the Action, `mermaid` for the diagram), rewrites only the home and temporary directories, and compares each run with what is written down before it (an example's exit code and pinned output, exactly or as an in-order cut when the command pipes through `sed`; an Action case's expected result, exit status and new-cycle count from its `case.json`; a golden file's own lines); a differing run is kept as `<id>-attemptN.json` and the script exits 1. `docs/images/render.mjs` renders terminal cards (SGR 1, 31, 33, 0 styled; any other escape shown as `<ESC>`), the Action's job summary as a GitHub-style page with its annotations, and the Mermaid output with Mermaid itself in the page (a diagram that does not parse stops the script), screenshots each card with Playwright's headless Chromium and reduces it with `magick ... -colors 48 -dither None -strip PNG8:`. `CRANKPATH_IMAGES_TRIAL=<dir>` sends both to a folder outside the repository. Both files are in Biome's and the typecheck's scope (`biome.json`, `tsconfig.json`).
+- **Tools outside the repository**: a tools folder outside the checkout (its path given to render.mjs as `CRANKPATH_RENDER_TOOLS`) holds playwright 1.65.0, marked 18.1.3 and mermaid 12.3.0, exact (`npm install --ignore-scripts --save-exact`), and Playwright's Chromium (`npx playwright install chromium`); render.mjs refuses any other version.
+
+### Verified
+- `node scripts/examples.mjs` on 2026-11-16: `examples: 21 passed, 0 failed, 0 skipped`.
+- `npm run verify` on 2026-11-16 (Node v22.23.2, macOS arm64), exit 0:
+  ```
+  Checked 241 files in 119ms. No fixes applied.
+   Test Files  104 passed (104)
+        Tests  1914 passed | 4 skipped (1918)
+  Statements   : 94.28% ( 8005/8490 )
+  Branches     : 87.68% ( 5940/6774 )
+  Functions    : 97.83% ( 1086/1110 )
+  Lines        : 96.25% ( 6836/7102 )
+  check-tree: 588 files read, 0 finding(s)
+  ```
+- Hand mutations, each reverted: a quoted cycle label changed in `docs/examples.md` and a homelab count changed (2 tests red); a pinned plan output changed (2 red: the run and the quote); a broken Mermaid line in a transcript (render.mjs stops with Mermaid's parse error, no PNG written).
+- Every example run with helm v4.3.2 and kustomize v5.8.1 on PATH: only the toolchain line (text) or the `toolchain` object (JSON) differs from the pins (stated in `docs/examples.md`).
+- A trial capture and render of all 15 scenarios outside the repository on 2026-11-16: `capture: 15 scenario(s), 0 differing` (after one fix below), 15 PNGs, 1,054,282 bytes in all.
+
+### Found while building (crankpath behaviour, unchanged)
+- `crankpath ... | head -n 48` exits 1 when head closes the pipe early (pipefail keeps it): the capture found it as a differing attempt; the image commands cut with `sed -n '1,48p'`, which reads to the end.
+- macOS's `/usr/bin/python3` (3.9) `pty.spawn` never returns once the child has exited and its standard input is at its end; the capture and the test use a python3 of 3.10 or later and skip without one.
+
+### Deviations and decisions
+1. **Exit 0 is shown by the analysed examples** (no separate exit-0 estate): `exit-codes/exit-0` reruns the thin slice and is held byte-identical to it.
+2. **The oversized file is made at run time** (sparse, 10,000,001 bytes) by `examples/refusals/make-copy.mjs` into a fresh directory; a 10 MB file is not committed. The documented command and the test run the same two steps.
+3. **The symlink is committed** (`examples/refusals/repo/platform/web/escape.yaml`, a relative link to another example's file); crankpath never follows it.
+4. **Byte-for-byte runs use node alone on PATH**, so the pins hold on any machine; with helm and kustomize installed only the toolchain line differs (verified, above).
+5. **No `package.json` script and no `docs/lookups.md` rows yet**: both files are edited by B9; the lookups of this round (the npm registry versions of playwright, marked and mermaid, read 2026-11-16: playwright 1.65.1 latest, 1.65.0 chosen to match the sibling project and the cached Chromium; marked 18.2.1 latest, 18.1.3 chosen likewise; mermaid 12.3.0 latest, the version `docs/limits.md` derives the Mermaid limits from) are added at the merge.
+6. **Claim markers** `CL-41` (every quoted output in `docs/examples.md`) and `CL-42` (the homelab numbers) are in the doc; their rows go into B9's `docs/claims.md` at the merge, naming the two tests in `test/examples/examples.test.ts`.
+
+### Part 3, after B9 (`main` c7cb222), 2026-11-16
+- **Merge** of `main` as 97633bf: one conflict, both sides appending to this file (B9's sections first, then this one). B9 changed none of the examples' outputs: `node scripts/examples.mjs` gave 21 passed on the merged build, so nothing was re-pinned and `expected.json` has no new edit (its `exit-1-config` example uses the default-file error, which B9's `--config` wording leaves as it was).
+- **Screenshots**: `node docs/images/capture.mjs` from the merged build, 15 scenarios, 0 differing, then `CRANKPATH_RENDER_TOOLS=<tools folder> node docs/images/render.mjs`: 15 PNGs, 1,054,309 bytes (budget 3,000,000). Captured twice in the repository: the first (21:40 UTC) was replaced after two alt texts in `capture.mjs` were corrected (the hero's now names the not-startable line it shows; the Mermaid image has seven nodes, not six); output identical, no attempt file. `docs/images/README.md` says how each was made, the versions (Playwright 1.65.0 with Chromium build 1254, marked 18.1.3, mermaid 12.3.0, ImageMagick 7.1.2-31, Node v22.23.2, Python 3.14.7 for the pseudo-terminal, Apple Git 2.54.0 for the Action harness), what differs (only `~` and `$TMPDIR/`), and the hero's alt text and caption for the README.
+- **Images and the docs that use them** (all in `docs/tour.md`; the hero also, after part B, in `README.md`): `hero` and `thin-slice-text` (step 1), `thin-slice-json` (2), `explain` (3), `mermaid` (4), `cranked-uncranked` (5), `plan` (6), `declared` (7), `opaque` (8), `refusals` (9), `exit-codes` (10), `no-color` (11), `action-summary-fail` and `action-summary-pass` (12), `homelab-golden` (13; reduced JSON only, ids and counts).
+- **`docs/tour.md`** in pr-rla's shape: 13 numbered steps, each image with its transcript's alt text and an italic caption naming the command and the date, what it shows, and honest notes; links `docs/examples.md`.
+- **Checks** wired into `scripts/release-checks.mjs` as blocking rows (so into `npm run verify`): `scripts/check-images.mjs` (rules: missing-image, no-alt, alt-differs, no-caption, no-transcript, orphan-transcript, unused-image, undocumented, too-large) and `scripts/check-examples.mjs` (shape, directory, not-pinned, stale-pin, not-shown, bad-path, quote). Each rule is shown failing in `test/scripts/check-images.test.ts` and `test/scripts/check-examples.test.ts`; `test/scripts/release-checks.test.ts` shows both rows block. A test holds every stored transcript to what `capture.mjs` checks it against, and shows a forged output and a wrong exit fail it (claim CL-43).
+- **check-tree**: a PNG under `docs/images/` is not text, so every image was a `not-text` finding. It now reads a well-formed PNG there as checked when it has no text or metadata chunk (tEXt, zTXt, iTXt, eXIf, tIME; `-strip` leaves none), because its words are in its transcript, which is checked as text; a PNG with such a chunk is `image-metadata`, a broken one or a PNG elsewhere stays `not-text` (test in `test/scripts/check-tree.test.ts`).
+- **Claims** CL-41 (every quoted output in `docs/examples.md`), CL-42 (the homelab numbers there) and CL-43 (the tour's screenshots) added to `docs/claims.md`; their "Where" cells link the pages, which is what makes `docs/examples.md` and `docs/tour.md` reachable from README.md through the claim map until part B's README links them. **Lookups**: the render tools' registry reads and downloads (`docs/lookups.md`). **npm scripts**: `examples`, `images:check`.
+
+### Verified (part 3)
+- `npm run verify` on 2026-11-16 at 744cb90 (Node v22.23.2, macOS arm64), exit 0:
+  ```
+  Checked 261 files in 539ms. No fixes applied.
+   Test Files  115 passed (115)
+        Tests  2031 passed | 4 skipped (2035)
+  Statements   : 94.34% ( 8010/8490 )
+  Branches     : 87.79% ( 5947/6774 )
+  Functions    : 97.83% ( 1086/1110 )
+  Lines        : 96.26% ( 6837/7102 )
+  PASS     check-tree      808 files read, 0 finding(s)
+  PASS     check-docs      71 Markdown files, 15 claim(s) mapped, 0 problem(s), 0 pending
+  PASS     secret-grep     807 files in the tree, 159 in the package, 0 finding(s)
+  NOT RUN  denylist        CRANKPATH_DENYLIST_FILE is unset
+  PASS     check-pack      159 files would ship, 0 problem(s)
+  PASS     check-images    15 images, 1054309 bytes, 0 problem(s)
+  PASS     check-examples  10 examples, 21 runs, 15 quotes, 0 problem(s)
+  PASS     interim-reason  "not-in-this-build" is in no file under src/ or dist/
+  NOT RUN  npm-audit       release only (a registry call)
+  NOT RUN  goldens         release only (needs helm and the network)
+  offline checks: nothing blocks
+  ```
+  The 4 skipped tests are the goldens that need helm and the network.
+
+### For part B and the lead
+- The README's hero: `![<alt text from docs/images/README.md>](docs/images/hero.png)` followed by an italic caption line; check-images requires the alt text to be exactly the transcript's.
+- Unverified: the images were made on one macOS arm64 machine; the Action images come from its local harness, never from a GitHub-hosted runner; the golden and live lanes were not run in this round (the homelab image prints the pinned golden files).

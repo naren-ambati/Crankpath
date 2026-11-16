@@ -1,0 +1,58 @@
+crankpath 0.1.0 explain: every cycle
+scanned: repo "http://gitea-http.gitea:3000/ops/thin-slice" (from --repo-url)
+    commit: not read in this build  floating: no
+Run status: ANALYSED
+
+cycle c-d8197e7d  label: extracted  nodes: 5  edges: 8
+  nodes, numbered for the elementary cycles below:
+    node 1  Application "argocd/gitea"
+    node 2  ConfigMap "gitea/gitea-config"
+    node 3  Deployment "gitea/gitea"
+    node 4  Secret "gitea/gitea-admin"
+    node 5  Service "gitea/gitea-http"
+  evidence for the first 5 of 8 edges (file, field, rendered path, line); the
+      other 3 are in the JSON output
+    edge 1 of 8  Application "argocd/gitea" reads source from
+        Service "gitea/gitea-http"  (reads-source, extracted)
+      file: "apps/gitea.yaml"  line: not recorded
+      field: "spec.source.repoURL"
+      rendered path: "apps/gitea.yaml#1"
+    edge 2 of 8  ConfigMap "gitea/gitea-config" deployed by
+        Application "argocd/gitea"  (deployed-by, extracted)
+      file: "apps/gitea.yaml"  line: not recorded
+      field: "spec.source.path"
+      rendered path: "platform/gitea/config.yaml#1"
+    edge 3 of 8  Deployment "gitea/gitea" deployed by Application "argocd/gitea"
+        (deployed-by, extracted)
+      file: "apps/gitea.yaml"  line: not recorded
+      field: "spec.source.path"
+      rendered path: "platform/gitea/deployment.yaml#1"
+    edge 4 of 8  Deployment "gitea/gitea" needs ConfigMap "gitea/gitea-config"
+        (needs-config, extracted)
+      file: "platform/gitea/deployment.yaml"  line: not recorded
+      field: "spec.template.spec.containers[0].envFrom[0].configMapRef.name"
+      rendered path: "platform/gitea/deployment.yaml#1"
+    edge 5 of 8  Deployment "gitea/gitea" needs Secret "gitea/gitea-admin"
+        (needs-secret, extracted)
+      file: "platform/gitea/deployment.yaml"  line: not recorded
+      field: "spec.template.spec.containers[0].env[0].valueFrom.secretKeyRef.name"
+      rendered path: "platform/gitea/deployment.yaml#1"
+  elementary cycles: 4, all of them (as node sequences; the bound is 21)
+    path 1  node 1 -> node 5 -> node 1
+    path 2  node 1 -> node 5 -> node 3 -> node 1
+    path 3  node 1 -> node 5 -> node 3 -> node 2 -> node 1
+    path 4  node 1 -> node 5 -> node 3 -> node 4 -> node 1
+  self-management: none named (no source on this cycle renders an object
+      matching the Argo CD or Flux controller signatures)
+  nodes blocked by this cycle: 7 (the text report lists them under Not startable
+      from a cold start)
+
+Assumed, not verified by crankpath: 0 externals declared available; 0 externals
+    served by an in-estate node; 0 cranks (documented); 0 match entries; 0
+    objects every cluster provides; and the 5 not-modelled items below. Every
+    start step is relative to these and to the edges read.
+Not modelled (5 items): a running Argo CD or Flux controller is assumed;
+    dependencies only visible at runtime are not seen; the content of opaque
+    nodes is not seen; the revision each Application names is taken to be the
+    files as read; repository credentials not defined in the estate are not
+    seen.

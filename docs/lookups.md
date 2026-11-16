@@ -231,3 +231,12 @@ All read-only clones into the golden cache outside the repository (`CRANKPATH_GO
 | 2026-11-16 | `git clone --depth 1` (read-only, into the shared cache outside the repository) of https://github.com/fluxcd/flux2-kustomize-helm-example, https://github.com/gitops-bridge-dev/gitops-bridge-argocd-control-plane-template and https://github.com/bjw-s-labs/home-ops | HEAD commits 4f1a5b1051b469108d1bdf0ebec6c814427e3834 (2026-07-08), e6d355197ff3af8e6be09e1dea068dc12727a915 (2024-05-15), e6e44645283b5e138d5f4faa2e83e028947c702b (2026-11-16); each LICENSE read in full: the Apache License 2.0 text (the common copy without the leading blank line, SHA-256 `c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4`); no NOTICE file in any of them |
 | 2026-11-16 | acelinkio/argocd-homelab at 2f9aab023f92b6d73051bd86ec163a48a56dbe1e, from the census cache (fetched 2026-11-15) | LICENSE read in full: the MIT licence, "Copyright (c) 2023 acelinkio"; no NOTICE file |
 | 2026-11-16 | the real-discovery census (`node scripts/census-real.mjs`): crankpath's own read-only chart pulls (`helm pull`) and `repos:` fetches for the five OD-26 estates, into a cache outside the repository | every estate ran (exit 0, `ANALYSED WITH GAPS`); counts in `docs/census-2026-11-16-real.json` |
+
+## Release round, part A (2026-11-16): the render tools
+
+Read-only registry reads and downloads into a folder outside the repository; nothing of them is committed.
+
+| Date | Lookup | Result |
+|---|---|---|
+| 2026-11-16 | `npm view playwright version`, `npm view marked version`, `npm view mermaid version` (registry read) | latest: playwright 1.65.1, marked 18.2.1, mermaid 12.3.0. Chosen: playwright 1.65.0 and marked 18.1.3 (the versions the sibling project's screenshots were made with; Chromium 1254 was already in Playwright's download cache), mermaid 12.3.0 (the version `docs/limits.md` derives the Mermaid limits from) |
+| 2026-11-16 | `npm install --ignore-scripts --save-exact playwright@1.65.0 marked@18.1.3 mermaid@12.3.0` and `npx playwright install chromium` (read-only downloads, outside the repository) | Playwright's Chromium build 1254 (Chromium 158.0.8127.18) and headless shell; used only by `docs/images/render.mjs` |

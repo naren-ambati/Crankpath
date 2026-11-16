@@ -1,0 +1,1041 @@
+{
+  "clustersUsed": [],
+  "cranks": [
+    {
+      "alreadyCreated": 0,
+      "by": "first install: point Application argocd/gitea at the GitHub copy, sync, then switch it back to Gitea",
+      "createdNodes": [],
+      "id": "crank:1",
+      "keyPath": "cranks[0]",
+      "matched": true,
+      "ref": null,
+      "removedEdges": 1,
+      "reroutedEdges": [
+        {
+          "from": "Application/argocd/gitea",
+          "to": "external:github.com"
+        }
+      ]
+    }
+  ],
+  "cycles": [
+    {
+      "crankedBy": [
+        "crank:1"
+      ],
+      "edges": [
+        {
+          "from": "Application/argocd/gitea",
+          "kind": "reads-source",
+          "source": "extracted",
+          "to": "Service/gitea/gitea-http"
+        },
+        {
+          "from": "ConfigMap/gitea/gitea-config",
+          "kind": "deployed-by",
+          "source": "extracted",
+          "to": "Application/argocd/gitea"
+        },
+        {
+          "from": "Deployment/gitea/gitea",
+          "kind": "deployed-by",
+          "source": "extracted",
+          "to": "Application/argocd/gitea"
+        },
+        {
+          "from": "Deployment/gitea/gitea",
+          "kind": "needs-config",
+          "source": "extracted",
+          "to": "ConfigMap/gitea/gitea-config"
+        },
+        {
+          "from": "Deployment/gitea/gitea",
+          "kind": "needs-secret",
+          "source": "extracted",
+          "to": "Secret/gitea/gitea-admin"
+        },
+        {
+          "from": "Secret/gitea/gitea-admin",
+          "kind": "deployed-by",
+          "source": "extracted",
+          "to": "Application/argocd/gitea"
+        },
+        {
+          "from": "Service/gitea/gitea-http",
+          "kind": "deployed-by",
+          "source": "extracted",
+          "to": "Application/argocd/gitea"
+        },
+        {
+          "from": "Service/gitea/gitea-http",
+          "kind": "selects",
+          "source": "extracted",
+          "to": "Deployment/gitea/gitea"
+        }
+      ],
+      "id": "c-d8197e7d",
+      "introducedBy": [],
+      "label": "cranked",
+      "labelBeforeCranks": "extracted",
+      "nodes": [
+        "Application/argocd/gitea",
+        "ConfigMap/gitea/gitea-config",
+        "Deployment/gitea/gitea",
+        "Secret/gitea/gitea-admin",
+        "Service/gitea/gitea-http"
+      ],
+      "representative": [
+        "Application/argocd/gitea",
+        "Service/gitea/gitea-http"
+      ],
+      "residual": null,
+      "residualLabel": null,
+      "touchedBy": []
+    }
+  ],
+  "edges": [
+    {
+      "evidence": {
+        "field": "spec.source.repoURL",
+        "file": "apps/db.yaml",
+        "line": null,
+        "renderedPath": "apps/db.yaml#1"
+      },
+      "from": "Application/argocd/db",
+      "kind": "reads-source",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Service/gitea/gitea-http"
+    },
+    {
+      "evidence": {
+        "field": "spec.source.repoURL",
+        "file": "apps/gitea.yaml",
+        "line": null,
+        "renderedPath": "apps/gitea.yaml#1"
+      },
+      "from": "Application/argocd/gitea",
+      "kind": "reads-source",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Service/gitea/gitea-http"
+    },
+    {
+      "evidence": {
+        "field": "spec.source.repoURL",
+        "file": "apps/wiki.yaml",
+        "line": null,
+        "renderedPath": "apps/wiki.yaml#1"
+      },
+      "from": "Application/argocd/wiki",
+      "kind": "reads-source",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Service/gitea/gitea-http"
+    },
+    {
+      "evidence": {
+        "field": "spec.source.path",
+        "file": "apps/wiki.yaml",
+        "line": null,
+        "renderedPath": "apps-src/wiki/wiki.yaml#2"
+      },
+      "from": "Certificate/wiki/wiki-tls",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/wiki"
+    },
+    {
+      "evidence": {
+        "field": "spec.issuerRef.name",
+        "file": "apps-src/wiki/wiki.yaml",
+        "line": null,
+        "renderedPath": "apps-src/wiki/wiki.yaml#2"
+      },
+      "from": "Certificate/wiki/wiki-tls",
+      "kind": "issued-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Issuer/wiki/selfsigned"
+    },
+    {
+      "evidence": {
+        "field": "spec.source.path",
+        "file": "apps/gitea.yaml",
+        "line": null,
+        "renderedPath": "platform/gitea/config.yaml#1"
+      },
+      "from": "ConfigMap/gitea/gitea-config",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/gitea"
+    },
+    {
+      "evidence": {
+        "field": "spec.source.path",
+        "file": "apps/wiki.yaml",
+        "line": null,
+        "renderedPath": "apps-src/wiki/wiki.yaml#3"
+      },
+      "from": "ConfigMap/wiki/wiki-config",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/wiki"
+    },
+    {
+      "evidence": {
+        "field": "spec.source.path",
+        "file": "apps/gitea.yaml",
+        "line": null,
+        "renderedPath": "platform/gitea/deployment.yaml#1"
+      },
+      "from": "Deployment/gitea/gitea",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/gitea"
+    },
+    {
+      "evidence": {
+        "field": "spec.template.spec.containers[0].envFrom[0].configMapRef.name",
+        "file": "platform/gitea/deployment.yaml",
+        "line": null,
+        "renderedPath": "platform/gitea/deployment.yaml#1"
+      },
+      "from": "Deployment/gitea/gitea",
+      "kind": "needs-config",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "ConfigMap/gitea/gitea-config"
+    },
+    {
+      "evidence": {
+        "field": "spec.template.spec.containers[0].env[0].valueFrom.secretKeyRef.name",
+        "file": "platform/gitea/deployment.yaml",
+        "line": null,
+        "renderedPath": "platform/gitea/deployment.yaml#1"
+      },
+      "from": "Deployment/gitea/gitea",
+      "kind": "needs-secret",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Secret/gitea/gitea-admin"
+    },
+    {
+      "evidence": {
+        "field": "spec.source.path",
+        "file": "apps/wiki.yaml",
+        "line": null,
+        "renderedPath": "apps-src/wiki/wiki.yaml#4"
+      },
+      "from": "Deployment/wiki/wiki",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/wiki"
+    },
+    {
+      "evidence": {
+        "field": "spec.template.spec.containers[0].envFrom[0].configMapRef.name",
+        "file": "apps-src/wiki/wiki.yaml",
+        "line": null,
+        "renderedPath": "apps-src/wiki/wiki.yaml#4"
+      },
+      "from": "Deployment/wiki/wiki",
+      "kind": "needs-config",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "ConfigMap/wiki/wiki-config"
+    },
+    {
+      "evidence": {
+        "field": "spec.template.spec.volumes[0].secret.secretName",
+        "file": "apps-src/wiki/wiki.yaml",
+        "line": null,
+        "renderedPath": "apps-src/wiki/wiki.yaml#4"
+      },
+      "from": "Deployment/wiki/wiki",
+      "kind": "needs-secret",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Secret/wiki/wiki-tls"
+    },
+    {
+      "evidence": {
+        "field": "spec.source.path",
+        "file": "apps/wiki.yaml",
+        "line": null,
+        "renderedPath": "apps-src/wiki/wiki.yaml#1"
+      },
+      "from": "Issuer/wiki/selfsigned",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/wiki"
+    },
+    {
+      "evidence": {
+        "field": "spec.source.path",
+        "file": "apps/db.yaml",
+        "line": null,
+        "renderedPath": "platform/db/postgres.yaml#1"
+      },
+      "from": "Secret/db/postgres-auth",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/db"
+    },
+    {
+      "evidence": {
+        "field": "spec.source.path",
+        "file": "apps/gitea.yaml",
+        "line": null,
+        "renderedPath": "platform/gitea/config.yaml#2"
+      },
+      "from": "Secret/gitea/gitea-admin",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/gitea"
+    },
+    {
+      "evidence": {
+        "field": "spec.secretName",
+        "file": "apps-src/wiki/wiki.yaml",
+        "line": null,
+        "renderedPath": "apps-src/wiki/wiki.yaml#2"
+      },
+      "from": "Secret/wiki/wiki-tls",
+      "kind": "produced-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Certificate/wiki/wiki-tls"
+    },
+    {
+      "evidence": {
+        "field": "spec.source.path",
+        "file": "apps/db.yaml",
+        "line": null,
+        "renderedPath": "platform/db/postgres.yaml#3"
+      },
+      "from": "Service/db/postgres",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/db"
+    },
+    {
+      "evidence": {
+        "field": "spec.selector",
+        "file": "platform/db/postgres.yaml",
+        "line": null,
+        "renderedPath": "platform/db/postgres.yaml#3"
+      },
+      "from": "Service/db/postgres",
+      "kind": "selects",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "StatefulSet/db/postgres"
+    },
+    {
+      "evidence": {
+        "field": "spec.source.path",
+        "file": "apps/gitea.yaml",
+        "line": null,
+        "renderedPath": "platform/gitea/service.yaml#1"
+      },
+      "from": "Service/gitea/gitea-http",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/gitea"
+    },
+    {
+      "evidence": {
+        "field": "spec.selector",
+        "file": "platform/gitea/service.yaml",
+        "line": null,
+        "renderedPath": "platform/gitea/service.yaml#1"
+      },
+      "from": "Service/gitea/gitea-http",
+      "kind": "selects",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Deployment/gitea/gitea"
+    },
+    {
+      "evidence": {
+        "field": "spec.source.path",
+        "file": "apps/wiki.yaml",
+        "line": null,
+        "renderedPath": "apps-src/wiki/wiki.yaml#5"
+      },
+      "from": "Service/wiki/wiki",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/wiki"
+    },
+    {
+      "evidence": {
+        "field": "spec.selector",
+        "file": "apps-src/wiki/wiki.yaml",
+        "line": null,
+        "renderedPath": "apps-src/wiki/wiki.yaml#5"
+      },
+      "from": "Service/wiki/wiki",
+      "kind": "selects",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Deployment/wiki/wiki"
+    },
+    {
+      "evidence": {
+        "field": "spec.source.path",
+        "file": "apps/db.yaml",
+        "line": null,
+        "renderedPath": "platform/db/postgres.yaml#2"
+      },
+      "from": "StatefulSet/db/postgres",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/db"
+    },
+    {
+      "evidence": {
+        "field": "spec.template.spec.containers[0].env[0].valueFrom.secretKeyRef.name",
+        "file": "platform/db/postgres.yaml",
+        "line": null,
+        "renderedPath": "platform/db/postgres.yaml#2"
+      },
+      "from": "StatefulSet/db/postgres",
+      "kind": "needs-secret",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Secret/db/postgres-auth"
+    }
+  ],
+  "externals": [
+    {
+      "coldStart": "available",
+      "id": "external:github.com",
+      "servedBy": null
+    }
+  ],
+  "floating": [],
+  "hiddenCycles": [],
+  "matchOverrides": [],
+  "nodes": [
+    {
+      "flags": [],
+      "id": "Application/argocd/db",
+      "kind": "Application",
+      "name": "db",
+      "namespace": "argocd",
+      "opaque": null,
+      "origin": {
+        "document": 1,
+        "path": "apps/db.yaml",
+        "renderJob": null
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "Application/argocd/gitea",
+      "kind": "Application",
+      "name": "gitea",
+      "namespace": "argocd",
+      "opaque": null,
+      "origin": {
+        "document": 1,
+        "path": "apps/gitea.yaml",
+        "renderJob": null
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "Application/argocd/wiki",
+      "kind": "Application",
+      "name": "wiki",
+      "namespace": "argocd",
+      "opaque": null,
+      "origin": {
+        "document": 1,
+        "path": "apps/wiki.yaml",
+        "renderJob": null
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "Certificate/wiki/wiki-tls",
+      "kind": "Certificate",
+      "name": "wiki-tls",
+      "namespace": "wiki",
+      "opaque": null,
+      "origin": {
+        "document": 2,
+        "path": "apps-src/wiki/wiki.yaml",
+        "renderJob": "Application/argocd/wiki#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "ConfigMap/gitea/gitea-config",
+      "kind": "ConfigMap",
+      "name": "gitea-config",
+      "namespace": "gitea",
+      "opaque": null,
+      "origin": {
+        "document": 1,
+        "path": "platform/gitea/config.yaml",
+        "renderJob": "Application/argocd/gitea#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "ConfigMap/wiki/wiki-config",
+      "kind": "ConfigMap",
+      "name": "wiki-config",
+      "namespace": "wiki",
+      "opaque": null,
+      "origin": {
+        "document": 3,
+        "path": "apps-src/wiki/wiki.yaml",
+        "renderJob": "Application/argocd/wiki#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "Deployment/gitea/gitea",
+      "kind": "Deployment",
+      "name": "gitea",
+      "namespace": "gitea",
+      "opaque": null,
+      "origin": {
+        "document": 1,
+        "path": "platform/gitea/deployment.yaml",
+        "renderJob": "Application/argocd/gitea#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "Deployment/wiki/wiki",
+      "kind": "Deployment",
+      "name": "wiki",
+      "namespace": "wiki",
+      "opaque": null,
+      "origin": {
+        "document": 4,
+        "path": "apps-src/wiki/wiki.yaml",
+        "renderJob": "Application/argocd/wiki#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "Issuer/wiki/selfsigned",
+      "kind": "Issuer",
+      "name": "selfsigned",
+      "namespace": "wiki",
+      "opaque": null,
+      "origin": {
+        "document": 1,
+        "path": "apps-src/wiki/wiki.yaml",
+        "renderJob": "Application/argocd/wiki#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "Secret/db/postgres-auth",
+      "kind": "Secret",
+      "name": "postgres-auth",
+      "namespace": "db",
+      "opaque": null,
+      "origin": {
+        "document": 1,
+        "path": "platform/db/postgres.yaml",
+        "renderJob": "Application/argocd/db#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "Secret/gitea/gitea-admin",
+      "kind": "Secret",
+      "name": "gitea-admin",
+      "namespace": "gitea",
+      "opaque": null,
+      "origin": {
+        "document": 2,
+        "path": "platform/gitea/config.yaml",
+        "renderJob": "Application/argocd/gitea#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "Secret/wiki/wiki-tls",
+      "kind": "Secret",
+      "name": "wiki-tls",
+      "namespace": "wiki",
+      "opaque": null,
+      "origin": {
+        "document": 2,
+        "path": "apps-src/wiki/wiki.yaml",
+        "renderJob": "Application/argocd/wiki#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "Service/db/postgres",
+      "kind": "Service",
+      "name": "postgres",
+      "namespace": "db",
+      "opaque": null,
+      "origin": {
+        "document": 3,
+        "path": "platform/db/postgres.yaml",
+        "renderJob": "Application/argocd/db#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "Service/gitea/gitea-http",
+      "kind": "Service",
+      "name": "gitea-http",
+      "namespace": "gitea",
+      "opaque": null,
+      "origin": {
+        "document": 1,
+        "path": "platform/gitea/service.yaml",
+        "renderJob": "Application/argocd/gitea#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "Service/wiki/wiki",
+      "kind": "Service",
+      "name": "wiki",
+      "namespace": "wiki",
+      "opaque": null,
+      "origin": {
+        "document": 5,
+        "path": "apps-src/wiki/wiki.yaml",
+        "renderJob": "Application/argocd/wiki#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "StatefulSet/db/postgres",
+      "kind": "StatefulSet",
+      "name": "postgres",
+      "namespace": "db",
+      "opaque": null,
+      "origin": {
+        "document": 2,
+        "path": "platform/db/postgres.yaml",
+        "renderJob": "Application/argocd/db#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "external:github.com",
+      "kind": "External",
+      "name": "github.com",
+      "namespace": null,
+      "opaque": null,
+      "origin": {
+        "document": null,
+        "path": "crankpath.yaml",
+        "renderJob": null
+      },
+      "syncWave": null
+    }
+  ],
+  "notComputed": [],
+  "notModelled": [
+    "a running Argo CD or Flux controller is assumed",
+    "dependencies only visible at runtime are not seen",
+    "the content of opaque nodes is not seen",
+    "the revision each Application names is taken to be the files as read",
+    "repository credentials not defined in the estate are not seen"
+  ],
+  "notVerified": [
+    {
+      "count": 1,
+      "item": "externals-declared"
+    },
+    {
+      "count": 1,
+      "item": "cranks-documented"
+    },
+    {
+      "count": 0,
+      "item": "declared-edges"
+    }
+  ],
+  "opaque": [],
+  "plan": {
+    "assumes": {
+      "argocdNamespace": [],
+      "clusterProvided": [],
+      "cranks": [
+        "crank:1"
+      ],
+      "externals": [
+        "external:github.com"
+      ],
+      "matchEntries": [],
+      "notModelled": [
+        "a running Argo CD or Flux controller is assumed",
+        "dependencies only visible at runtime are not seen",
+        "the content of opaque nodes is not seen",
+        "the revision each Application names is taken to be the files as read",
+        "repository credentials not defined in the estate are not seen"
+      ],
+      "servedBy": []
+    },
+    "conflicts": [],
+    "disclaimer": "an order, not a schedule; cold-load pickup is not modelled",
+    "listedUnordered": [],
+    "steps": [
+      {
+        "crank": "crank:1",
+        "kind": "crank",
+        "manual": true,
+        "no": 1,
+        "nodes": [],
+        "ref": null,
+        "why": "first install: point Application argocd/gitea at the GitHub copy, sync, then switch it back to Gitea"
+      },
+      {
+        "crank": null,
+        "kind": "start",
+        "manual": false,
+        "no": 2,
+        "nodes": [
+          "Application/argocd/gitea"
+        ],
+        "ref": null,
+        "why": "every dependency it has is met before this step"
+      },
+      {
+        "crank": null,
+        "kind": "start",
+        "manual": false,
+        "no": 3,
+        "nodes": [
+          "ConfigMap/gitea/gitea-config",
+          "Secret/gitea/gitea-admin"
+        ],
+        "ref": null,
+        "why": "every dependency it has is met before this step"
+      },
+      {
+        "crank": null,
+        "kind": "start",
+        "manual": false,
+        "no": 4,
+        "nodes": [
+          "Deployment/gitea/gitea"
+        ],
+        "ref": null,
+        "why": "every dependency it has is met before this step"
+      },
+      {
+        "crank": null,
+        "kind": "start",
+        "manual": false,
+        "no": 5,
+        "nodes": [
+          "Service/gitea/gitea-http"
+        ],
+        "ref": null,
+        "why": "every dependency it has is met before this step"
+      },
+      {
+        "crank": null,
+        "kind": "start",
+        "manual": false,
+        "no": 6,
+        "nodes": [
+          "Application/argocd/db",
+          "Application/argocd/wiki"
+        ],
+        "ref": null,
+        "why": "every dependency it has is met before this step"
+      },
+      {
+        "crank": null,
+        "kind": "start",
+        "manual": false,
+        "no": 7,
+        "nodes": [
+          "ConfigMap/wiki/wiki-config",
+          "Issuer/wiki/selfsigned",
+          "Secret/db/postgres-auth"
+        ],
+        "ref": null,
+        "why": "every dependency it has is met before this step"
+      },
+      {
+        "crank": null,
+        "kind": "start",
+        "manual": false,
+        "no": 8,
+        "nodes": [
+          "Certificate/wiki/wiki-tls",
+          "StatefulSet/db/postgres"
+        ],
+        "ref": null,
+        "why": "every dependency it has is met before this step"
+      },
+      {
+        "crank": null,
+        "kind": "start",
+        "manual": false,
+        "no": 9,
+        "nodes": [
+          "Secret/wiki/wiki-tls",
+          "Service/db/postgres"
+        ],
+        "ref": null,
+        "why": "every dependency it has is met before this step"
+      },
+      {
+        "crank": null,
+        "kind": "start",
+        "manual": false,
+        "no": 10,
+        "nodes": [
+          "Deployment/wiki/wiki"
+        ],
+        "ref": null,
+        "why": "every dependency it has is met before this step"
+      },
+      {
+        "crank": null,
+        "kind": "start",
+        "manual": false,
+        "no": 11,
+        "nodes": [
+          "Service/wiki/wiki"
+        ],
+        "ref": null,
+        "why": "every dependency it has is met before this step"
+      }
+    ]
+  },
+  "repo": {
+    "commit": null,
+    "floating": false,
+    "url": "http://gitea-http.gitea:3000/ops/plan",
+    "urlFrom": "flag"
+  },
+  "repoMappings": [],
+  "runStatus": {
+    "counts": {
+      "declaredAssumptions": 2,
+      "declaredFacts": 0,
+      "droppedHooks": 0,
+      "edgesDeclared": 0,
+      "edgesExtracted": 25,
+      "foreignDestination": 0,
+      "ignoredFiles": 5,
+      "nodes": 17,
+      "opaque": 0,
+      "opaqueApplicationSets": 0,
+      "rendered": 3,
+      "runLimitEdges": 0,
+      "runLimitFiles": 0,
+      "runLimitJobs": 0,
+      "skipped": 0,
+      "skippedSources": 0,
+      "sourcesByKind": {
+        "Application": 3,
+        "ApplicationSet": 0,
+        "HandAppliedChart": 0,
+        "HelmRelease": 0,
+        "Kustomization": 0,
+        "KustomizeRoot": 0
+      },
+      "sourcesFound": 3,
+      "timeouts": 0,
+      "unreadableFiles": 0,
+      "unresolved": 0
+    },
+    "floor": false,
+    "reasons": [],
+    "state": "ANALYSED"
+  },
+  "schemaVersion": 1,
+  "skipped": [],
+  "statusCounts": {
+    "blocked": 0,
+    "startable": 16,
+    "unverified": 0
+  },
+  "statuses": [
+    {
+      "blockers": [],
+      "node": "Application/argocd/db",
+      "reason": null,
+      "status": "startable",
+      "via": null
+    },
+    {
+      "blockers": [],
+      "node": "Application/argocd/gitea",
+      "reason": null,
+      "status": "startable",
+      "via": null
+    },
+    {
+      "blockers": [],
+      "node": "Application/argocd/wiki",
+      "reason": null,
+      "status": "startable",
+      "via": null
+    },
+    {
+      "blockers": [],
+      "node": "Certificate/wiki/wiki-tls",
+      "reason": null,
+      "status": "startable",
+      "via": null
+    },
+    {
+      "blockers": [],
+      "node": "ConfigMap/gitea/gitea-config",
+      "reason": null,
+      "status": "startable",
+      "via": null
+    },
+    {
+      "blockers": [],
+      "node": "ConfigMap/wiki/wiki-config",
+      "reason": null,
+      "status": "startable",
+      "via": null
+    },
+    {
+      "blockers": [],
+      "node": "Deployment/gitea/gitea",
+      "reason": null,
+      "status": "startable",
+      "via": null
+    },
+    {
+      "blockers": [],
+      "node": "Deployment/wiki/wiki",
+      "reason": null,
+      "status": "startable",
+      "via": null
+    },
+    {
+      "blockers": [],
+      "node": "Issuer/wiki/selfsigned",
+      "reason": null,
+      "status": "startable",
+      "via": null
+    },
+    {
+      "blockers": [],
+      "node": "Secret/db/postgres-auth",
+      "reason": null,
+      "status": "startable",
+      "via": null
+    },
+    {
+      "blockers": [],
+      "node": "Secret/gitea/gitea-admin",
+      "reason": null,
+      "status": "startable",
+      "via": null
+    },
+    {
+      "blockers": [],
+      "node": "Secret/wiki/wiki-tls",
+      "reason": null,
+      "status": "startable",
+      "via": null
+    },
+    {
+      "blockers": [],
+      "node": "Service/db/postgres",
+      "reason": null,
+      "status": "startable",
+      "via": null
+    },
+    {
+      "blockers": [],
+      "node": "Service/gitea/gitea-http",
+      "reason": null,
+      "status": "startable",
+      "via": null
+    },
+    {
+      "blockers": [],
+      "node": "Service/wiki/wiki",
+      "reason": null,
+      "status": "startable",
+      "via": null
+    },
+    {
+      "blockers": [],
+      "node": "StatefulSet/db/postgres",
+      "reason": null,
+      "status": "startable",
+      "via": null
+    },
+    {
+      "blockers": [],
+      "node": "external:github.com",
+      "reason": null,
+      "status": "startable",
+      "via": null
+    }
+  ],
+  "toolMissing": {
+    "helm": 0,
+    "kustomize": 0
+  },
+  "toolchain": {
+    "crankpath": "0.1.0",
+    "helm": null,
+    "kustomize": null,
+    "missing": [
+      "helm",
+      "kustomize"
+    ],
+    "tested": false,
+    "testedPair": {
+      "helm": "v4.3.2",
+      "kustomize": "v5.8.1"
+    },
+    "unrecognised": []
+  },
+  "undeployedCharts": [],
+  "undeployedKustomizeRoots": [],
+  "unreadable": [],
+  "unresolved": [],
+  "unusedMatches": []
+}

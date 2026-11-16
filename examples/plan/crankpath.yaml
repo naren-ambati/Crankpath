@@ -1,0 +1,11 @@
+# The facts the plan rests on, declared for crankpath (passed with --config). crankpath does not
+# verify them: GitHub is up during the black start, and the first install reads Gitea's own
+# manifests from the GitHub copy.
+external:
+  github.com:
+    cold_start: available
+cranks:
+  - reroutes:
+      node: Application/argocd/gitea
+      to: github.com
+    by: "first install: point Application argocd/gitea at the GitHub copy, sync, then switch it back to Gitea"

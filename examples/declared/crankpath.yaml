@@ -1,0 +1,9 @@
+# The one dependency no field shows (see platform/vault/statefulset.yaml), declared for crankpath
+# (passed with --config). crankpath does not verify it.
+external:
+  github.com:
+    cold_start: available
+edges:
+  - from: StatefulSet/vault/vault
+    to: Secret/vault/vault-tls
+    why: "Vault reads its TLS certificate from the vault-tls Secret through a CSI volume at start-up"

@@ -1,0 +1,14 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: web
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/example-org/opaque
+    targetRevision: 9c4e1b7a2d5f8036b1e4a7d0c3f6b9e2a5d8c1f4
+    path: platform/web
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: web

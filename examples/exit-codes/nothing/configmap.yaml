@@ -1,0 +1,9 @@
+# A plain manifest and nothing that deploys it: no Application, ApplicationSet, Kustomization,
+# HelmRelease or Kustomize root, so there is nothing to analyse.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: settings
+  namespace: default
+data:
+  mode: example

@@ -13,7 +13,10 @@
 // forbidden claims, the D11 document set), secret-grep (credentials and the packed files; the denylist
 // is its own line), check-pack (what ships, the licence text, package.json, the pinned lockfile) and
 // interim-reason (the B1 opacity reason `not-in-this-build` must be gone from src/ and dist/ before a
-// release).
+// release), check-images (every screenshot of docs/images has its transcript, alt text, caption, a doc
+// that shows it and an entry in docs/images/README.md; the set under 3,000,000 bytes) and
+// check-examples (every example of examples/expected.json pinned and shown in docs/examples.md, every
+// quote there equal to its pinned output; the examples themselves run in the test suite).
 // Release-only checks: npm audit (a registry call), and the golden lane `npm run verify:golden` (OD-23:
 // both goldens must have run with helm and the network; a skipped golden cannot satisfy v0.1.0).
 // Without --release these two print NOT RUN (release only); the denylist and the interim reason are
@@ -24,6 +27,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { checkDocs } from "./check-docs.mjs";
+import { checkExamples } from "./check-examples.mjs";
+import { checkImages } from "./check-images.mjs";
 import { checkPack } from "./check-pack.mjs";
 import { checkTree } from "./check-tree.mjs";
 import { secretGrep } from "./secret-grep.mjs";
@@ -160,6 +165,39 @@ export function releaseChecks({ root, release = false, env = process.env, today 
     check: "check-pack",
     result: pack.problems.length === 0 ? "PASS" : "FAIL",
     detail: `${pack.list.length} files would ship, ${pack.problems.length} problem(s)`,
+    blocking: true,
+  });
+
+  const images = checkImages({ root });
+  for (const p of images.problems) details.push(`check-images  ${p}`);
+  results.push({
+    check: "check-images",
+    result: images.problems.length === 0 ? "PASS" : "FAIL",
+    detail: `${images.images} images, ${images.bytes} bytes, ${images.problems.length} problem(s)`,
+    blocking: true,
+  });
+
+  /** @type {{ problems: string[], examples: number, runs: number, quotes: number }} */
+  let examples;
+  try {
+    examples = checkExamples({
+      examplesDir: path.join(root, "examples"),
+      docFile: path.join(root, "docs", "examples.md"),
+      root,
+    });
+  } catch (e) {
+    examples = {
+      problems: [`examples/expected.json could not be read (${e instanceof Error ? e.message : String(e)})`],
+      examples: 0,
+      runs: 0,
+      quotes: 0,
+    };
+  }
+  for (const p of examples.problems) details.push(`check-examples  ${p}`);
+  results.push({
+    check: "check-examples",
+    result: examples.problems.length === 0 ? "PASS" : "FAIL",
+    detail: `${examples.examples} examples, ${examples.runs} runs, ${examples.quotes} quotes, ${examples.problems.length} problem(s)`,
     blocking: true,
   });
 

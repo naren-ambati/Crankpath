@@ -1,0 +1,56 @@
+crankpath 0.1.0
+toolchain: helm not found on PATH, kustomize not found on PATH
+scanned: repo "https://github.com/example-org/declared" (from --repo-url)
+    commit: not read in this build  floating: no
+Run status: ANALYSED WITH GAPS
+  gaps: 1 declared fact changes the graph read (crankpath.yaml, not verified)
+
+Opacity: 0 of 1 source opaque (0%); sources are Applications, ApplicationSets,
+    Kustomizations, HelmReleases and Kustomize roots; 0 files unreadable.
+  found: 1 Application, 0 ApplicationSets, 0 Kustomizations, 0 HelmReleases, 0
+      Kustomize roots; 3 files hold no source document
+  (nothing opaque, nothing skipped)
+
+Cycles: 1 uncranked
+  cycle c-c5fcc8eb  label: declared (unverified)  nodes: 5  edges: 5
+    Certificate "vault/vault-tls" issued by Issuer "vault/vault-issuer"
+        [field: "spec.issuerRef.name"]
+    Issuer "vault/vault-issuer" depends on Service "vault/vault"
+        [field: "spec.vault.server"]
+    Service "vault/vault" selects StatefulSet "vault/vault"
+        [field: "spec.selector"]
+    StatefulSet "vault/vault" depends on Secret "vault/vault-tls"
+        [field: "edges[0]"]  (declared, unverified)
+    Secret "vault/vault-tls" produced by Certificate "vault/vault-tls"
+        [field: "spec.secretName"]
+
+Not startable from a cold start: 5 of 7 nodes (5 blocked, 0 unverified); 2
+    startable
+  blocked by cycle c-c5fcc8eb (declared (unverified)): 5 nodes
+    Certificate "vault/vault-tls"
+    Issuer "vault/vault-issuer"
+    Secret "vault/vault-tls"
+    Service "vault/vault"
+    StatefulSet "vault/vault"
+  unresolved items: 0
+
+External preconditions (declared cold-start availability):
+  external "github.com"  available (declared, not verified)
+
+Plan (an order, not a schedule; cold-load pickup is not modelled): 2 steps
+  step 1  start   Application "argocd/vault"
+  step 2  start   Secret "vault/vault-token"
+  not ordered: 5 nodes blocked or unverified, listed under Not startable from a
+      cold start
+  Assumed, not verified by crankpath: 1 external declared available; 0 externals
+      served by an in-estate node; 0 cranks (documented); 0 match entries; 0
+      objects every cluster provides; and the 5 not-modelled items below. Every
+      start step is relative to these and to the edges read.
+
+Not verified: 1 cycle uncranked; 1 external declared in crankpath.yaml (not
+    verified). Declared edges: 1 (unverified when present).
+Not modelled (5 items): a running Argo CD or Flux controller is assumed;
+    dependencies only visible at runtime are not seen; the content of opaque
+    nodes is not seen; the revision each Application names is taken to be the
+    files as read; repository credentials not defined in the estate are not
+    seen.

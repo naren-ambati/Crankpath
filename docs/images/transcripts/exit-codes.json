@@ -1,0 +1,35 @@
+{
+ "id": "exit-codes",
+ "title": "Every exit code",
+ "caption": "0 when the estate was analysed (a cycle is a finding, not an error), 1 for an input or usage error, 2 when there is nothing to analyse.",
+ "alt": "Four terminal commands: the thin-slice run exits 0 with Run status ANALYSED; a crankpath.yaml with a misspelt key and an unknown format each exit 1 with one error line; a directory with no source exits 2 with NOTHING ANALYSED",
+ "version": "0.1.0",
+ "capturedAt": "2026-11-16T21:43:04.499Z",
+ "load": "15:43  up 2 days,  4:56, 2 users, load averages: 1.47 9.56 12.16",
+ "commands": [
+  {
+   "command": "crankpath examples/thin-slice/repo --repo-url http://gitea-http.gitea:3000/ops/thin-slice | sed -n '/^Run status:/p'",
+   "exit": 0,
+   "seconds": 0.19,
+   "output": "Run status: ANALYSED\n"
+  },
+  {
+   "command": "crankpath examples/exit-codes/bad-config --repo-url https://github.com/example-org/bad-config",
+   "exit": 1,
+   "seconds": 0.17,
+   "output": "error: invalid crankpath.yaml at key path \"cranks[0].reroute\" (unknown key)\n"
+  },
+  {
+   "command": "crankpath examples/thin-slice/repo --repo-url http://gitea-http.gitea:3000/ops/thin-slice --format yaml",
+   "exit": 1,
+   "seconds": 0.17,
+   "output": "error: unknown format \"yaml\" (text, json or mermaid)\n"
+  },
+  {
+   "command": "crankpath examples/exit-codes/nothing",
+   "exit": 2,
+   "seconds": 0.18,
+   "output": "crankpath 0.1.0\nRun status: NOTHING ANALYSED\npath: \"examples/exit-codes/nothing\"  found: 0 Applications, 0 ApplicationSets, 0\n    Kustomizations, 0 HelmReleases, 0 Kustomize roots; 1 file holds no source\n    document\nexit code 2\n"
+  }
+ ]
+}

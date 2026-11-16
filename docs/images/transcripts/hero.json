@@ -1,0 +1,17 @@
+{
+ "id": "hero",
+ "title": "The thin-slice cycle and the honest status line",
+ "caption": "Argo CD reads its Git source from the Gitea it deploys: one extracted cycle, every node blocked, and a status line that says ANALYSED only because everything was read.",
+ "alt": "Terminal output of crankpath on the thin-slice example: Run status ANALYSED, then Cycles: 1 uncranked, cycle c-d8197e7d labelled extracted with 5 nodes and 8 edges, its two shortest-cycle edges with their fields, and 7 of 7 nodes not startable from a cold start; exit 0",
+ "version": "0.1.0",
+ "capturedAt": "2026-11-16T21:43:02.142Z",
+ "load": "15:43  up 2 days,  4:55, 2 users, load averages: 1.51 9.71 12.23",
+ "commands": [
+  {
+   "command": "crankpath examples/thin-slice/repo --repo-url http://gitea-http.gitea:3000/ops/thin-slice | sed -n -e '/^Run status:/p' -e '/^Cycles:/,/^$/p' -e '/^Not startable/,/startable$/p'",
+   "exit": 0,
+   "seconds": 0.19,
+   "output": "Run status: ANALYSED\nCycles: 1 uncranked\n  cycle c-d8197e7d  label: extracted  nodes: 5  edges: 8\n    Application \"argocd/gitea\" reads source from Service \"gitea/gitea-http\"\n        [field: \"spec.source.repoURL\"]\n    Service \"gitea/gitea-http\" deployed by Application \"argocd/gitea\"\n        [field: \"spec.source.path\"]\n    shortest cycle shown; 6 more edges of this component are listed in the JSON\n        output\n\nNot startable from a cold start: 7 of 7 nodes (7 blocked, 0 unverified); 0\n    startable\n"
+  }
+ ]
+}

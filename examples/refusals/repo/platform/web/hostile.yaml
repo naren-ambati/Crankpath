@@ -1,0 +1,24 @@
+# Objects whose names are not Kubernetes names: each is skipped, named and shown escaped.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "web\e[2J\e[HRun status: ANALYSED"
+  namespace: web
+data:
+  note: a name holding terminal escapes that would clear the screen
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "x/../../Service/web/web"
+  namespace: web
+data:
+  note: a name that reads as another node's id once its dot segments are resolved
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "line one\nCycles: 0"
+  namespace: web
+data:
+  note: a name with a newline and a fake heading

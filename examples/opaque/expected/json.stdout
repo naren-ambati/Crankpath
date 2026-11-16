@@ -1,0 +1,708 @@
+{
+  "clustersUsed": [],
+  "cranks": [],
+  "cycles": [],
+  "edges": [
+    {
+      "evidence": {
+        "field": "spec.source.repoURL",
+        "file": "apps/monitoring.yaml",
+        "line": null,
+        "renderedPath": "apps/monitoring.yaml#1"
+      },
+      "from": "Application/argocd/monitoring",
+      "kind": "reads-source",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "external:github.com"
+    },
+    {
+      "evidence": {
+        "field": "spec.source.repoURL",
+        "file": "apps/web.yaml",
+        "line": null,
+        "renderedPath": "apps/web.yaml#1"
+      },
+      "from": "Application/argocd/web",
+      "kind": "reads-source",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "external:github.com"
+    },
+    {
+      "evidence": {
+        "field": "spec.source.path",
+        "file": "apps/web.yaml",
+        "line": null,
+        "renderedPath": "platform/web/web.yaml#1"
+      },
+      "from": "Deployment/web/web",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/web"
+    },
+    {
+      "evidence": {
+        "field": "spec.source.path",
+        "file": "apps/monitoring.yaml",
+        "line": null,
+        "renderedPath": "platform/monitoring/helmrelease.yaml#2"
+      },
+      "from": "HelmRelease/monitoring/monitoring",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/monitoring"
+    },
+    {
+      "evidence": {
+        "field": "spec.chart.spec.sourceRef.name",
+        "file": "platform/monitoring/helmrelease.yaml",
+        "line": null,
+        "renderedPath": "platform/monitoring/helmrelease.yaml#2"
+      },
+      "from": "HelmRelease/monitoring/monitoring",
+      "kind": "reads-source",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "HelmRepository/flux-system/charts"
+    },
+    {
+      "evidence": {
+        "field": "spec.valuesFrom[0].name",
+        "file": "platform/monitoring/helmrelease.yaml",
+        "line": null,
+        "renderedPath": "platform/monitoring/helmrelease.yaml#2"
+      },
+      "from": "HelmRelease/monitoring/monitoring",
+      "kind": "needs-secret",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Secret/monitoring/monitoring-values"
+    },
+    {
+      "evidence": {
+        "field": "spec.source.path",
+        "file": "apps/monitoring.yaml",
+        "line": null,
+        "renderedPath": "platform/monitoring/helmrelease.yaml#1"
+      },
+      "from": "HelmRepository/flux-system/charts",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/monitoring"
+    },
+    {
+      "evidence": {
+        "field": "spec.url",
+        "file": "platform/monitoring/helmrelease.yaml",
+        "line": null,
+        "renderedPath": "platform/monitoring/helmrelease.yaml#1"
+      },
+      "from": "HelmRepository/flux-system/charts",
+      "kind": "reads-source",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "external:charts.example.org"
+    },
+    {
+      "evidence": {
+        "field": "spec.source.path",
+        "file": "apps/monitoring.yaml",
+        "line": null,
+        "renderedPath": "platform/monitoring/helmrelease.yaml#3"
+      },
+      "from": "Secret/monitoring/monitoring-values",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/monitoring"
+    },
+    {
+      "evidence": {
+        "field": "spec.source.path",
+        "file": "apps/web.yaml",
+        "line": null,
+        "renderedPath": "platform/web/web.yaml#2"
+      },
+      "from": "Service/web/web",
+      "kind": "deployed-by",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Application/argocd/web"
+    },
+    {
+      "evidence": {
+        "field": "spec.selector",
+        "file": "platform/web/web.yaml",
+        "line": null,
+        "renderedPath": "platform/web/web.yaml#2"
+      },
+      "from": "Service/web/web",
+      "kind": "selects",
+      "orderingOnly": false,
+      "source": "extracted",
+      "to": "Deployment/web/web"
+    }
+  ],
+  "externals": [
+    {
+      "coldStart": "unspecified",
+      "id": "external:charts.example.org",
+      "servedBy": null
+    },
+    {
+      "coldStart": "unspecified",
+      "id": "external:github.com",
+      "servedBy": null
+    }
+  ],
+  "floating": [],
+  "hiddenCycles": [],
+  "matchOverrides": [],
+  "nodes": [
+    {
+      "flags": [],
+      "id": "Application/argocd/mirror",
+      "kind": "Application",
+      "name": "mirror",
+      "namespace": "argocd",
+      "opaque": {
+        "detail": "not this repository and not mapped",
+        "field": "spec.source.repoURL",
+        "lostEdges": [
+          "objects under its source path"
+        ],
+        "reason": "unreadable-repo",
+        "suggestion": {
+          "readFrom": ".",
+          "url": "http://gitea-http.gitea:3000/ops/opaque"
+        },
+        "value": "http://gitea-http.gitea:3000/ops/opaque"
+      },
+      "origin": {
+        "document": 1,
+        "path": "apps/mirror.yaml",
+        "renderJob": null
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "Application/argocd/monitoring",
+      "kind": "Application",
+      "name": "monitoring",
+      "namespace": "argocd",
+      "opaque": null,
+      "origin": {
+        "document": 1,
+        "path": "apps/monitoring.yaml",
+        "renderJob": null
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "Application/argocd/web",
+      "kind": "Application",
+      "name": "web",
+      "namespace": "argocd",
+      "opaque": {
+        "detail": "1 file under its source path not read",
+        "field": "spec.source.path",
+        "lostEdges": [
+          "objects in the files it could not read"
+        ],
+        "reason": "limit",
+        "suggestion": null,
+        "value": null
+      },
+      "origin": {
+        "document": 1,
+        "path": "apps/web.yaml",
+        "renderJob": null
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "Deployment/web/web",
+      "kind": "Deployment",
+      "name": "web",
+      "namespace": "web",
+      "opaque": null,
+      "origin": {
+        "document": 1,
+        "path": "platform/web/web.yaml",
+        "renderJob": "Application/argocd/web#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "HelmRelease/monitoring/monitoring",
+      "kind": "HelmRelease",
+      "name": "monitoring",
+      "namespace": "monitoring",
+      "opaque": {
+        "detail": "the Secret is encrypted (sops) and is not read",
+        "field": "spec.valuesFrom[0].name",
+        "lostEdges": [
+          "edges from inside values"
+        ],
+        "reason": "encrypted-values",
+        "suggestion": null,
+        "value": null
+      },
+      "origin": {
+        "document": 2,
+        "path": "platform/monitoring/helmrelease.yaml",
+        "renderJob": null
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "HelmRepository/flux-system/charts",
+      "kind": "HelmRepository",
+      "name": "charts",
+      "namespace": "flux-system",
+      "opaque": null,
+      "origin": {
+        "document": 1,
+        "path": "platform/monitoring/helmrelease.yaml",
+        "renderJob": "Application/argocd/monitoring#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "Secret/monitoring/monitoring-values",
+      "kind": "Secret",
+      "name": "monitoring-values",
+      "namespace": "monitoring",
+      "opaque": null,
+      "origin": {
+        "document": 3,
+        "path": "platform/monitoring/helmrelease.yaml",
+        "renderJob": "Application/argocd/monitoring#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "Service/web/web",
+      "kind": "Service",
+      "name": "web",
+      "namespace": "web",
+      "opaque": null,
+      "origin": {
+        "document": 2,
+        "path": "platform/web/web.yaml",
+        "renderJob": "Application/argocd/web#0"
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "external:charts.example.org",
+      "kind": "External",
+      "name": "charts.example.org",
+      "namespace": null,
+      "opaque": null,
+      "origin": {
+        "document": null,
+        "path": null,
+        "renderJob": null
+      },
+      "syncWave": null
+    },
+    {
+      "flags": [],
+      "id": "external:github.com",
+      "kind": "External",
+      "name": "github.com",
+      "namespace": null,
+      "opaque": null,
+      "origin": {
+        "document": null,
+        "path": null,
+        "renderJob": null
+      },
+      "syncWave": null
+    }
+  ],
+  "notComputed": [],
+  "notModelled": [
+    "a running Argo CD or Flux controller is assumed",
+    "dependencies only visible at runtime are not seen",
+    "the content of opaque nodes is not seen",
+    "the revision each Application names is taken to be the files as read",
+    "repository credentials not defined in the estate are not seen"
+  ],
+  "notVerified": [
+    {
+      "count": 3,
+      "item": "opaque-sources"
+    },
+    {
+      "count": 1,
+      "item": "unreadable-files"
+    },
+    {
+      "count": 3,
+      "item": "unresolved-items"
+    },
+    {
+      "count": 1,
+      "item": "unverified-nodes"
+    },
+    {
+      "count": 2,
+      "item": "unspecified-externals"
+    },
+    {
+      "count": 0,
+      "item": "declared-edges"
+    }
+  ],
+  "opaque": [
+    {
+      "chartRoot": null,
+      "detail": "not this repository and not mapped",
+      "field": "spec.source.repoURL",
+      "kustomizeRoot": null,
+      "lostEdges": [
+        "objects under its source path"
+      ],
+      "node": "Application/argocd/mirror",
+      "reason": "unreadable-repo",
+      "suggestion": {
+        "readFrom": ".",
+        "url": "http://gitea-http.gitea:3000/ops/opaque"
+      },
+      "value": "http://gitea-http.gitea:3000/ops/opaque"
+    },
+    {
+      "chartRoot": null,
+      "detail": "1 file under its source path not read",
+      "field": "spec.source.path",
+      "kustomizeRoot": null,
+      "lostEdges": [
+        "objects in the files it could not read"
+      ],
+      "node": "Application/argocd/web",
+      "reason": "limit",
+      "suggestion": null,
+      "value": null
+    },
+    {
+      "chartRoot": null,
+      "detail": "the Secret is encrypted (sops) and is not read",
+      "field": "spec.valuesFrom[0].name",
+      "kustomizeRoot": null,
+      "lostEdges": [
+        "edges from inside values"
+      ],
+      "node": "HelmRelease/monitoring/monitoring",
+      "reason": "encrypted-values",
+      "suggestion": null,
+      "value": null
+    }
+  ],
+  "plan": {
+    "assumes": {
+      "argocdNamespace": [],
+      "clusterProvided": [],
+      "cranks": [],
+      "externals": [],
+      "matchEntries": [],
+      "notModelled": [
+        "a running Argo CD or Flux controller is assumed",
+        "dependencies only visible at runtime are not seen",
+        "the content of opaque nodes is not seen",
+        "the revision each Application names is taken to be the files as read",
+        "repository credentials not defined in the estate are not seen"
+      ],
+      "servedBy": []
+    },
+    "conflicts": [],
+    "disclaimer": "an order, not a schedule; cold-load pickup is not modelled",
+    "listedUnordered": [
+      {
+        "blockers": [
+          "Application/argocd/mirror"
+        ],
+        "node": "Application/argocd/mirror",
+        "reason": "opaque",
+        "status": "unverified"
+      },
+      {
+        "blockers": [
+          "external:github.com"
+        ],
+        "node": "Application/argocd/monitoring",
+        "reason": "external-unspecified",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "external:github.com"
+        ],
+        "node": "Application/argocd/web",
+        "reason": "external-unspecified",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "external:github.com"
+        ],
+        "node": "Deployment/web/web",
+        "reason": "external-unspecified",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "external:charts.example.org"
+        ],
+        "node": "HelmRelease/monitoring/monitoring",
+        "reason": "external-unspecified",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "external:charts.example.org"
+        ],
+        "node": "HelmRepository/flux-system/charts",
+        "reason": "external-unspecified",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "external:github.com"
+        ],
+        "node": "Secret/monitoring/monitoring-values",
+        "reason": "external-unspecified",
+        "status": "blocked"
+      },
+      {
+        "blockers": [
+          "external:github.com"
+        ],
+        "node": "Service/web/web",
+        "reason": "external-unspecified",
+        "status": "blocked"
+      }
+    ],
+    "steps": []
+  },
+  "repo": {
+    "commit": null,
+    "floating": false,
+    "url": "https://github.com/example-org/opaque",
+    "urlFrom": "flag"
+  },
+  "repoMappings": [],
+  "runStatus": {
+    "counts": {
+      "declaredAssumptions": 0,
+      "declaredFacts": 0,
+      "droppedHooks": 0,
+      "edgesDeclared": 0,
+      "edgesExtracted": 11,
+      "foreignDestination": 0,
+      "ignoredFiles": 1,
+      "nodes": 10,
+      "opaque": 3,
+      "opaqueApplicationSets": 0,
+      "rendered": 1,
+      "runLimitEdges": 0,
+      "runLimitFiles": 0,
+      "runLimitJobs": 0,
+      "skipped": 0,
+      "skippedSources": 0,
+      "sourcesByKind": {
+        "Application": 3,
+        "ApplicationSet": 0,
+        "HandAppliedChart": 0,
+        "HelmRelease": 1,
+        "Kustomization": 0,
+        "KustomizeRoot": 0
+      },
+      "sourcesFound": 4,
+      "timeouts": 0,
+      "unreadableFiles": 1,
+      "unresolved": 3
+    },
+    "floor": true,
+    "reasons": [
+      "opaque-sources",
+      "unreadable-files",
+      "unresolved-items"
+    ],
+    "state": "ANALYSED WITH GAPS"
+  },
+  "schemaVersion": 1,
+  "skipped": [],
+  "statusCounts": {
+    "blocked": 7,
+    "startable": 0,
+    "unverified": 1
+  },
+  "statuses": [
+    {
+      "blockers": [
+        "Application/argocd/mirror"
+      ],
+      "node": "Application/argocd/mirror",
+      "reason": "opaque",
+      "status": "unverified",
+      "via": null
+    },
+    {
+      "blockers": [
+        "external:github.com"
+      ],
+      "node": "Application/argocd/monitoring",
+      "reason": "external-unspecified",
+      "status": "blocked",
+      "via": "external:github.com"
+    },
+    {
+      "blockers": [
+        "external:github.com"
+      ],
+      "node": "Application/argocd/web",
+      "reason": "external-unspecified",
+      "status": "blocked",
+      "via": "external:github.com"
+    },
+    {
+      "blockers": [
+        "external:github.com"
+      ],
+      "node": "Deployment/web/web",
+      "reason": "external-unspecified",
+      "status": "blocked",
+      "via": "Application/argocd/web"
+    },
+    {
+      "blockers": [
+        "external:charts.example.org"
+      ],
+      "node": "HelmRelease/monitoring/monitoring",
+      "reason": "external-unspecified",
+      "status": "blocked",
+      "via": "HelmRepository/flux-system/charts"
+    },
+    {
+      "blockers": [
+        "external:charts.example.org"
+      ],
+      "node": "HelmRepository/flux-system/charts",
+      "reason": "external-unspecified",
+      "status": "blocked",
+      "via": "external:charts.example.org"
+    },
+    {
+      "blockers": [
+        "external:github.com"
+      ],
+      "node": "Secret/monitoring/monitoring-values",
+      "reason": "external-unspecified",
+      "status": "blocked",
+      "via": "Application/argocd/monitoring"
+    },
+    {
+      "blockers": [
+        "external:github.com"
+      ],
+      "node": "Service/web/web",
+      "reason": "external-unspecified",
+      "status": "blocked",
+      "via": "Application/argocd/web"
+    },
+    {
+      "blockers": [
+        "external:charts.example.org"
+      ],
+      "node": "external:charts.example.org",
+      "reason": "external-unspecified",
+      "status": "blocked",
+      "via": null
+    },
+    {
+      "blockers": [
+        "external:github.com"
+      ],
+      "node": "external:github.com",
+      "reason": "external-unspecified",
+      "status": "blocked",
+      "via": null
+    }
+  ],
+  "toolMissing": {
+    "helm": 0,
+    "kustomize": 0
+  },
+  "toolchain": {
+    "crankpath": "0.1.0",
+    "helm": null,
+    "kustomize": null,
+    "missing": [
+      "helm",
+      "kustomize"
+    ],
+    "tested": false,
+    "testedPair": {
+      "helm": "v4.3.2",
+      "kustomize": "v5.8.1"
+    },
+    "unrecognised": []
+  },
+  "undeployedCharts": [],
+  "undeployedKustomizeRoots": [],
+  "unreadable": [
+    {
+      "detail": null,
+      "outcome": "alias-limit",
+      "path": "platform/web/aliases.yaml",
+      "reasonWord": "alias expansion over the limit"
+    }
+  ],
+  "unresolved": [
+    {
+      "candidates": [],
+      "candidatesTruncated": false,
+      "field": "spec.source.repoURL",
+      "owner": "Application/argocd/mirror",
+      "subject": "Application/argocd/mirror",
+      "value": "gitea-http.gitea",
+      "where": "apps/mirror.yaml#1",
+      "why": "host-unplaced"
+    },
+    {
+      "candidates": [],
+      "candidatesTruncated": false,
+      "field": null,
+      "owner": "external:charts.example.org",
+      "subject": "external:charts.example.org",
+      "value": null,
+      "where": "crankpath.yaml",
+      "why": "external-unspecified"
+    },
+    {
+      "candidates": [],
+      "candidatesTruncated": false,
+      "field": null,
+      "owner": "external:github.com",
+      "subject": "external:github.com",
+      "value": null,
+      "where": "crankpath.yaml",
+      "why": "external-unspecified"
+    }
+  ],
+  "unusedMatches": []
+}

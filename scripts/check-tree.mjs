@@ -13,7 +13,12 @@
 //                  allowed only in .gitignore, which must name it to keep it out
 //   hostname       this machine's hostname, read at run time and never written down
 //   user-name      this machine's login name, read at run time (service accounts excepted)
-//   not-text       a file that is neither UTF-8 nor UTF-16 text, so it cannot be checked
+//   not-text       a file that is neither UTF-8 nor UTF-16 text, so it cannot be checked; the one
+//                  exception is a screenshot under docs/images/ (`<id>.png`): a well-formed PNG with
+//                  no text or metadata chunk is read as checked, because every word it shows is in
+//                  its transcript, docs/images/transcripts/<id>.json, which is checked as text
+//   image-metadata a docs/images/ PNG that carries a text or metadata chunk (tEXt, zTXt, iTXt,
+//                  eXIf, tIME), which could hold a name or a path the image does not show
 // File and folder names are checked with the same rules, and so is the target of a symlink.
 // Later bolts add rules (the denylist and the secret grep); keep checkTree importable.
 
@@ -208,8 +213,16 @@ export function checkTree({ root, hostname = os.hostname(), userName = loginName
       continue;
     }
     if (!st.isFile()) continue;
-    const text = decodeText(fs.readFileSync(full));
+    const buf = fs.readFileSync(full);
+    const text = decodeText(buf);
     filesRead += 1;
+    if (text === undefined && isScreenshot(rel)) {
+      const chunks = pngChunks(buf);
+      if (chunks === undefined) findings.push({ file: rel, line: 0, rule: "not-text" });
+      else if (chunks.some((c) => PNG_METADATA.includes(c)))
+        findings.push({ file: rel, line: 0, rule: "image-metadata" });
+      continue;
+    }
     if (text === undefined) {
       findings.push({ file: rel, line: 0, rule: "not-text" });
       continue;
@@ -220,6 +233,35 @@ export function checkTree({ root, hostname = os.hostname(), userName = loginName
     }
   }
   return { filesRead, findings };
+}
+
+const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+const PNG_METADATA = Object.freeze(["tEXt", "zTXt", "iTXt", "eXIf", "tIME"]);
+
+/**
+ * The chunk types of a well-formed PNG, or undefined when the bytes are not one (a bad signature,
+ * a chunk running past the end, no IEND last).
+ * @param {Buffer} buf
+ * @returns {string[] | undefined}
+ */
+export function pngChunks(buf) {
+  if (buf.length < 8 || !buf.subarray(0, 8).equals(PNG_SIGNATURE)) return undefined;
+  const types = [];
+  let at = 8;
+  while (at + 12 <= buf.length) {
+    const len = buf.readUInt32BE(at);
+    const type = buf.subarray(at + 4, at + 8).toString("latin1");
+    if (!/^[A-Za-z]{4}$/.test(type) || at + 12 + len > buf.length) return undefined;
+    types.push(type);
+    at += 12 + len;
+    if (type === "IEND") return at === buf.length ? types : undefined;
+  }
+  return undefined;
+}
+
+/** Whether a path is a screenshot of docs/images (the not-text exception above). @param {string} rel */
+export function isScreenshot(rel) {
+  return /^docs\/images\/[a-z0-9-]+\.png$/.test(rel);
 }
 
 function main() {

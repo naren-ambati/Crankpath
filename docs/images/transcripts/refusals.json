@@ -1,0 +1,23 @@
+{
+ "id": "refusals",
+ "title": "Refusals and hostile names",
+ "caption": "A symlink, a path out of the root, a file over the size limit and names that imitate crankpath's output: each refused or skipped by name, every hostile string quoted with its control characters written out.",
+ "alt": "Terminal output of crankpath on a copy of examples/refusals from Run status to the Cycles line: three opaque Applications, big.yaml refused as too large, escape.yaml as a symlink not followed, and three ConfigMaps skipped invalid-name with their names quoted and escapes shown as backslash x1b; exit 0",
+ "version": "0.1.0",
+ "capturedAt": "2026-11-16T21:43:04.791Z",
+ "load": "15:43  up 2 days,  4:56, 2 users, load averages: 1.47 9.56 12.16",
+ "commands": [
+  {
+   "command": "node examples/refusals/make-copy.mjs $TMPDIR/crankpath-shots/refusals",
+   "exit": 0,
+   "seconds": 0.09,
+   "output": ""
+  },
+  {
+   "command": "crankpath $TMPDIR/crankpath-shots/refusals --repo-url https://github.com/example-org/refusals | sed -n '/^Run status:/,/^Cycles:/p'",
+   "exit": 0,
+   "seconds": 0.2,
+   "output": "Run status: ANALYSED WITH GAPS\n  gaps: 3 sources opaque; 2 files unreadable; 3 objects skipped; 1 unresolved\n      item\n\nOpacity: at least 3 of 3 sources opaque (at least 100%); sources are\n    Applications, ApplicationSets, Kustomizations, HelmReleases and Kustomize\n    roots; 2 files unreadable.\n  found: 3 Applications, 0 ApplicationSets, 0 Kustomizations, 0 HelmReleases, 0\n      Kustomize roots; 2 files hold no source document\n  opaque 1 of 3  node: Application \"argocd/docs\"  reason: unreadable-file\n    could not see: objects under its source path\n    field: \"spec.source.path\"  value: \"../../outside\"  (outside the scanned\n        root)\n  opaque 2 of 3  node: Application \"argocd/notes\"  reason: unreadable-file\n    could not see: objects under its source path\n    field: \"spec.source.path\"\n        value: \"docs\\x0aRun status: ANALYSED\\x0a\\x1b[32mOK no cycles found\\x1b[0m\"\n        (not found)\n  opaque 3 of 3  node: Application \"argocd/web\"  reason: limit\n    could not see: objects in the files it could not read\n    field: \"spec.source.path\"  (2 files under its source path not read)\n  unreadable 1 of 2  file: \"platform/web/big.yaml\"  (too large)\n  unreadable 2 of 2  file: \"platform/web/escape.yaml\"  (symlink, not followed)\n  skipped 1 of 3  reason: invalid-name  kind: \"ConfigMap\"  namespace: \"web\"\n      name: \"web\\x1b[2J\\x1b[HRun status: ANALYSED\"\n    file: \"platform/web/hostile.yaml\"  document: 1\n  skipped 2 of 3  reason: invalid-name  kind: \"ConfigMap\"  namespace: \"web\"\n      name: \"x/../../Service/web/web\"\n    file: \"platform/web/hostile.yaml\"  document: 2\n  skipped 3 of 3  reason: invalid-name  kind: \"ConfigMap\"  namespace: \"web\"\n      name: \"line one\\x0aCycles: 0\"\n    file: \"platform/web/hostile.yaml\"  document: 3\n\nCycles: none found among 6 nodes and 6 edges read (3 nodes opaque, so cycles\n"
+  }
+ ]
+}

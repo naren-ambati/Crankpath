@@ -1,0 +1,7 @@
+# A crank with a misspelt key (the key is `reroutes`): the whole file is refused, nothing is
+# analysed, exit 1.
+cranks:
+  - reroute:
+      node: Application/argocd/web
+      to: github.com
+    by: "first install from the GitHub copy"

@@ -1,0 +1,23 @@
+{
+ "id": "declared",
+ "title": "declared (unverified): a cycle that needs a declared edge",
+ "caption": "No field shows that Vault reads its certificate's Secret, so without the declared edge crankpath finds none; with it, the cycle is labelled declared (unverified) and the run has a gap.",
+ "alt": "Two terminal commands on examples/declared: without a config, Cycles: none found among 8 nodes and 11 edges read; with the declared edge, cycle c-c5fcc8eb labelled declared (unverified), 5 nodes and 5 edges, the declared edge marked unverified, Run status ANALYSED WITH GAPS; both exit 0",
+ "version": "0.1.0",
+ "capturedAt": "2026-11-16T21:43:03.358Z",
+ "load": "15:43  up 2 days,  4:56, 2 users, load averages: 1.51 9.71 12.23",
+ "commands": [
+  {
+   "command": "crankpath examples/declared/repo --repo-url https://github.com/example-org/declared | sed -n -e '/^Run status:/,/^$/p' -e '/^Cycles:/,/^$/p'",
+   "exit": 0,
+   "seconds": 0.19,
+   "output": "Run status: ANALYSED WITH GAPS\n  gaps: 1 unresolved item\n\nCycles: none found among 8 nodes and 11 edges read (0 nodes opaque; 1 unresolved\n    item)\n\n"
+  },
+  {
+   "command": "crankpath examples/declared/repo --repo-url https://github.com/example-org/declared --config examples/declared/crankpath.yaml | sed -n -e '/^Run status:/,/^$/p' -e '/^Cycles:/,/^$/p'",
+   "exit": 0,
+   "seconds": 0.2,
+   "output": "Run status: ANALYSED WITH GAPS\n  gaps: 1 declared fact changes the graph read (crankpath.yaml, not verified)\n\nCycles: 1 uncranked\n  cycle c-c5fcc8eb  label: declared (unverified)  nodes: 5  edges: 5\n    Certificate \"vault/vault-tls\" issued by Issuer \"vault/vault-issuer\"\n        [field: \"spec.issuerRef.name\"]\n    Issuer \"vault/vault-issuer\" depends on Service \"vault/vault\"\n        [field: \"spec.vault.server\"]\n    Service \"vault/vault\" selects StatefulSet \"vault/vault\"\n        [field: \"spec.selector\"]\n    StatefulSet \"vault/vault\" depends on Secret \"vault/vault-tls\"\n        [field: \"edges[0]\"]  (declared, unverified)\n    Secret \"vault/vault-tls\" produced by Certificate \"vault/vault-tls\"\n        [field: \"spec.secretName\"]\n\n"
+  }
+ ]
+}

@@ -1,0 +1,77 @@
+crankpath 0.1.0
+toolchain: helm not found on PATH, kustomize not found on PATH
+scanned: repo "https://github.com/example-org/opaque" (from --repo-url)
+    commit: not read in this build  floating: no
+Run status: ANALYSED WITH GAPS
+  gaps: 3 sources opaque; 1 file unreadable; 3 unresolved items
+
+Opacity: at least 3 of 4 sources opaque (at least 75%); sources are
+    Applications, ApplicationSets, Kustomizations, HelmReleases and Kustomize
+    roots; 1 file unreadable.
+  found: 3 Applications, 0 ApplicationSets, 0 Kustomizations, 1 HelmRelease, 0
+      Kustomize roots; 1 file holds no source document
+  opaque 1 of 3  node: Application "argocd/mirror"  reason: unreadable-repo
+    could not see: objects under its source path
+    field: "spec.source.repoURL"
+        value: "http://gitea-http.gitea:3000/ops/opaque"  (not this repository
+        and not mapped)
+    suggested repos entry (not
+        applied): "http://gitea-http.gitea:3000/ops/opaque": {read_from: .}
+  opaque 2 of 3  node: Application "argocd/web"  reason: limit
+    could not see: objects in the files it could not read
+    field: "spec.source.path"  (1 file under its source path not read)
+  opaque 3 of 3  node: HelmRelease "monitoring/monitoring"
+      reason: encrypted-values
+    could not see: edges from inside values
+    field: "spec.valuesFrom[0].name"  (the Secret is encrypted (sops) and is not
+        read)
+  unreadable 1 of 1  file: "platform/web/aliases.yaml"  (alias expansion over
+      the limit)
+
+Cycles: none found among 10 nodes and 11 edges read (3 nodes opaque, so cycles
+    inside them cannot be seen; 3 unresolved items; 1 file unreadable)
+
+Not startable from a cold start: 8 of 8 nodes (7 blocked, 1 unverified); 0
+    startable
+  blocked by external "charts.example.org" (UNRESOLVED: its cold start is not
+      declared): 2 nodes
+    HelmRelease "monitoring/monitoring"  via HelmRepository "flux-system/charts"
+    HelmRepository "flux-system/charts"  via external "charts.example.org"
+  blocked by external "github.com" (UNRESOLVED: its cold start is not
+      declared): 5 nodes
+    Application "argocd/monitoring"  via external "github.com"
+    Application "argocd/web"  via external "github.com"
+    Deployment "web/web"  via Application "argocd/web"
+    Secret "monitoring/monitoring-values"  via Application "argocd/monitoring"
+    Service "web/web"  via Application "argocd/web"
+  unverified, opaque or behind opaque Application "argocd/mirror": 1 node
+    Application "argocd/mirror"
+  unresolved items: 3
+  unresolved 1 of 3  why: host-unplaced  subject: Application "argocd/mirror"
+    where: "apps/mirror.yaml#1"  field: "spec.source.repoURL"
+        host: "gitea-http.gitea"
+  unresolved 2 of 3  why: external-unspecified
+      subject: external "charts.example.org"
+    where: "crankpath.yaml"
+  unresolved 3 of 3  why: external-unspecified  subject: external "github.com"
+    where: "crankpath.yaml"
+
+External preconditions (declared cold-start availability):
+  external "charts.example.org"  UNRESOLVED (not declared in crankpath.yaml)
+  external "github.com"  UNRESOLVED (not declared in crankpath.yaml)
+
+Plan (an order, not a schedule; cold-load pickup is not modelled): no steps,
+    because no node is startable; the 8 nodes not startable are listed above.
+  Assumed, not verified by crankpath: 0 externals declared available; 0
+      externals served by an in-estate node; 0 cranks (documented); 0 match
+      entries; 0 objects every cluster provides; and the 5 not-modelled items
+      below. Every start step is relative to these and to the edges read.
+
+Not verified: 3 sources opaque; 1 file unreadable; 3 unresolved items; 1 node
+    unverified; 2 externals unspecified. Declared edges: 0 (unverified when
+    present).
+Not modelled (5 items): a running Argo CD or Flux controller is assumed;
+    dependencies only visible at runtime are not seen; the content of opaque
+    nodes is not seen; the revision each Application names is taken to be the
+    files as read; repository credentials not defined in the estate are not
+    seen.

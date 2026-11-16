@@ -1,0 +1,6 @@
+crankpath 0.1.0
+Run status: NOTHING ANALYSED
+path: "examples/exit-codes/nothing"  found: 0 Applications, 0 ApplicationSets, 0
+    Kustomizations, 0 HelmReleases, 0 Kustomize roots; 1 file holds no source
+    document
+exit code 2

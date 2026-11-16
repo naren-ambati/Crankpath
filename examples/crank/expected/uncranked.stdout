@@ -1,0 +1,49 @@
+crankpath 0.1.0
+toolchain: helm not found on PATH, kustomize not found on PATH
+scanned: repo "http://gitea-http.gitea:3000/ops/thin-slice" (from --repo-url)
+    commit: not read in this build  floating: no
+Run status: ANALYSED
+
+Opacity: 0 of 2 sources opaque (0%); sources are Applications, ApplicationSets,
+    Kustomizations, HelmReleases and Kustomize roots; 0 files unreadable.
+  found: 2 Applications, 0 ApplicationSets, 0 Kustomizations, 0 HelmReleases, 0
+      Kustomize roots; 4 files hold no source document
+  (nothing opaque, nothing skipped)
+
+Cycles: 1 uncranked
+  cycle c-d8197e7d  label: extracted  nodes: 5  edges: 8
+    Application "argocd/gitea" reads source from Service "gitea/gitea-http"
+        [field: "spec.source.repoURL"]
+    Service "gitea/gitea-http" deployed by Application "argocd/gitea"
+        [field: "spec.source.path"]
+    shortest cycle shown; 6 more edges of this component are listed in the JSON
+        output
+
+Not startable from a cold start: 7 of 7 nodes (7 blocked, 0 unverified); 0
+    startable
+  blocked by cycle c-d8197e7d (extracted): 7 nodes
+    Application "argocd/gitea"
+    Application "argocd/notes"  via Service "gitea/gitea-http"
+    ConfigMap "gitea/gitea-config"
+    ConfigMap "notes/notes"  via Application "argocd/notes"
+    Deployment "gitea/gitea"
+    Secret "gitea/gitea-admin"
+    Service "gitea/gitea-http"
+  unresolved items: 0
+
+External preconditions: none declared in crankpath.yaml and none extracted from
+    what was read.
+
+Plan (an order, not a schedule; cold-load pickup is not modelled): no steps,
+    because no node is startable; the 7 nodes not startable are listed above.
+  Assumed, not verified by crankpath: 0 externals declared available; 0
+      externals served by an in-estate node; 0 cranks (documented); 0 match
+      entries; 0 objects every cluster provides; and the 5 not-modelled items
+      below. Every start step is relative to these and to the edges read.
+
+Not verified: 1 cycle uncranked. Declared edges: 0 (unverified when present).
+Not modelled (5 items): a running Argo CD or Flux controller is assumed;
+    dependencies only visible at runtime are not seen; the content of opaque
+    nodes is not seen; the revision each Application names is taken to be the
+    files as read; repository credentials not defined in the estate are not
+    seen.

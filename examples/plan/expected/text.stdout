@@ -1,0 +1,58 @@
+crankpath 0.1.0
+toolchain: helm not found on PATH, kustomize not found on PATH
+scanned: repo "http://gitea-http.gitea:3000/ops/plan" (from --repo-url)
+    commit: not read in this build  floating: no
+Run status: ANALYSED
+
+Opacity: 0 of 3 sources opaque (0%); sources are Applications, ApplicationSets,
+    Kustomizations, HelmReleases and Kustomize roots; 0 files unreadable.
+  found: 3 Applications, 0 ApplicationSets, 0 Kustomizations, 0 HelmReleases, 0
+      Kustomize roots; 5 files hold no source document
+  (nothing opaque, nothing skipped)
+
+Cycles: 0 uncranked, 1 cranked
+  cycle c-d8197e7d  label: cranked (was extracted)  nodes: 5  edges: 8
+    cranked by: crank 1
+        by: "first install: point Application argocd/gitea at the GitHub copy, sync, then switch it back to Gitea"
+        (documented, not verified)
+    Application "argocd/gitea" reads source from Service "gitea/gitea-http"
+        [field: "spec.source.repoURL"]
+    Service "gitea/gitea-http" deployed by Application "argocd/gitea"
+        [field: "spec.source.path"]
+    shortest cycle shown; 6 more edges of this component are listed in the JSON
+        output
+
+Not startable from a cold start: 0 of 16 nodes; 16 startable, relative to the
+    assumptions under the plan
+  unresolved items: 0
+
+External preconditions (declared cold-start availability):
+  external "github.com"  available (declared, not verified)
+
+Plan (an order, not a schedule; cold-load pickup is not modelled): 11 steps
+  step 1  manual  crank 1
+      by: "first install: point Application argocd/gitea at the GitHub copy, sync, then switch it back to Gitea"
+    reroutes: Application "argocd/gitea" to external "github.com"
+  step 2  start   Application "argocd/gitea"
+  step 3  start   ConfigMap "gitea/gitea-config", Secret "gitea/gitea-admin"
+  step 4  start   Deployment "gitea/gitea"
+  step 5  start   Service "gitea/gitea-http"
+  step 6  start   Application "argocd/db", Application "argocd/wiki"
+  step 7  start   ConfigMap "wiki/wiki-config", Issuer "wiki/selfsigned",
+      Secret "db/postgres-auth"
+  step 8  start   Certificate "wiki/wiki-tls", StatefulSet "db/postgres"
+  step 9  start   Secret "wiki/wiki-tls", Service "db/postgres"
+  step 10  start   Deployment "wiki/wiki"
+  step 11  start   Service "wiki/wiki"
+  Assumed, not verified by crankpath: 1 external declared available; 0 externals
+      served by an in-estate node; 1 crank (documented); 0 match entries; 0
+      objects every cluster provides; and the 5 not-modelled items below. Every
+      start step is relative to these and to the edges read.
+
+Not verified: 1 external declared in crankpath.yaml (not verified); 1 crank
+    documented (not verified). Declared edges: 0 (unverified when present).
+Not modelled (5 items): a running Argo CD or Flux controller is assumed;
+    dependencies only visible at runtime are not seen; the content of opaque
+    nodes is not seen; the revision each Application names is taken to be the
+    files as read; repository credentials not defined in the estate are not
+    seen.

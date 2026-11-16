@@ -1,0 +1,10 @@
+# The bootstrap step that breaks the cycle, declared for crankpath (passed with --config, so the
+# same estate runs with and without it). crankpath does not verify it.
+external:
+  github.com:
+    cold_start: available
+cranks:
+  - reroutes:
+      node: Application/argocd/gitea
+      to: github.com
+    by: "first install: point Application argocd/gitea at the GitHub copy, sync, then switch it back to Gitea"

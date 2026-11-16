@@ -1,0 +1,17 @@
+{
+ "id": "thin-slice-json",
+ "title": "The thin-slice cycle, JSON report",
+ "caption": "The same run with --format json: the first 48 lines of the schema-version-1 report, the cycle with its edges.",
+ "alt": "Terminal output of the first 48 lines of crankpath's JSON report on the thin-slice example: the cycles array with cycle c-d8197e7d, its edges with from, kind, source and to; exit 0",
+ "version": "0.1.0",
+ "capturedAt": "2026-11-16T21:43:02.541Z",
+ "load": "15:43  up 2 days,  4:56, 2 users, load averages: 1.51 9.71 12.23",
+ "commands": [
+  {
+   "command": "crankpath examples/thin-slice/repo --repo-url http://gitea-http.gitea:3000/ops/thin-slice --format json | sed -n '1,48p'",
+   "exit": 0,
+   "seconds": 0.19,
+   "output": "{\n  \"clustersUsed\": [],\n  \"cranks\": [],\n  \"cycles\": [\n    {\n      \"crankedBy\": [],\n      \"edges\": [\n        {\n          \"from\": \"Application/argocd/gitea\",\n          \"kind\": \"reads-source\",\n          \"source\": \"extracted\",\n          \"to\": \"Service/gitea/gitea-http\"\n        },\n        {\n          \"from\": \"ConfigMap/gitea/gitea-config\",\n          \"kind\": \"deployed-by\",\n          \"source\": \"extracted\",\n          \"to\": \"Application/argocd/gitea\"\n        },\n        {\n          \"from\": \"Deployment/gitea/gitea\",\n          \"kind\": \"deployed-by\",\n          \"source\": \"extracted\",\n          \"to\": \"Application/argocd/gitea\"\n        },\n        {\n          \"from\": \"Deployment/gitea/gitea\",\n          \"kind\": \"needs-config\",\n          \"source\": \"extracted\",\n          \"to\": \"ConfigMap/gitea/gitea-config\"\n        },\n        {\n          \"from\": \"Deployment/gitea/gitea\",\n          \"kind\": \"needs-secret\",\n          \"source\": \"extracted\",\n          \"to\": \"Secret/gitea/gitea-admin\"\n        },\n        {\n          \"from\": \"Secret/gitea/gitea-admin\",\n          \"kind\": \"deployed-by\",\n          \"source\": \"extracted\",\n          \"to\": \"Application/argocd/gitea\"\n        },\n        {\n          \"from\": \"Service/gitea/gitea-http\",\n          \"kind\": \"deployed-by\",\n          \"source\": \"extracted\",\n          \"to\": \"Application/argocd/gitea\"\n"
+  }
+ ]
+}

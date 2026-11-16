@@ -1,0 +1,35 @@
+# Vault's own TLS certificate, issued by a cert-manager Issuer that asks Vault itself.
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: vault-issuer
+  namespace: vault
+spec:
+  vault:
+    server: https://vault.vault.svc:8200
+    path: pki/sign/vault
+    auth:
+      tokenSecretRef:
+        name: vault-token
+        key: token
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: vault-tls
+  namespace: vault
+spec:
+  secretName: vault-tls
+  dnsNames:
+    - vault.vault.svc
+  issuerRef:
+    name: vault-issuer
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: vault-token
+  namespace: vault
+type: Opaque
+stringData:
+  token: example-value-never-printed

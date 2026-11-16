@@ -1,0 +1,632 @@
+{
+  "about": "What each example must produce, written on 2026-11-16 before its first run. Per run: the exit code; stdout and stderr facts: `lines` (each must be a whole line of the output, leading and trailing spaces ignored), `contains` (substrings), `absent` (substrings that must not appear), `startCounts` (how many lines may start with the text, after leading spaces), `empty`, and `sameAs` (the run's output must equal another run's). The byte-for-byte outputs are pinned in examples/<example>/expected/<run>.stdout and .stderr from the first run that met these facts; test/examples/examples.test.ts compares every offline run with both. `{tmp}` is a fresh temporary directory per run. Every run is made with node alone on PATH (helm and kustomize not found), from the repository root.",
+  "edits": [
+    {
+      "example": "declared",
+      "run": "without-edge",
+      "what": "stdout fact \"Cycles: 0\" replaced by \"Cycles: none found among 8 nodes and 11 edges read\"",
+      "why": "first run, 2026-11-16: crankpath never states a no-cycle result as a bare count; it says none were found among the nodes and edges it read (the honesty rule). My expected wording was wrong; the result (no cycle without the declared edge) was as expected."
+    },
+    {
+      "example": "opaque",
+      "run": "text",
+      "what": "stdout facts: \"at least 2 of 3 sources opaque\" became \"at least 3 of 4\", \"alias-limit\" became \"reason: limit\" and \"alias expansion over the limit\"; the suggestion and the absence of \"which no readable source defines\" added; a JSON run added",
+      "why": "first run, 2026-11-16: (1) the alias-bomb file lies under Application argocd/web's source path, so that Application is itself opaque, reason limit (a source with a file it could not read is not fully seen), which I had not expected; (2) the text names a file's outcome in words (the JSON run now asserts the word alias-limit); (3) the estate was edited after that run: the first run showed the HelmRepository and the encrypted Secret as defined by no readable source, because no source deployed platform/monitoring, which hid what the example is for; Application argocd/monitoring (apps/monitoring.yaml) now deploys that directory, so the sources are 4."
+    },
+    {
+      "example": "refusals",
+      "run": "text",
+      "what": "stdout fact \"too-large\" replaced by \"(too large)\"; a JSON run added that asserts too-large, symlink and invalid-name",
+      "why": "first run, 2026-11-16: the text names a file's outcome in words, the JSON by its word; the result (the file refused as over the size limit) was as expected."
+    },
+    {
+      "example": "opaque",
+      "run": "text",
+      "what": "stdout fact \"alias expansion over the limit\" shortened to \"(alias expansion over\"",
+      "why": "second run, 2026-11-16, after the edit above: the text wraps that phrase at 80 columns, so the whole phrase is not one substring; my fact was copied without the line break. Nothing else differed."
+    },
+    {
+      "example": "refusals",
+      "run": "text",
+      "what": "the estate, not the expectation: the symlink platform/web/escape.yaml now points at an existing file (examples/thin-slice/repo/platform/gitea/config.yaml); its first target was one directory short and named nothing",
+      "why": "after the first runs, 2026-11-16: Biome reported the link as broken. crankpath never follows a symlink, so the output is the same either way: the examples lane gave byte-identical output before and after the change (21 of 21 runs)."
+    }
+  ],
+  "examples": {
+    "thin-slice": {
+      "lane": "offline",
+      "what": "the thin-slice cycle: an Argo CD Application reads its Git source from the Gitea it deploys",
+      "runs": [
+        {
+          "name": "text",
+          "args": [
+            "examples/thin-slice/repo",
+            "--repo-url",
+            "http://gitea-http.gitea:3000/ops/thin-slice"
+          ],
+          "exit": 0,
+          "stdout": {
+            "lines": [
+              "Run status: ANALYSED",
+              "Cycles: 1 uncranked"
+            ],
+            "contains": [
+              "label: extracted  nodes: 5",
+              "Not startable from a cold start: 7 of 7 nodes"
+            ],
+            "absent": [
+              "\u001b"
+            ]
+          },
+          "stderr": {
+            "empty": true
+          }
+        },
+        {
+          "name": "json",
+          "args": [
+            "examples/thin-slice/repo",
+            "--repo-url",
+            "http://gitea-http.gitea:3000/ops/thin-slice",
+            "--format",
+            "json"
+          ],
+          "exit": 0,
+          "stdout": {
+            "lines": [
+              "\"state\": \"ANALYSED\"",
+              "\"label\": \"extracted\",",
+              "\"schemaVersion\": 1,"
+            ],
+            "absent": [
+              "\u001b"
+            ]
+          },
+          "stderr": {
+            "empty": true
+          }
+        }
+      ]
+    },
+    "crank": {
+      "lane": "offline",
+      "what": "the thin-slice estate without and with a crank that breaks its cycle",
+      "runs": [
+        {
+          "name": "uncranked",
+          "args": [
+            "examples/thin-slice/repo",
+            "--repo-url",
+            "http://gitea-http.gitea:3000/ops/thin-slice"
+          ],
+          "exit": 0,
+          "stdout": {
+            "lines": [
+              "Run status: ANALYSED",
+              "Cycles: 1 uncranked"
+            ],
+            "contains": [
+              "label: extracted  nodes: 5",
+              "Not startable from a cold start: 7 of 7 nodes"
+            ],
+            "absent": [
+              "\u001b"
+            ]
+          },
+          "stderr": {
+            "empty": true
+          },
+          "sameAs": "thin-slice/text"
+        },
+        {
+          "name": "cranked",
+          "args": [
+            "examples/thin-slice/repo",
+            "--repo-url",
+            "http://gitea-http.gitea:3000/ops/thin-slice",
+            "--config",
+            "examples/crank/crankpath.yaml"
+          ],
+          "exit": 0,
+          "stdout": {
+            "lines": [
+              "Run status: ANALYSED"
+            ],
+            "contains": [
+              "label: cranked",
+              "documented, not verified",
+              "manual"
+            ],
+            "absent": [
+              "label: extracted",
+              "\u001b"
+            ]
+          },
+          "stderr": {
+            "empty": true
+          }
+        }
+      ]
+    },
+    "declared": {
+      "lane": "offline",
+      "what": "a cycle that exists only with a declared edge, labelled declared (unverified)",
+      "runs": [
+        {
+          "name": "without-edge",
+          "args": [
+            "examples/declared/repo",
+            "--repo-url",
+            "https://github.com/example-org/declared"
+          ],
+          "exit": 0,
+          "stdout": {
+            "lines": [
+              "Run status: ANALYSED WITH GAPS"
+            ],
+            "contains": [
+              "Cycles: none found among 8 nodes and 11 edges read"
+            ],
+            "absent": [
+              "declared (unverified)  nodes",
+              "\u001b"
+            ]
+          },
+          "stderr": {
+            "empty": true
+          }
+        },
+        {
+          "name": "with-edge",
+          "args": [
+            "examples/declared/repo",
+            "--repo-url",
+            "https://github.com/example-org/declared",
+            "--config",
+            "examples/declared/crankpath.yaml"
+          ],
+          "exit": 0,
+          "stdout": {
+            "lines": [
+              "Run status: ANALYSED WITH GAPS"
+            ],
+            "contains": [
+              "label: declared (unverified)  nodes: 5  edges: 5",
+              "Cycles: 1 uncranked"
+            ],
+            "absent": [
+              "label: extracted",
+              "\u001b"
+            ]
+          },
+          "stderr": {
+            "empty": true
+          }
+        }
+      ]
+    },
+    "plan": {
+      "lane": "offline",
+      "what": "reachability and the restoration plan: every node startable after one manual step",
+      "runs": [
+        {
+          "name": "text",
+          "args": [
+            "examples/plan/repo",
+            "--repo-url",
+            "http://gitea-http.gitea:3000/ops/plan",
+            "--config",
+            "examples/plan/crankpath.yaml"
+          ],
+          "exit": 0,
+          "stdout": {
+            "lines": [
+              "Run status: ANALYSED"
+            ],
+            "contains": [
+              "label: cranked",
+              "manual"
+            ],
+            "absent": [
+              "\u001b"
+            ]
+          },
+          "stderr": {
+            "empty": true
+          }
+        },
+        {
+          "name": "json",
+          "args": [
+            "examples/plan/repo",
+            "--repo-url",
+            "http://gitea-http.gitea:3000/ops/plan",
+            "--config",
+            "examples/plan/crankpath.yaml",
+            "--format",
+            "json"
+          ],
+          "exit": 0,
+          "stdout": {
+            "lines": [
+              "\"state\": \"ANALYSED\"",
+              "\"listedUnordered\": [],",
+              "\"manual\": true,",
+              "\"label\": \"cranked\","
+            ],
+            "absent": [
+              "\"label\": \"extracted\""
+            ]
+          },
+          "stderr": {
+            "empty": true
+          }
+        }
+      ]
+    },
+    "opaque": {
+      "lane": "offline",
+      "what": "opaque and limit outcomes: an unreadable repository with its suggested entry, encrypted values, an alias bomb over a limit",
+      "runs": [
+        {
+          "name": "text",
+          "args": [
+            "examples/opaque/repo",
+            "--repo-url",
+            "https://github.com/example-org/opaque"
+          ],
+          "exit": 0,
+          "stdout": {
+            "lines": [
+              "Run status: ANALYSED WITH GAPS"
+            ],
+            "contains": [
+              "at least 3 of 4 sources opaque",
+              "reason: unreadable-repo",
+              "suggested repos entry (not",
+              "{read_from: .}",
+              "reason: encrypted-values",
+              "reason: limit",
+              "(alias expansion over"
+            ],
+            "absent": [
+              "which no readable source defines",
+              "\u001b"
+            ]
+          },
+          "stderr": {
+            "empty": true
+          }
+        },
+        {
+          "name": "json",
+          "args": [
+            "examples/opaque/repo",
+            "--repo-url",
+            "https://github.com/example-org/opaque",
+            "--format",
+            "json"
+          ],
+          "exit": 0,
+          "stdout": {
+            "lines": [
+              "\"floor\": true,",
+              "\"reason\": \"encrypted-values\",",
+              "\"reason\": \"unreadable-repo\",",
+              "\"reason\": \"limit\","
+            ],
+            "contains": [
+              "\"alias-limit\""
+            ]
+          },
+          "stderr": {
+            "empty": true
+          }
+        }
+      ]
+    },
+    "exit-codes": {
+      "lane": "offline",
+      "what": "every exit code: 0 for a run that analysed (a cycle is not an error), 1 for an input or usage error, 2 for NOTHING ANALYSED",
+      "runs": [
+        {
+          "name": "exit-0",
+          "args": [
+            "examples/thin-slice/repo",
+            "--repo-url",
+            "http://gitea-http.gitea:3000/ops/thin-slice"
+          ],
+          "exit": 0,
+          "stdout": {
+            "lines": [
+              "Run status: ANALYSED",
+              "Cycles: 1 uncranked"
+            ],
+            "contains": [
+              "label: extracted  nodes: 5",
+              "Not startable from a cold start: 7 of 7 nodes"
+            ],
+            "absent": [
+              "\u001b"
+            ]
+          },
+          "stderr": {
+            "empty": true
+          },
+          "sameAs": "thin-slice/text"
+        },
+        {
+          "name": "exit-1-config",
+          "args": [
+            "examples/exit-codes/bad-config",
+            "--repo-url",
+            "https://github.com/example-org/bad-config"
+          ],
+          "exit": 1,
+          "stdout": {
+            "empty": true
+          },
+          "stderr": {
+            "lines": [
+              "error: invalid crankpath.yaml at key path \"cranks[0].reroute\" (unknown key)"
+            ]
+          }
+        },
+        {
+          "name": "exit-1-usage",
+          "args": [
+            "examples/thin-slice/repo",
+            "--repo-url",
+            "http://gitea-http.gitea:3000/ops/thin-slice",
+            "--format",
+            "yaml"
+          ],
+          "exit": 1,
+          "stdout": {
+            "empty": true
+          },
+          "stderr": {
+            "lines": [
+              "error: unknown format \"yaml\" (text, json or mermaid)"
+            ]
+          }
+        },
+        {
+          "name": "exit-2-nothing",
+          "args": [
+            "examples/exit-codes/nothing"
+          ],
+          "exit": 2,
+          "stdout": {
+            "lines": [
+              "Run status: NOTHING ANALYSED"
+            ],
+            "absent": [
+              "Run status: ANALYSED\n"
+            ]
+          },
+          "stderr": {
+            "empty": true
+          }
+        }
+      ]
+    },
+    "refusals": {
+      "lane": "offline",
+      "what": "refusals: a symlink, a path out of the root, a file over the size limit, and hostile names quoted",
+      "runs": [
+        {
+          "name": "text",
+          "setup": [
+            "examples/refusals/make-copy.mjs",
+            "{tmp}/refusals"
+          ],
+          "args": [
+            "{tmp}/refusals",
+            "--repo-url",
+            "https://github.com/example-org/refusals"
+          ],
+          "exit": 0,
+          "stdout": {
+            "lines": [
+              "Run status: ANALYSED WITH GAPS"
+            ],
+            "contains": [
+              "symlink, not followed",
+              "(too large)",
+              "unreadable-file",
+              "invalid-name",
+              "\\x1b",
+              "\\x0a"
+            ],
+            "absent": [
+              "\u001b"
+            ],
+            "startCounts": {
+              "Run status:": 1,
+              "Cycles:": 1,
+              "OK": 0
+            }
+          },
+          "stderr": {
+            "empty": true
+          }
+        },
+        {
+          "name": "json",
+          "setup": [
+            "examples/refusals/make-copy.mjs",
+            "{tmp}/refusals"
+          ],
+          "args": [
+            "{tmp}/refusals",
+            "--repo-url",
+            "https://github.com/example-org/refusals",
+            "--format",
+            "json"
+          ],
+          "exit": 0,
+          "stdout": {
+            "contains": [
+              "\"too-large\"",
+              "\"symlink\"",
+              "\"invalid-name\""
+            ],
+            "absent": [
+              "\u001b"
+            ]
+          },
+          "stderr": {
+            "empty": true
+          }
+        }
+      ]
+    },
+    "mermaid": {
+      "lane": "offline",
+      "what": "the thin slice as a Mermaid diagram, with its text fallback",
+      "runs": [
+        {
+          "name": "mermaid",
+          "args": [
+            "examples/thin-slice/repo",
+            "--repo-url",
+            "http://gitea-http.gitea:3000/ops/thin-slice",
+            "--format",
+            "mermaid"
+          ],
+          "exit": 0,
+          "stdout": {
+            "lines": [
+              "```mermaid",
+              "flowchart LR"
+            ],
+            "contains": [
+              "on cycle c-",
+              "Text fallback:"
+            ],
+            "absent": [
+              "\u001b"
+            ]
+          },
+          "stderr": {
+            "empty": true
+          }
+        }
+      ]
+    },
+    "explain": {
+      "lane": "offline",
+      "what": "--explain: the evidence behind every cycle, and behind one node",
+      "runs": [
+        {
+          "name": "cycles",
+          "args": [
+            "examples/thin-slice/repo",
+            "--repo-url",
+            "http://gitea-http.gitea:3000/ops/thin-slice",
+            "--explain"
+          ],
+          "exit": 0,
+          "stdout": {
+            "contains": [
+              "label: extracted  nodes: 5",
+              "evidence for"
+            ],
+            "absent": [
+              "\u001b"
+            ]
+          },
+          "stderr": {
+            "empty": true
+          }
+        },
+        {
+          "name": "node",
+          "args": [
+            "examples/thin-slice/repo",
+            "--repo-url",
+            "http://gitea-http.gitea:3000/ops/thin-slice",
+            "--explain",
+            "Application/argocd/notes"
+          ],
+          "exit": 0,
+          "stdout": {
+            "contains": [
+              "Application \"argocd/notes\"",
+              "blocked"
+            ],
+            "absent": [
+              "\u001b"
+            ]
+          },
+          "stderr": {
+            "empty": true
+          }
+        }
+      ]
+    },
+    "no-color": {
+      "lane": "offline",
+      "what": "--no-color and NO_COLOR: no colour codes; colour only on a terminal",
+      "runs": [
+        {
+          "name": "flag",
+          "args": [
+            "examples/thin-slice/repo",
+            "--repo-url",
+            "http://gitea-http.gitea:3000/ops/thin-slice",
+            "--no-color"
+          ],
+          "exit": 0,
+          "stdout": {
+            "lines": [
+              "Run status: ANALYSED",
+              "Cycles: 1 uncranked"
+            ],
+            "contains": [
+              "label: extracted  nodes: 5",
+              "Not startable from a cold start: 7 of 7 nodes"
+            ],
+            "absent": [
+              "\u001b"
+            ]
+          },
+          "stderr": {
+            "empty": true
+          },
+          "sameAs": "thin-slice/text"
+        },
+        {
+          "name": "env",
+          "args": [
+            "examples/thin-slice/repo",
+            "--repo-url",
+            "http://gitea-http.gitea:3000/ops/thin-slice"
+          ],
+          "env": {
+            "NO_COLOR": "1"
+          },
+          "exit": 0,
+          "stdout": {
+            "lines": [
+              "Run status: ANALYSED",
+              "Cycles: 1 uncranked"
+            ],
+            "contains": [
+              "label: extracted  nodes: 5",
+              "Not startable from a cold start: 7 of 7 nodes"
+            ],
+            "absent": [
+              "\u001b"
+            ]
+          },
+          "stderr": {
+            "empty": true
+          },
+          "sameAs": "thin-slice/text"
+        }
+      ]
+    }
+  }
+}

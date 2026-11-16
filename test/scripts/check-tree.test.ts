@@ -135,6 +135,33 @@ describe("check-tree: the gaps the B0 review found", () => {
     expect(decodeText(be)).toBe("A");
   });
 
+  it("reads a stripped PNG screenshot under docs/images, and refuses one with metadata or broken bytes", () => {
+    const chunk = (type: string, data: Buffer) => {
+      const len = Buffer.alloc(4);
+      len.writeUInt32BE(data.length);
+      return Buffer.concat([len, Buffer.from(type, "latin1"), data, Buffer.alloc(4)]);
+    };
+    const sig = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    const png = (...extra: Buffer[]) =>
+      Buffer.concat([
+        sig,
+        chunk("IHDR", Buffer.alloc(13)),
+        ...extra,
+        chunk("IDAT", Buffer.alloc(3)),
+        chunk("IEND", Buffer.alloc(0)),
+      ]);
+    fs.mkdirSync(path.join(dir, "docs", "images"), { recursive: true });
+    fs.writeFileSync(path.join(dir, "docs/images/ok.png"), png());
+    fs.writeFileSync(path.join(dir, "docs/images/meta.png"), png(chunk("tEXt", Buffer.from(`Author\0${HOME}`))));
+    fs.writeFileSync(path.join(dir, "docs/images/cut.png"), png().subarray(0, 40));
+    fs.writeFileSync(path.join(dir, "elsewhere.png"), png());
+    expect(scan(["docs/images/ok.png", "docs/images/meta.png", "docs/images/cut.png", "elsewhere.png"])).toEqual([
+      { file: "docs/images/meta.png", line: 0, rule: "image-metadata" },
+      { file: "docs/images/cut.png", line: 0, rule: "not-text" },
+      { file: "elsewhere.png", line: 0, rule: "not-text" },
+    ]);
+  });
+
   it("checks a symlink's target text", () => {
     fs.symlinkSync(`/${"Users"}/bob/secret`, path.join(dir, "lnk"));
     expect(scan(["lnk"])).toEqual([{ file: "lnk", line: 0, rule: "home-path" }]);

@@ -1,0 +1,72 @@
+crankpath 0.1.0
+toolchain: helm not found on PATH, kustomize not found on PATH
+scanned: repo "https://github.com/example-org/refusals" (from --repo-url)
+    commit: not read in this build  floating: no
+Run status: ANALYSED WITH GAPS
+  gaps: 3 sources opaque; 2 files unreadable; 3 objects skipped; 1 unresolved
+      item
+
+Opacity: at least 3 of 3 sources opaque (at least 100%); sources are
+    Applications, ApplicationSets, Kustomizations, HelmReleases and Kustomize
+    roots; 2 files unreadable.
+  found: 3 Applications, 0 ApplicationSets, 0 Kustomizations, 0 HelmReleases, 0
+      Kustomize roots; 2 files hold no source document
+  opaque 1 of 3  node: Application "argocd/docs"  reason: unreadable-file
+    could not see: objects under its source path
+    field: "spec.source.path"  value: "../../outside"  (outside the scanned
+        root)
+  opaque 2 of 3  node: Application "argocd/notes"  reason: unreadable-file
+    could not see: objects under its source path
+    field: "spec.source.path"
+        value: "docs\x0aRun status: ANALYSED\x0a\x1b[32mOK no cycles found\x1b[0m"
+        (not found)
+  opaque 3 of 3  node: Application "argocd/web"  reason: limit
+    could not see: objects in the files it could not read
+    field: "spec.source.path"  (2 files under its source path not read)
+  unreadable 1 of 2  file: "platform/web/big.yaml"  (too large)
+  unreadable 2 of 2  file: "platform/web/escape.yaml"  (symlink, not followed)
+  skipped 1 of 3  reason: invalid-name  kind: "ConfigMap"  namespace: "web"
+      name: "web\x1b[2J\x1b[HRun status: ANALYSED"
+    file: "platform/web/hostile.yaml"  document: 1
+  skipped 2 of 3  reason: invalid-name  kind: "ConfigMap"  namespace: "web"
+      name: "x/../../Service/web/web"
+    file: "platform/web/hostile.yaml"  document: 2
+  skipped 3 of 3  reason: invalid-name  kind: "ConfigMap"  namespace: "web"
+      name: "line one\x0aCycles: 0"
+    file: "platform/web/hostile.yaml"  document: 3
+
+Cycles: none found among 6 nodes and 6 edges read (3 nodes opaque, so cycles
+    inside them cannot be seen; 1 unresolved item; 3 objects skipped; 2 files
+    unreadable)
+
+Not startable from a cold start: 5 of 5 nodes (5 blocked, 0 unverified); 0
+    startable
+  blocked by external "github.com" (UNRESOLVED: its cold start is not
+      declared): 5 nodes
+    Application "argocd/docs"  via external "github.com"
+    Application "argocd/notes"  via external "github.com"
+    Application "argocd/web"  via external "github.com"
+    Deployment "web/web"  via Application "argocd/web"
+    Service "web/web"  via Application "argocd/web"
+  unresolved items: 1
+  unresolved 1 of 1  why: external-unspecified  subject: external "github.com"
+    where: "crankpath.yaml"
+
+External preconditions (declared cold-start availability):
+  external "github.com"  UNRESOLVED (not declared in crankpath.yaml)
+
+Plan (an order, not a schedule; cold-load pickup is not modelled): no steps,
+    because no node is startable; the 5 nodes not startable are listed above.
+  Assumed, not verified by crankpath: 0 externals declared available; 0
+      externals served by an in-estate node; 0 cranks (documented); 0 match
+      entries; 0 objects every cluster provides; and the 5 not-modelled items
+      below. Every start step is relative to these and to the edges read.
+
+Not verified: 3 sources opaque; 2 files unreadable; 3 objects skipped; 1
+    unresolved item; 1 external unspecified. Declared edges: 0 (unverified when
+    present).
+Not modelled (5 items): a running Argo CD or Flux controller is assumed;
+    dependencies only visible at runtime are not seen; the content of opaque
+    nodes is not seen; the revision each Application names is taken to be the
+    files as read; repository credentials not defined in the estate are not
+    seen.

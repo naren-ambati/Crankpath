@@ -1,0 +1,23 @@
+{
+ "id": "cranked-uncranked",
+ "title": "The same estate without and with a crank",
+ "caption": "Without crankpath.yaml the cycle is uncranked and nothing can start; with the crank file the same cycle is cranked, the crank is documented and not verified, and the plan starts with the one manual step.",
+ "alt": "Two terminal commands on the thin-slice example: without a config the cycle c-d8197e7d is extracted and uncranked; with --config examples/crank/crankpath.yaml it is cranked (was extracted) by crank 1, and the plan has 7 steps, step 1 manual; both exit 0",
+ "version": "0.1.0",
+ "capturedAt": "2026-11-16T21:43:02.961Z",
+ "load": "15:43  up 2 days,  4:56, 2 users, load averages: 1.51 9.71 12.23",
+ "commands": [
+  {
+   "command": "crankpath examples/thin-slice/repo --repo-url http://gitea-http.gitea:3000/ops/thin-slice | sed -n -e '/^Run status:/p' -e '/^Cycles:/,/^$/p'",
+   "exit": 0,
+   "seconds": 0.19,
+   "output": "Run status: ANALYSED\nCycles: 1 uncranked\n  cycle c-d8197e7d  label: extracted  nodes: 5  edges: 8\n    Application \"argocd/gitea\" reads source from Service \"gitea/gitea-http\"\n        [field: \"spec.source.repoURL\"]\n    Service \"gitea/gitea-http\" deployed by Application \"argocd/gitea\"\n        [field: \"spec.source.path\"]\n    shortest cycle shown; 6 more edges of this component are listed in the JSON\n        output\n\n"
+  },
+  {
+   "command": "crankpath examples/thin-slice/repo --repo-url http://gitea-http.gitea:3000/ops/thin-slice --config examples/crank/crankpath.yaml | sed -n -e '/^Run status:/p' -e '/^Cycles:/,/^$/p' -e '/^Plan/,/^$/p'",
+   "exit": 0,
+   "seconds": 0.2,
+   "output": "Run status: ANALYSED\nCycles: 0 uncranked, 1 cranked\n  cycle c-d8197e7d  label: cranked (was extracted)  nodes: 5  edges: 8\n    cranked by: crank 1\n        by: \"first install: point Application argocd/gitea at the GitHub copy, sync, then switch it back to Gitea\"\n        (documented, not verified)\n    Application \"argocd/gitea\" reads source from Service \"gitea/gitea-http\"\n        [field: \"spec.source.repoURL\"]\n    Service \"gitea/gitea-http\" deployed by Application \"argocd/gitea\"\n        [field: \"spec.source.path\"]\n    shortest cycle shown; 6 more edges of this component are listed in the JSON\n        output\n\nPlan (an order, not a schedule; cold-load pickup is not modelled): 7 steps\n  step 1  manual  crank 1\n      by: \"first install: point Application argocd/gitea at the GitHub copy, sync, then switch it back to Gitea\"\n    reroutes: Application \"argocd/gitea\" to external \"github.com\"\n  step 2  start   Application \"argocd/gitea\"\n  step 3  start   ConfigMap \"gitea/gitea-config\", Secret \"gitea/gitea-admin\"\n  step 4  start   Deployment \"gitea/gitea\"\n  step 5  start   Service \"gitea/gitea-http\"\n  step 6  start   Application \"argocd/notes\"\n  step 7  start   ConfigMap \"notes/notes\"\n  Assumed, not verified by crankpath: 1 external declared available; 0 externals\n      served by an in-estate node; 1 crank (documented); 0 match entries; 0\n      objects every cluster provides; and the 5 not-modelled items below. Every\n      start step is relative to these and to the edges read.\n\n"
+  }
+ ]
+}

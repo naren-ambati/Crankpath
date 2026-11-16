@@ -1,0 +1,17 @@
+{
+ "id": "thin-slice-text",
+ "title": "The thin-slice cycle, text report",
+ "caption": "The whole text report of the thin-slice example: what was read, the cycle, what it blocks, and what is assumed.",
+ "alt": "Terminal output of crankpath on examples/thin-slice: the toolchain and scanned lines, Run status ANALYSED, opacity 0 of 2 sources, one extracted cycle c-d8197e7d, 7 of 7 nodes not startable, no plan steps, and the not-modelled list; exit 0",
+ "version": "0.1.0",
+ "capturedAt": "2026-11-16T21:43:02.342Z",
+ "load": "15:43  up 2 days,  4:56, 2 users, load averages: 1.51 9.71 12.23",
+ "commands": [
+  {
+   "command": "crankpath examples/thin-slice/repo --repo-url http://gitea-http.gitea:3000/ops/thin-slice",
+   "exit": 0,
+   "seconds": 0.19,
+   "output": "crankpath 0.1.0\ntoolchain: helm not found on PATH, kustomize not found on PATH\nscanned: repo \"http://gitea-http.gitea:3000/ops/thin-slice\" (from --repo-url)\n    commit: not read in this build  floating: no\nRun status: ANALYSED\n\nOpacity: 0 of 2 sources opaque (0%); sources are Applications, ApplicationSets,\n    Kustomizations, HelmReleases and Kustomize roots; 0 files unreadable.\n  found: 2 Applications, 0 ApplicationSets, 0 Kustomizations, 0 HelmReleases, 0\n      Kustomize roots; 4 files hold no source document\n  (nothing opaque, nothing skipped)\n\nCycles: 1 uncranked\n  cycle c-d8197e7d  label: extracted  nodes: 5  edges: 8\n    Application \"argocd/gitea\" reads source from Service \"gitea/gitea-http\"\n        [field: \"spec.source.repoURL\"]\n    Service \"gitea/gitea-http\" deployed by Application \"argocd/gitea\"\n        [field: \"spec.source.path\"]\n    shortest cycle shown; 6 more edges of this component are listed in the JSON\n        output\n\nNot startable from a cold start: 7 of 7 nodes (7 blocked, 0 unverified); 0\n    startable\n  blocked by cycle c-d8197e7d (extracted): 7 nodes\n    Application \"argocd/gitea\"\n    Application \"argocd/notes\"  via Service \"gitea/gitea-http\"\n    ConfigMap \"gitea/gitea-config\"\n    ConfigMap \"notes/notes\"  via Application \"argocd/notes\"\n    Deployment \"gitea/gitea\"\n    Secret \"gitea/gitea-admin\"\n    Service \"gitea/gitea-http\"\n  unresolved items: 0\n\nExternal preconditions: none declared in crankpath.yaml and none extracted from\n    what was read.\n\nPlan (an order, not a schedule; cold-load pickup is not modelled): no steps,\n    because no node is startable; the 7 nodes not startable are listed above.\n  Assumed, not verified by crankpath: 0 externals declared available; 0\n      externals served by an in-estate node; 0 cranks (documented); 0 match\n      entries; 0 objects every cluster provides; and the 5 not-modelled items\n      below. Every start step is relative to these and to the edges read.\n\nNot verified: 1 cycle uncranked. Declared edges: 0 (unverified when present).\nNot modelled (5 items): a running Argo CD or Flux controller is assumed;\n    dependencies only visible at runtime are not seen; the content of opaque\n    nodes is not seen; the revision each Application names is taken to be the\n    files as read; repository credentials not defined in the estate are not\n    seen.\n"
+  }
+ ]
+}

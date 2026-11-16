@@ -18,3 +18,5 @@ export declare function checkTree(options: { root: string; hostname?: string; us
   filesRead: number;
   findings: Finding[];
 };
+export declare function pngChunks(buf: Buffer): string[] | undefined;
+export declare function isScreenshot(rel: string): boolean;

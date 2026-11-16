@@ -1,0 +1,48 @@
+crankpath 0.1.0
+toolchain: helm not found on PATH, kustomize not found on PATH
+scanned: repo "https://github.com/example-org/declared" (from --repo-url)
+    commit: not read in this build  floating: no
+Run status: ANALYSED WITH GAPS
+  gaps: 1 unresolved item
+
+Opacity: 0 of 1 source opaque (0%); sources are Applications, ApplicationSets,
+    Kustomizations, HelmReleases and Kustomize roots; 0 files unreadable.
+  found: 1 Application, 0 ApplicationSets, 0 Kustomizations, 0 HelmReleases, 0
+      Kustomize roots; 3 files hold no source document
+  (nothing opaque, nothing skipped)
+
+Cycles: none found among 8 nodes and 11 edges read (0 nodes opaque; 1 unresolved
+    item)
+
+Not startable from a cold start: 7 of 7 nodes (7 blocked, 0 unverified); 0
+    startable
+  blocked by external "github.com" (UNRESOLVED: its cold start is not
+      declared): 7 nodes
+    Application "argocd/vault"  via external "github.com"
+    Certificate "vault/vault-tls"  via Application "argocd/vault"
+    Issuer "vault/vault-issuer"  via Application "argocd/vault"
+    Secret "vault/vault-tls"  via Certificate "vault/vault-tls"
+    Secret "vault/vault-token"  via Application "argocd/vault"
+    Service "vault/vault"  via Application "argocd/vault"
+    StatefulSet "vault/vault"  via Application "argocd/vault"
+  unresolved items: 1
+  unresolved 1 of 1  why: external-unspecified  subject: external "github.com"
+    where: "crankpath.yaml"
+
+External preconditions (declared cold-start availability):
+  external "github.com"  UNRESOLVED (not declared in crankpath.yaml)
+
+Plan (an order, not a schedule; cold-load pickup is not modelled): no steps,
+    because no node is startable; the 7 nodes not startable are listed above.
+  Assumed, not verified by crankpath: 0 externals declared available; 0
+      externals served by an in-estate node; 0 cranks (documented); 0 match
+      entries; 0 objects every cluster provides; and the 5 not-modelled items
+      below. Every start step is relative to these and to the edges read.
+
+Not verified: 1 unresolved item; 1 external unspecified. Declared edges: 0
+    (unverified when present).
+Not modelled (5 items): a running Argo CD or Flux controller is assumed;
+    dependencies only visible at runtime are not seen; the content of opaque
+    nodes is not seen; the revision each Application names is taken to be the
+    files as read; repository credentials not defined in the estate are not
+    seen.

@@ -1,0 +1,17 @@
+{
+ "id": "explain",
+ "title": "--explain: the evidence behind a cycle",
+ "caption": "--explain prints each edge of the cycle with the file, the field and the rendered path it was read from.",
+ "alt": "Terminal output of the first 40 lines of crankpath --explain on the thin-slice example: cycle c-d8197e7d with its five numbered nodes and the evidence for edges 1 to 5; exit 0",
+ "version": "0.1.0",
+ "capturedAt": "2026-11-16T21:43:05.189Z",
+ "load": "15:43  up 2 days,  4:56, 2 users, load averages: 1.47 9.56 12.16",
+ "commands": [
+  {
+   "command": "crankpath examples/thin-slice/repo --repo-url http://gitea-http.gitea:3000/ops/thin-slice --explain | sed -n '1,40p'",
+   "exit": 0,
+   "seconds": 0.19,
+   "output": "crankpath 0.1.0 explain: every cycle\nscanned: repo \"http://gitea-http.gitea:3000/ops/thin-slice\" (from --repo-url)\n    commit: not read in this build  floating: no\nRun status: ANALYSED\n\ncycle c-d8197e7d  label: extracted  nodes: 5  edges: 8\n  nodes, numbered for the elementary cycles below:\n    node 1  Application \"argocd/gitea\"\n    node 2  ConfigMap \"gitea/gitea-config\"\n    node 3  Deployment \"gitea/gitea\"\n    node 4  Secret \"gitea/gitea-admin\"\n    node 5  Service \"gitea/gitea-http\"\n  evidence for the first 5 of 8 edges (file, field, rendered path, line); the\n      other 3 are in the JSON output\n    edge 1 of 8  Application \"argocd/gitea\" reads source from\n        Service \"gitea/gitea-http\"  (reads-source, extracted)\n      file: \"apps/gitea.yaml\"  line: not recorded\n      field: \"spec.source.repoURL\"\n      rendered path: \"apps/gitea.yaml#1\"\n    edge 2 of 8  ConfigMap \"gitea/gitea-config\" deployed by\n        Application \"argocd/gitea\"  (deployed-by, extracted)\n      file: \"apps/gitea.yaml\"  line: not recorded\n      field: \"spec.source.path\"\n      rendered path: \"platform/gitea/config.yaml#1\"\n    edge 3 of 8  Deployment \"gitea/gitea\" deployed by Application \"argocd/gitea\"\n        (deployed-by, extracted)\n      file: \"apps/gitea.yaml\"  line: not recorded\n      field: \"spec.source.path\"\n      rendered path: \"platform/gitea/deployment.yaml#1\"\n    edge 4 of 8  Deployment \"gitea/gitea\" needs ConfigMap \"gitea/gitea-config\"\n        (needs-config, extracted)\n      file: \"platform/gitea/deployment.yaml\"  line: not recorded\n      field: \"spec.template.spec.containers[0].envFrom[0].configMapRef.name\"\n      rendered path: \"platform/gitea/deployment.yaml#1\"\n    edge 5 of 8  Deployment \"gitea/gitea\" needs Secret \"gitea/gitea-admin\"\n        (needs-secret, extracted)\n      file: \"platform/gitea/deployment.yaml\"  line: not recorded\n      field: \"spec.template.spec.containers[0].env[0].valueFrom.secretKeyRef.name\"\n      rendered path: \"platform/gitea/deployment.yaml#1\"\n  elementary cycles: 4, all of them (as node sequences; the bound is 21)\n"
+  }
+ ]
+}

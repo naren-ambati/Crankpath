@@ -1,0 +1,29 @@
+{
+ "id": "no-color",
+ "title": "Colour only on a terminal",
+ "caption": "The same run on a pseudo-terminal: coloured, then with --no-color and with NO_COLOR=1, plain.",
+ "alt": "Three terminal commands of the same thin-slice run on a pseudo-terminal: the first shows ANALYSED in bold and uncranked in red; with --no-color and with NO_COLOR=1 the same lines have no colour; all exit 0",
+ "version": "0.1.0",
+ "capturedAt": "2026-11-16T21:43:05.892Z",
+ "load": "15:43  up 2 days,  4:56, 2 users, load averages: 1.47 9.56 12.16",
+ "commands": [
+  {
+   "command": "python3 -c 'import os,pty,sys; sys.exit(os.waitstatus_to_exitcode(pty.spawn(sys.argv[1:])))' crankpath examples/thin-slice/repo --repo-url http://gitea-http.gitea:3000/ops/thin-slice | tr -d '\\r' | sed -n -e '/Run status:/p' -e '/^Cycles:/,/^$/p'",
+   "exit": 0,
+   "seconds": 0.23,
+   "output": "Run status: \u001b[1mANALYSED\u001b[0m\nCycles: 1 \u001b[31muncranked\u001b[0m\n  cycle c-d8197e7d  label: extracted  nodes: 5  edges: 8\n    Application \"argocd/gitea\" reads source from Service \"gitea/gitea-http\"\n        [field: \"spec.source.repoURL\"]\n    Service \"gitea/gitea-http\" deployed by Application \"argocd/gitea\"\n        [field: \"spec.source.path\"]\n    shortest cycle shown; 6 more edges of this component are listed in the JSON\n        output\n\n"
+  },
+  {
+   "command": "python3 -c 'import os,pty,sys; sys.exit(os.waitstatus_to_exitcode(pty.spawn(sys.argv[1:])))' crankpath examples/thin-slice/repo --repo-url http://gitea-http.gitea:3000/ops/thin-slice --no-color | tr -d '\\r' | sed -n -e '/Run status:/p' -e '/^Cycles:/,/^$/p'",
+   "exit": 0,
+   "seconds": 0.23,
+   "output": "Run status: ANALYSED\nCycles: 1 uncranked\n  cycle c-d8197e7d  label: extracted  nodes: 5  edges: 8\n    Application \"argocd/gitea\" reads source from Service \"gitea/gitea-http\"\n        [field: \"spec.source.repoURL\"]\n    Service \"gitea/gitea-http\" deployed by Application \"argocd/gitea\"\n        [field: \"spec.source.path\"]\n    shortest cycle shown; 6 more edges of this component are listed in the JSON\n        output\n\n"
+  },
+  {
+   "command": "NO_COLOR=1 python3 -c 'import os,pty,sys; sys.exit(os.waitstatus_to_exitcode(pty.spawn(sys.argv[1:])))' crankpath examples/thin-slice/repo --repo-url http://gitea-http.gitea:3000/ops/thin-slice | tr -d '\\r' | sed -n -e '/Run status:/p' -e '/^Cycles:/,/^$/p'",
+   "exit": 0,
+   "seconds": 0.23,
+   "output": "Run status: ANALYSED\nCycles: 1 uncranked\n  cycle c-d8197e7d  label: extracted  nodes: 5  edges: 8\n    Application \"argocd/gitea\" reads source from Service \"gitea/gitea-http\"\n        [field: \"spec.source.repoURL\"]\n    Service \"gitea/gitea-http\" deployed by Application \"argocd/gitea\"\n        [field: \"spec.source.path\"]\n    shortest cycle shown; 6 more edges of this component are listed in the JSON\n        output\n\n"
+  }
+ ]
+}
