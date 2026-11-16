@@ -1,0 +1,31 @@
+crankpath 0.1.0
+toolchain: helm not detected, kustomize not detected (this build runs neither tool)
+scanned: repo "http://gitea-http.gitea:3000/ops/thin-slice" (from --repo-url)  commit: not read in this build  floating: no
+Run status: ANALYSED WITH GAPS
+  gaps: 1 source opaque; 2 objects skipped; node statuses and the restoration plan not computed in this build
+
+Opacity: 1 of 2 sources opaque (50%); sources are Applications, ApplicationSets, Kustomizations, HelmReleases and Kustomize roots; 0 files unreadable.
+  found: 2 Applications, 0 ApplicationSets, 0 Kustomizations, 0 HelmReleases, 0 Kustomize roots; 5 files hold no source document
+  opaque 1 of 1  node: Application "argocd/notes"  reason: unreadable-file
+    could not see: objects under its source path
+    field: "spec.source.path"  value: "docs\x0aRun status: ANALYSED\x0a\x1b[32mPASS everything is fine\x1b[0m"  (not found)
+  skipped 1 of 2  reason: invalid-name  kind: "ConfigMap"  namespace: "gitea"  name: "gitea\x1b[2J\x1b[HRun status: ANALYSED"
+    file: "platform/gitea/hostile.yaml"  document: 1
+  skipped 2 of 2  reason: invalid-name  kind: "ConfigMap"  namespace: "gitea"  name: "x/../../Service/gitea/gitea-http"
+    file: "platform/gitea/hostile.yaml"  document: 2
+
+Cycles: 1 uncranked
+  cycle c-d8197e7d  label: extracted  nodes: 5  edges: 8
+    Application "argocd/gitea" reads source from Service "gitea/gitea-http"  [field: spec.source.repoURL]
+    Service "gitea/gitea-http" deployed by Application "argocd/gitea"  [field: spec.source.path]
+    shortest cycle shown; 6 more edges of this component are listed in the JSON output
+
+Not startable from a cold start: not computed in this build.
+  unresolved items: 0
+
+External preconditions: none declared in crankpath.yaml; none extracted in this build.
+
+Plan: not computed in this build; no restoration order is given.
+
+Not verified: 1 source opaque; 2 objects skipped; 1 cycle uncranked; node statuses and the restoration plan not computed in this build. Declared edges: 0 (unverified when present).
+Not modelled: a running Argo CD or Flux controller is assumed; dependencies only visible at runtime are not seen; the content of opaque nodes is not seen; the revision each Application names is taken to be the files as read.

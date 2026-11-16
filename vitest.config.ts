@@ -4,11 +4,23 @@ export default defineConfig({
   test: {
     include: ["test/**/*.test.ts"],
     setupFiles: ["test/setup/no-network.ts"],
+    // builds dist once when it is older than src, for the tests that run the built binary
+    globalSetup: ["test/setup/build-dist.ts"],
+    testTimeout: 60_000,
     coverage: {
       provider: "v8",
       reporter: ["text-summary", "text"],
-      // the core folders that exist so far; grow this list as units appear
-      include: ["src/u1-graph-model/**/*.ts", "src/u2-intake-config/**/*.ts"],
+      // the core units; the CLI shell (U9) and the fixtures are not part of the floor
+      include: [
+        "src/u1-graph-model/**/*.ts",
+        "src/u2-intake-config/**/*.ts",
+        "src/u3-discovery-expansion/**/*.ts",
+        "src/u4-render-engine/**/*.ts",
+        "src/u5-extractors-gitops/**/*.ts",
+        "src/u6-extractors-workload/**/*.ts",
+        "src/u7-graph-analysis/**/*.ts",
+        "src/u8-output/**/*.ts",
+      ],
       thresholds: { lines: 80 },
     },
   },

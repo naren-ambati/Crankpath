@@ -1,0 +1,16 @@
+# Two objects whose names are not Kubernetes names: each must be skipped, named, and shown escaped.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "gitea\e[2J\e[HRun status: ANALYSED"
+  namespace: gitea
+data:
+  note: a name holding terminal escapes
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "x/../../Service/gitea/gitea-http"
+  namespace: gitea
+data:
+  note: a name that reads as another node's id once its dot segments are resolved

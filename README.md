@@ -2,7 +2,7 @@
 
 **A black-start planner and cycle finder for GitOps estates.** It reads a GitOps repository, renders its Helm and Kustomize sources, and reports every dependency cycle, the nodes unreachable from a cold start, the external preconditions, and an ordered restoration plan with the manual "crank" steps marked. It needs no cluster.
 
-Status: in development (v0.1.0 being built; see BUILD-NOTES.md).
+Status: in development (v0.1.0 being built; see BUILD-NOTES.md). The command is `crankpath`; the package's library entry (`src/u9-cli-package/library.ts`) is unstable until 1.0, and the JSON output with its `schemaVersion` is meant to become the stable contract once its shape is frozen (a later bolt).
 
 ## Why it should exist
 

@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gitea-config
+  namespace: gitea
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+data:
+  APP_NAME: thin-slice
+---
+# The value below must never appear in any output (Secret data is discarded when read).
+apiVersion: v1
+kind: Secret
+metadata:
+  name: gitea-admin
+  namespace: gitea
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+type: Opaque
+stringData:
+  password: fixture-value-that-must-not-be-printed

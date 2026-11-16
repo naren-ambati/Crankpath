@@ -251,12 +251,23 @@ function readTextChecked(root: ScanRoot, request: string, limits: ReaderLimits, 
   }
 }
 
-/** Reads and parses a multi-document YAML file under the root. */
-export function readYaml(root: ScanRoot, request: string, limits: ReaderLimits = READER_LIMITS): ReadResult {
+/**
+ * Reads and parses a multi-document YAML file under the root. `beforeParse`, when given, sees the
+ * read text before it is parsed and may refuse it (the run's memory budget charges the parse's
+ * transient cost there).
+ */
+export function readYaml(
+  root: ScanRoot,
+  request: string,
+  limits: ReaderLimits = READER_LIMITS,
+  beforeParse?: (text: TextOk) => ReadRefused | null,
+): ReadResult {
   try {
     readerProbe.entries += 1;
     const text = readText(root, request, limits);
     if (text.outcome !== "ok") return text;
+    const refusedBefore = beforeParse?.(text) ?? null;
+    if (refusedBefore !== null) return refusedBefore;
     const parsed = parseYamlBounded(text.text, limits);
     if (!parsed.ok) return refused(parsed.refusal, text.path, parsed.detail);
     return { outcome: "ok", path: text.path, size: text.size, documents: parsed.documents };
@@ -274,6 +285,20 @@ export function readYaml(root: ScanRoot, request: string, limits: ReaderLimits =
  * stack overflow at its own call site, before the reader was entered, from one the reader let out.
  */
 export const readerProbe: { entries: number } = { entries: 0 };
+
+/**
+ * The lexemes of a text, counted as parseYamlBounded counts them (every lexeme of every document,
+ * whitespace and comments included), without parsing; it stops at `max + 1`. A pre-scan whose
+ * memory is one lexeme at a time.
+ */
+export function countLexemes(text: string, max: number): number {
+  let n = 0;
+  for (const _ of new Lexer().lex(text)) {
+    n += 1;
+    if (n > max) break;
+  }
+  return n;
+}
 
 export type ParseResult =
   | { readonly ok: true; readonly documents: readonly YamlValue[] }

@@ -12,7 +12,21 @@
     "url": "https://github.com/naren-ambati/crankpath/issues"
   },
   "type": "module",
-  "files": ["dist", "README.md", "CHANGELOG.md", "NOTICE"],
+  "bin": {
+    "crankpath": "dist/u9-cli-package/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/u9-cli-package/library.d.ts",
+      "default": "./dist/u9-cli-package/library.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "NOTICE"
+  ],
   "engines": {
     "node": ">=22.13"
   },
@@ -23,7 +37,7 @@
     "test": "vitest run",
     "check-tree": "node scripts/check-tree.mjs",
     "census": "node scripts/census.mjs",
-    "verify": "npm run typecheck && npm run lint && vitest run --coverage && npm run build && node scripts/check-tree.mjs"
+    "verify": "npm run typecheck && npm run lint && npm run build && vitest run --coverage && node scripts/check-tree.mjs"
   },
   "dependencies": {
     "commander": "15.1.0",

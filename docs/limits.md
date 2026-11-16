@@ -212,3 +212,49 @@ The yaml package (2.9.1) composes documents recursively, so its capacity depends
 ## Why the yaml package's own guards are not used
 
 Two of its paths grow faster than the input, as part 4 above shows: its duplicate-key check compares each new key with every earlier one (quadratic: doubling the keys roughly quadruples the time, so a 10 MB file of a million keys would take hours), and its conversion of collection-valued keys stringifies each level again (100, 200, 300 nested `{? ...}` keys: superlinear). Its alias resolution also scans the document once per alias (read in its source, `nodes/Alias.js`, 2026-11-15). BoundedReader therefore turns the duplicate-key check off and detects duplicates itself with a set, refuses non-scalar keys (Kubernetes' JSON has none), and resolves aliases itself in one pass in document order, sharing the aliased value and counting its size.
+
+## Per-run limits (B1 review pass 2, N2)
+
+What they protect: the heap of one whole run on the smallest GitHub-hosted runner, so a hostile estate (many Applications rendering one large directory, a workload with a huge number of references, many large files) ends in a counted `limit` outcome, never an out-of-memory abort. Per-render limits (objects of one helm or kustomize render, render time and output bytes) are B2's, derived at its step 0; these are per run. Code: `src/u1-graph-model/run-limits.ts`; enforcement: `src/u9-cli-package/run-budget.ts` and `pipeline-runner.ts`.
+
+| Limit | Value | Unit | Protects | Derived from (2026-11-15) | Enforced by |
+|---|---|---|---|---|---|
+| `runMemory` | 2,448,619,776 | bytes | the heap of one run: files held parsed, objects, nodes, edges, report and output together, with the one file being parsed | 2,500,000,000 bytes (V8 12.4's default old generation for Node 22 on `ubuntu-slim`, 5 GB: 5,000,000,000 / 4 x 2, the heap `lexemesPerFile` is derived from) minus 51,380,224 bytes (a run's measured baseline: the thin-slice fixture). No reserve: one heap figure is the only budget, and each file's parse is a transient checked against it (below) | the run budget: each charge is checked before it is taken; before a file is parsed its transient parse cost must fit in what the run has not yet held |
+| `objectsPerRun` | 366,669 | objects | the heap of one run, when it holds only objects | `runMemory` / 6,678 bytes per object (measured: node, the edge to its owner, report entry, JSON held in memory) | the run budget: each render's objects are charged 6,678 bytes each plus 4,665 bytes per string value (every edge an extractor can make names its target by one of the object's string values, so each is charged as the costliest edge before extraction runs); a job that does not fit is not taken in and its owner is opaque `limit`; a later job that fits is still taken in |
+| `edgesPerRun` | 524,891 | edges | the heap of one run, when it holds only edges with their stubs | `runMemory` / 4,665 bytes per edge with a stub node and an unresolved item (measured) | after extraction: the first `edgesPerRun` edges in canonical order are kept, the rest counted (`runLimitEdges`, a gap, the counts a floor) |
+| `nodesPerRun` | 891,560 | nodes | the heap of one run | `objectsPerRun + edgesPerRun`: a node is an object, a stub (made only by an edge) or a declared external (bounded by the config file's own limits), so the two bounds above bound it | not charged separately |
+
+Files held parsed are charged 33 bytes per file byte (the worse of two measured shapes, rounded up); a file that does not fit is a counted `too-large` refusal with the detail `run budget` (shown as `run budget reached`), and a later file that fits is still read. At that rate the budget holds about 74 MB of YAML per run: a larger estate ends with named, counted refusals on the smallest runner. Discovered sources are charged as objects and always held (their files are already read).
+
+**The parse transient (lead decision after merging B0's final reader).** Before a file is parsed, its transient parse cost must fit in what the run has not yet held: its lexeme count from a pre-scan (the reader's own count: every lexeme of every document) times 937 bytes, B0's measured worst resident memory per lexeme, plus 3 bytes per byte of the file, B0's text reserve (the read buffer and a decoded string): the same terms `lexemesPerFile` is derived from. If it does not fit, the file is refused `run budget reached` without being parsed (counted, a floor). After the parse the transient is released, and only the held cost (33 bytes per file byte) stays charged. `lexemesPerFile` still bounds one file against the whole heap; the run budget bounds the sum. This replaces the earlier 832,000,000-byte reserve, which no longer covered the worst file B0's final reader admits.
+
+**Not sticky, and the order decides.** Only an item that does not fit is refused; later items that fit are still charged and taken in. Items are charged in canonical order (files in code-point order of their paths, sources in their sorted queue order, edges in canonical edge order), so the same estate gives the same refusals on every machine, but which item is refused depends on that order: a repository can name its files so that a large one comes first. The run-limit line says so. Any refusal makes the run `ANALYSED WITH GAPS` and its counts a floor (`at least`), and a run whose only sources were refused is never `NOTHING ANALYSED`.
+
+**What is charged, and what is not.** B1 charges, in bytes: each file held parsed (33 per byte), each object taken in (6,678) and each string value in it (4,665), and keeps at most `edgesPerRun` edges. Numbers, booleans and keys in an object's body are not charged per value: in B1 every object comes from a file already charged by its bytes, which covers them. The string-value charge assumes each value is an edge with a stub, the costliest case, so it is pessimistic for objects with many plain values (the 1,500 x 3,000 review tree used 342 MB of the 1.6 GB budget). It bounds the edges extraction can make only through string values; an extractor that made edges from anything else would not be covered.
+
+**Note for B2.** A Helm or Kustomize render is not a file read, so its output is charged by nothing above but the per-object and string-value rates. B2 must charge each render's output bytes the same way: its transient parse cost (its lexemes x 937 + its bytes x 3) checked against what the run has not yet held before it is parsed, then its output bytes charged at `perFileByte` (its parsed documents are held like a file's) before its objects are taken in; and pass `stringLeaves` from `buildObjects` on the RenderedSet (the pipeline counts them itself when absent). The per-render limits stay B2's, from its step 0.
+
+### Measurement
+
+`npm run build && node scripts/measure-run-limits.mjs` on 2026-11-15 (Node 22.23.2, macOS arm64; each run a child process with `--max-old-space-size=8192` and no budget, the JSON output held in memory as `--out` does; peak is the child's maximum resident set size):
+```
+baseline (thin-slice fixture): peak 51380224 bytes
+objects n=100: units 200000, input bytes 142890, nodes 200100, edges 200000, output 131357540 chars, peak 1400864768 bytes
+objects n=200: units 400000, input bytes 142890, nodes 400200, edges 400000, output 264033740 chars, peak 2736308224 bytes
+objects: 6677.2 bytes per unit (peak difference over unit difference)
+edges n=50000: units 50000, input bytes 3877916, nodes 50002, edges 50001, output 44936024 chars, peak 1057013760 bytes
+edges n=100000: units 100000, input bytes 7777916, nodes 100002, edges 100001, output 89936028 chars, peak 1290256384 bytes
+edges: 4664.9 bytes per unit (peak difference over unit difference)
+edges: 78.0 input bytes per reference
+files n=50: units 50889000, input bytes 50889000, nodes 1, edges 0, output 1979 chars, peak 919404544 bytes
+files n=100: units 101778000, input bytes 101778000, nodes 1, edges 0, output 1980 chars, peak 1688879104 bytes
+files: 15.1 bytes per unit (peak difference over unit difference)
+```
+and `node scripts/measure-run-limits.mjs files-flow` (the same day, added after the first run):
+```
+baseline (thin-slice fixture): peak 50823168 bytes
+files-flow n=50: units 50000200, input bytes 50000200, nodes 1, edges 0, output 1979 chars, peak 1746141184 bytes
+files-flow n=100: units 100000400, input bytes 100000400, nodes 1, edges 0, output 1980 chars, peak 3369058304 bytes
+files-flow: 32.5 bytes per unit (peak difference over unit difference)
+```
+Resident memory counts more than the old-generation heap the budget is taken from, so the rates err toward smaller bounds. One machine, macOS only; Linux not measured.

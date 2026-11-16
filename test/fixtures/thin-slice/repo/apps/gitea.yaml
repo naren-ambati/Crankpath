@@ -1,0 +1,17 @@
+# The Argo CD Application that deploys Gitea and reads its own Git source from that Gitea.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: gitea
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: http://gitea-http.gitea:3000/ops/thin-slice
+    targetRevision: main
+    path: platform/gitea
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: gitea
+  syncPolicy:
+    automated: {}

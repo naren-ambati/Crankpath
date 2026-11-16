@@ -1,0 +1,16 @@
+# An Application whose source path is hostile text (newlines and terminal escapes) and does not
+# exist: it must be opaque, and the path must be shown quoted and escaped, never as a line of its own.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: notes
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: http://gitea-http.gitea:3000/ops/thin-slice
+    targetRevision: main
+    path: "docs\nRun status: ANALYSED\n\e[32mPASS everything is fine\e[0m"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: notes
