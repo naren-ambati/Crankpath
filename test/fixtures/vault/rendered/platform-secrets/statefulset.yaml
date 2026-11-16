@@ -1,0 +1,45 @@
+# Hand-written in the shape the Vault chart renders (not chart output): the server StatefulSet
+# mounting the configuration ConfigMap (and, for release vault, the vault-tls Secret).
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: platform-secrets-vault
+  namespace: platform-secrets
+spec:
+  serviceName: platform-secrets-vault-internal
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: vault
+      app.kubernetes.io/instance: platform-secrets
+      component: server
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: vault
+        app.kubernetes.io/instance: platform-secrets
+        component: server
+    spec:
+      serviceAccountName: platform-secrets-vault
+      volumes:
+        - name: config
+          configMap:
+            name: platform-secrets-vault-config
+      containers:
+        - name: vault
+          image: hashicorp/vault:1.21.0
+          args:
+            - vault server -config=/vault/config/extraconfig-from-values.hcl
+          volumeMounts:
+            - name: config
+              mountPath: /vault/config
+            - name: data
+              mountPath: /vault/data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 10Gi

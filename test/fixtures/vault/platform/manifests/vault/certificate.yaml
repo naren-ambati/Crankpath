@@ -1,0 +1,19 @@
+# Vault's own TLS certificate. Its DNS names are free text and name no dependency.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: vault-tls
+  namespace: vault
+spec:
+  secretName: vault-tls
+  commonName: vault.vault.svc
+  dnsNames:
+    - vault
+    - vault.vault
+    - vault.vault.svc
+    - vault.vault.svc.cluster.local
+    - vault-internal.vault.svc
+  issuerRef:
+    name: vault-pki
+    kind: ClusterIssuer
+    group: cert-manager.io

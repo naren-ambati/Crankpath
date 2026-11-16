@@ -97,6 +97,7 @@ function project(report: Report): Json {
       field: u.field,
       candidates: [...u.candidates],
       candidatesTruncated: u.candidatesTruncated,
+      value: u.value,
     })),
     skipped: r.skipped.map((s) => ({ ...s })),
     unreadable: r.unreadable.map((u) => ({ ...u })),

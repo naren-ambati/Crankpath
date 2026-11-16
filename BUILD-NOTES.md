@@ -384,3 +384,220 @@ Tests in `test/u9-cli-package/review-b1-pass3.test.ts`, written first: 13 of 16 
 - **Tests** (`review-b1-pass3.test.ts`): a run near its budget refuses a file whose transient does not fit beside what it holds and admits the same file in a fresh run; a second large file is admitted when only held costs accumulate (the transient is released). These were written after the code this time, not before; with the transient check removed the first would fail (the near-budget run would admit the file), which I reasoned from the budget arithmetic and did not run. Earlier budget tests pass a zero parse cost so their meaning is unchanged.
 - **What changed in meaning:** the run budget is larger (no reserve: 2.45 GB instead of 1.62 GB, so more files and objects fit before a limit), and a file can now also be refused because its parse would not fit beside what the run already holds.
 - **Verified:** `npm run verify` on 2026-11-15: 29 files, 497 tests, coverage 94.03% statements, 95.28% lines, check-tree 0 findings. `limits.ts` and `lexemesPerFile` are unchanged from B0.
+
+## B4 (remaining extractors, FixtureKit v1 and the Vault fixture)
+
+Branch `bolt/b4`, started at the tip of `bolt/b1` (9ac9590).
+
+### Built
+- **U5** `credential-extractor.ts` (`needs-credential` from Applications, and ApplicationSets through their git generators, to the Argo CD credential Secret their repoURL uses: `repository` exact, `repo-creds` a `/`-boundary prefix, on RepoIdentity's normal form with the transport agreeing; exact first, then the longest prefix, a tie is `credential-ambiguous`; the url is the plain Secret's kept `url` or a literal `spec.target.template.data.url`, else `credential-url-unresolved`; credentials of a foreign destination are not offered), `flux-extractor.ts` (Kustomization and HelmRelease `dependsOn` as `depends-on`, namespace defaulting to the object's; `sourceRef`, chart `sourceRef`, `chartRef` as `reads-source`; `valuesFrom` and `postBuild.substituteFrom` as `needs-config`/`needs-secret`, `optional: true` no edge; GitRepository, HelmRepository, OCIRepository and Bucket hosts through HostMatcher; their `spec.secretRef`), `argo-extractor.ts` (a repoURL host that matches nothing and can only be outside the cluster is `external:<host>`, deviation 1), `index.ts`.
+- **U6** `secret-store-extractor.ts` (`produced-by`, `uses-store` incl. per-entry store references, `creationPolicy` Merge and None; stores: a closed provider list with each provider's server field, auth Secret, ServiceAccount and CA references, ClusterSecretStore references needing a namespace; `unsupported-provider` otherwise), `cert-manager-extractor.ts` (`issued-by`, `produced-by` with the Secret node, `ca`, `vault` and `acme` issuers, `selfSigned`; an external issuer group and other types `unsupported-provider`), `hcl-seal-reader.ts` (the bounded reader: one linear pass, a byte-per-level stack, no recursion, no evaluation; refusals named), `vault-seal-extractor.ts` (the `<fullname>-config` ConfigMap's `extraconfig-from-values.hcl`; the StatefulSet named `<fullname>` that mounts it; `seals-with` to `aws-kms/<region>`, `gcp-kms`, `azure-keyvault`, a transit Service or `vault-transit`), `cloud-identity.ts` (`assumes-identity` to `aws-sts` / `gcp-iam`), `external-host.ts` (which unmatched hosts are externals; the host of a URL field), `references.ts` (evidence, edges to named objects with `invalid-reference` for bad names, produced nodes, a bounded walk of auth blocks), `index.ts`.
+- **U1** (minimal, named): eight unresolved reasons in `UNRESOLVED_WHY` (`address-missing`, `credential-ambiguous`, `credential-url-unresolved`, `namespace-unknown`, `region-unresolved`, `seal-unreadable`, `seal-workload-unidentified`, `unsupported-provider`) in `status-model.ts`; `Bucket` in `PRINTABLE_KINDS` (`vocabulary.ts`).
+- **U11** FixtureKit v1 `test/helpers/fixture-kit.ts`: `loadFixture` (a fixture's source trees and render jobs read through the real BoundedReader, tree walk and RenderedSetBuilder; refused files and skipped objects reported), `fixtureContext` (the pipeline's extract context), `analyseFixture` (the real extractors, GraphBuilder and analysis), `fixtureConfig` (the real ConfigReader), `withOverlays` / `withEdits` (variants on a temporary copy), `HOSTILE_STRINGS`, `setPath`, `hostileVariants`, `edgeLines`.
+- **The Vault fixture** `test/fixtures/vault/`: `gitops/` (the scanned app-of-apps repo: root, platform, vault, platform-secrets, external-secrets Applications and the ClusterSecretStore), `platform/` (the private repo: the credential ExternalSecret, the Vault-PKI ClusterIssuer and its ServiceAccount, Vault's Certificate, the values), `rendered/` (hand-written stand-ins for the vault, platform-secrets and external-secrets renders in the shape that matters, never copied from vault-helm, and `jobs.yaml`), `variants/crank-a` (the `creates:` crank in `gitops/crankpath.yaml`) and `variants/ca-issuer` (Vault's Certificate from a `ca` ClusterIssuer whose CA Secret an ExternalSecret seeds from the platform-secrets Vault). READMEs in each part.
+- Tests: `test/u5-extractors-gitops/{credential,flux}-extractor.test.ts`, `test/u6-extractors-workload/{secret-store,cert-manager,vault-seal}-extractor.test.ts`, `hcl-seal-reader.test.ts`, `external-host.test.ts` (with cloud identity and the auth walk), `test/u11-validation-harness/{fixture-kit,vault-fixture}.test.ts`; B1 tests edited for deviation 1 (below).
+- `docs/lookups.md`: the B4 rows.
+
+### Verified
+- `npm run verify` on 2026-11-15 (Node v22.23.2, macOS arm64), exit 0:
+  ```
+  Checked 90 files in 64ms. No fixes applied.
+   Test Files  35 passed (35)
+        Tests  511 passed (511)
+  Statements   : 94.66% ( 2589/2735 )
+  Branches     : 87.09% ( 1850/2124 )
+  Functions    : 97.01% ( 358/369 )
+  Lines        : 96.33% ( 2208/2292 )
+  check-tree: 147 files read, 0 finding(s)
+  ```
+- **The Vault fixture, as the tests assert it** (plain tests over `rendered/` with the real extractors, GraphBuilder and CycleFinder; no helm, no network). Two cycles, both `extracted`:
+  - cycle A, 3 nodes, 3 edges: nodes `Application/argocd/platform`, `ExternalSecret/argocd/repo-platform`, `Secret/argocd/repo-platform`; edges `Application/argocd/platform needs-credential Secret/argocd/repo-platform`, `ExternalSecret/argocd/repo-platform deployed-by Application/argocd/platform`, `Secret/argocd/repo-platform produced-by ExternalSecret/argocd/repo-platform`.
+  - cycle B, 5 nodes, 5 edges: nodes `Certificate/vault/vault-tls`, `ClusterIssuer/vault-pki`, `Secret/vault/vault-tls`, `Service/vault/vault`, `StatefulSet/vault/vault`; edges `Certificate/vault/vault-tls issued-by ClusterIssuer/vault-pki`, `ClusterIssuer/vault-pki depends-on Service/vault/vault`, `Secret/vault/vault-tls produced-by Certificate/vault/vault-tls`, `Service/vault/vault selects StatefulSet/vault/vault`, `StatefulSet/vault/vault needs-secret Secret/vault/vault-tls`.
+  - externals, each `coldStart: unspecified`, `servedBy: null`, each an `external-unspecified` item: `external:aws-kms/us-east-1` (both Vault StatefulSets, `seals-with`), `external:aws-sts` (both Vault ServiceAccounts, `assumes-identity`), `external:github.com` (all five Applications, `reads-source`). No other unresolved item, no flagged node, no refused file, no skipped object.
+  - These are OD-3's counts with Secrets explicit (A 3, B 5). The sets were written in the test before the first run, from the design's trace; the first run matched them (the one failing assertion on that run was the shape of a parsed crank, a test bug).
+  - The seal edge appears for both release names, `vault-config` and `platform-secrets-vault-config` (BR11.9).
+  - Mutations in the suite: removing the credential label or templating the url removes cycle A (and lists `credential-url-unresolved`); pointing the issuer at another host removes cycle B and adds that host as an external; un-mounting the ConfigMap drops the main Vault's seal edge and lists `seal-workload-unidentified`; dropping the regions removes both KMS edges and lists two `region-unresolved` (after the review: no region-less external); dropping the IRSA annotations drops `aws-sts`; leaving out ArgoExtractor drops `github.com`. Variant `ca-issuer` leaves only cycle A; variant `crank-a` parses (`creates: Secret/argocd/repo-platform`), cycle A is still found because this build does not apply cranks (`notComputed` holds `cranks`).
+- A real run over the repository trees (B1 rendering only), on 2026-11-15: `npm run build && node dist/u9-cli-package/cli.js test/fixtures/vault/gitops --repo-url https://github.com/acme/platform-gitops --repo-alias git@github.com:acme/platform.git=test/fixtures/vault/platform` (exit 0) prints, among its lines:
+  ```
+  Run status: ANALYSED WITH GAPS
+    gaps: 3 sources opaque; 1 unresolved item; node statuses and the restoration plan not computed in this build
+  Cycles: 1 uncranked
+    cycle c-35505771  label: extracted  nodes: 3  edges: 3
+      Application "argocd/platform" needs credential Secret "argocd/repo-platform"  [field: spec.source.repoURL]
+      Secret "argocd/repo-platform" produced by ExternalSecret "argocd/repo-platform"  [field: spec.target.name]
+  ```
+  (the vault, platform-secrets and external-secrets Applications are opaque `not-in-this-build`, so cycle B and the two KMS/STS externals need B2's rendering; the end-to-end golden with real rendering is B7's).
+- Hostile input: every extractor's reference fields take each of FixtureKit's hostile strings without an edge to a forged id and with an item; the HCL reader ends in a named refusal on unterminated strings, comments and heredocs, unbalanced brackets, a megabyte of `{`, 200,000 nested blocks and 300,000 open lists, each in under 5 s, and refuses over 1 MiB (by bytes); a seal type carrying a line break prints quoted (`\x0a`) through the whole command with no claim word in crankpath's voice.
+
+### Deviations from the design and why
+1. **Unmatched hosts that cannot be in-cluster become external preconditions** (rule as amended by the review, see "Review fixes" below). A host from a named field (Application and ApplicationSet repoURL, Flux source `spec.url`/`spec.endpoint`, store provider server, Vault and ACME issuer server, transit seal address) that matches no Service is `external:<host>` with `coldStart: unspecified` (so `github.com` appears, as the design's fixture expects) only when it cannot be the cluster's own DNS; every other unmatched host is no edge and a `host-unplaced` item. The design names no rule for where `github.com` comes from; this one is general (a Helm chart repository host is an external too). B1 test expectations changed (final state after the review fixes): `test/u5-extractors-gitops/argo-extractor.test.ts` (one case: `github.com/x/y` is an external edge); `test/u9-cli-package/pipeline-runner.test.ts` (app of apps, extractor isolation, `.git` not read: the original nodes and edges, plus a `host-unplaced` item per Application, because `gitea-http.gitea` with no `gitea` namespace may be in-cluster); `test/u9-cli-package/thin-slice.test.ts` (the Service-removed mutation now lists 2 unresolved items, `host-unplaced` for both Applications, instead of 0); `test/u8-output/text-renderer.test.ts` (four wording cases scan a repo at `https://git.example.org/ops/thin-slice` and declare `git.example.org: {cold_start: available}`, so the wording under test is unchanged; the no-edges case uses an in-cluster `.svc` URL). The thin-slice expected outputs are unchanged.
+2. **The fixture's charts are git sources on github.com** (`hashicorp/vault-helm` at `v0.34.1`, path `.`; `external-secrets/external-secrets` at `helm-chart-2.9.0`, path `deploy/charts/external-secrets`), so the three externals of AC11.3.1 hold under deviation 1; Helm-repository chart hosts would each be a fourth external. cert-manager, like Argo CD, is installed outside the fixture.
+3. **Two Vault releases.** The ClusterSecretStore reads the `platform-secrets` Vault (configured from the public repo only) and is delivered by the root Application, not the platform one; otherwise the store's chain would join A and B into one strongly connected component and A would grow. This also gives the second release name of FR11.4 a role.
+4. **Host-matched server edges are `depends-on`** (store and issuer servers): C1 has no dedicated kind; the mockup's "reads Service" is not an edge kind. Flux sources' host edges are `reads-source`.
+5. **The mockup's `ExternalSecret "platform/repo-platform"` is `argocd/repo-platform`:** an ExternalSecret writes its Secret in its own namespace.
+6. **Credential matching also requires the transport to agree** (ssh and scp-style are one; https; http): RepoIdentity's normal form drops the scheme, and Argo CD does not offer an ssh key to an https URL. Precedence (exact `repository`, then the longest `repo-creds`) and a tie as `credential-ambiguous` are the design's ambiguity rule (OD-14) applied to credentials. ApplicationSet git generators need credentials too (the template's repoURL does not: the generated Applications read it). The credential `type` (git or helm) is stripped with the rest of the Secret and is not compared.
+7. **Eight new unresolved reasons in U1** (listed above), and `Bucket` printable. `seal-unreadable` is an unresolved item, not an opaque mark: an opaque mark on a ConfigMap is not a source and would not reach the opacity statement.
+8. **Namespaces of references.** A ClusterIssuer's Secrets and ServiceAccounts are in `cert-manager`, cert-manager's default `--cluster-resource-namespace` (a controller flag outside the estate: if the controller runs with another one, the edge points at a `not-defined` stub, or at a same-named object in `cert-manager`; recorded for the owner). A ClusterSecretStore reference without a namespace is `namespace-unknown` and no edge (ESO would use each ExternalSecret's namespace). A SecretStore's and an Issuer's references are in their own namespace.
+9. **ExternalSecret `creationPolicy`:** `Merge` keeps `produced-by` but makes no Secret node (the Secret must exist; an undefined one becomes a stub); `None` produces nothing.
+10. **Vault seal:** gcpckms is `gcp-kms` without a region (the design's Q2 spelling); after the review, a transit seal with no Service match is `external:<host>` when the host cannot be in-cluster (not Q2's `vault-transit`), else no edge and an item; a region must look like an AWS region name, else no edge and `region-unresolved` (no region-less `external:aws-kms`, OD-14); only `disabled = true` skips a seal, and a non-boolean `disabled` is `seal-unreadable`; other seal types are `unsupported-provider`; a JSON-form configuration (the chart renders a map value as JSON) is refused as `seal-unreadable`, never guessed.
+11. **`HCL_VALUE_BYTES` (1 MiB) lives in the reader, not in LimitSet**, to keep U1 edits to vocabulary; its basis is the B0 ConfigMap lookup. The lead may move it into `LIMITS` and `docs/limits.md` at integration. The reader needs no depth limit: its stack is one byte per level and the text is bounded. The auth walk stops at depth 6 (the APIs nest a selector at most four levels down).
+12. **Store providers:** a closed list (`akeyless`, `aws`, `azurekv`, `conjur`, `fake`, `gcpsm`, `gitlab`, `kubernetes`, `onepassword`, `vault`, `webhook`) with each one's server field; aws and gcpsm name no server, so the cloud secret service behind them is not an external (not modelled). Auth references are found by key name (`*SecretRef`, `*serviceAccountRef`, `caProvider`), so one walk serves every provider and cert-manager; an ACME solver's webhook `config` keys of that shape are read too.
+13. **ACME** `privateKeySecretRef` is no dependency (cert-manager creates the account key).
+14. **Flux:** source `spec.secretRef` is read (the fetch credential, Flux's counterpart of the Argo credential; FR5.3 does not list it); `spec.decryption.secretRef` and `kubeConfig` are not. Flux objects stay `not-in-this-build` for rendering (`render-planner.ts` is B2's and was not touched), so in a Flux estate a `sourceRef` to a GitRepository that only a Flux render would produce is a `not-defined` stub until Flux rendering lands.
+15. **Cloud identity is its own extractor** (`cloud-identity.ts`), not part of WorkloadRefExtractor; the workload's `runs-as` edge is WorkloadRefExtractor's as before.
+16. **FixtureKit** is a test helper (`test/helpers/fixture-kit.ts`), not shipped code.
+17. **Tests were written alongside the implementation**; only the fixture tree came first (`b831862`), and the Vault fixture test's expected sets were written before its first run.
+
+### Files touched outside U5, U6, U11 and test/
+- `src/u1-graph-model/status-model.ts` (`UNRESOLVED_WHY`, eight words), `src/u1-graph-model/vocabulary.ts` (`Bucket`), `docs/lookups.md` (B4 rows), `BUILD-NOTES.md` (this section). No change to `src/u2-*`, `src/u3-*`, `src/u4-*`, `src/u7-*`, `src/u8-*`, `src/u9-*`, nor to `host-matcher.ts` (called through its existing API). Integration order B2, B4, B5: the U1 lists are the likely textual conflicts; the extractor registration is the two `index.ts` files.
+
+### Decisions taken for the owner
+- Unmatched public hosts are externals (deviation 1), including Helm chart repository hosts.
+- A ClusterIssuer's references resolve in `cert-manager` (deviation 8).
+- Transport must agree for credentials (deviation 6).
+- JSON-form Vault configuration is refused, not read (deviation 10).
+
+### Notes for later bolts
+- **B5:** externals made by extractors list their `external-unspecified` item with `where: "crankpath.yaml"` (GraphBuilder's B1 wording) though they come from a rendered object; the text "External preconditions: none declared in crankpath.yaml; none extracted in this build." is printed only when there is none, but "in this build" no longer fits. The cluster-provided list (OD-25) is B5's, as the lead moved it. Each ambiguity here is an unresolved item whose subject B5 should make `unverified`.
+- **B7:** the end-to-end golden over `gitops/` and `platform/` with real rendering needs the chart repositories fetched (`repos:` fetch entries in a crankpath.yaml, or a change of the three Applications to Helm-repository sources, which would add their hosts as externals under deviation 1) and helm; the hand-written `rendered/` objects are the shape, not the chart's output, so the golden will differ in object count.
+
+### Unverified
+- **Hand mutations of the code were not run in this session**: the attempt was refused by the session's permission rules (as in B1). The suite's own falsifiability checks (the fixture mutations above, the look-alike URL table, the hostile-string sweeps) fail as they should when the input is broken; a reviewer should still break the code (the `/` boundary of `repo-creds`, the transport check, the templated-url check, the tie rule, the in-cluster host exclusions, the mount corroboration, the region pattern, the HCL duplicate and depth-0 checks, the ClusterSecretStore namespace rule, `creationPolicy`, the cluster resource namespace, the ACME account key exclusion, `optional: true`) and see tests turn red.
+- No real helm render of the fixture; the rendered stand-ins follow the chart's names and keys as research section 5 records them, not a fresh render.
+- Flux extraction is tested on hand-written objects only, not on a real Flux estate.
+- One macOS arm64 machine, Node 22.23.2; Linux not run.
+
+### Review fixes (bolt-4-review, 2026-11-15)
+
+The independent review (`reviews/bolt-4-review.md`, committed with these fixes; one line of it rewords the design tool's folder names, which check-tree refuses in a tracked file) found 1 Major, 7 Minor, 4 Nit. The lead's decisions were applied. Every fix has a test that was added first and failed on the reviewed code: 32 of the new or changed tests failed before the fix (`npx vitest run test/u5-extractors-gitops test/u6-extractors-workload test/u11-validation-harness`: "32 failed | 270 passed (302)"; the m7 size test took 124,242 ms there and fails its 3,000 ms bound), and all pass after it.
+
+- **M1 (credentials in Argo CD's namespace).** A credential counts only in the namespace of the Application or ApplicationSet that needs it, taken as Argo CD's own namespace (Argo CD reads credentials from its control-plane namespace; Applications in any namespace are not modelled). A labelled Secret, or an ExternalSecret-made one, in a namespace where no Application or ApplicationSet lives makes no edge, cannot tie with the real credential, and is listed once as `credential-outside-argocd` (it may be a misconfiguration). Credentials are indexed by namespace. Tests: a foreign-namespace credential, a namespace squat that used to hide the real one, a credential serving the Applications beside it.
+- **m1 (in-cluster names never external).** `external-host.ts`: unmatched hosts that may be in-cluster are no edge and a `host-unplaced` item (a new unresolved reason): one label, IP literals, any name with a `svc` label after its first, names ending `.local` or `.cluster`, and every two-label `<svc>.<ns>` name (`kubernetes.default`, `prometheus.monitoring`, `gitea-http.gitea` with no such namespace), unless its last label is one of a fixed list of public top-level domains (`biz`, `com`, `edu`, `gov`, `info`, `int`, `io`, `mil`, `net`, `org`) that is not also a namespace of the estate. **Superseded in pass 2 by the dated root-zone list (below).** Read strictly, "`<svc>.<ns>` where ns is not an estate namespace is never external" would also make `github.com` a possible Service `github` in namespace `com` and break the Vault fixture's three externals (the Definition of Done); the fixed TLD list reconciles the two, and it is a judgement, not a derivation: a namespace named after one of those ten words, made outside the estate, would be misread as public. A placement helper (`placeHost`) now serves ArgoExtractor, FluxExtractor, the store and issuer servers and the transit seal.
+- **m2 (bare names).** A transit seal gives the Vault StatefulSet's namespace as the bare-host namespace. (This pass also gave SecretStores and Issuers their own namespace; the second review showed that wrong and pass 2 reverted it: see below.)
+- **m3 (no spread over unbounded arrays).** `Math.max(...)` in credential choice is a loop (300,000 `repo-creds` in 156 ms); the remaining array spreads in B4's code (including FixtureKit's `push(...)`) are `Array.from`, `concat` or loops.
+- **m4.** An unlabelled Secret with a `url`, and one labelled `cluster`, are no credential and no item (test added; the label gate was untested).
+- **m5 (HCL reader).** A bare word as a value is refused (`bare-identifier`); escapes other than `\"`, `\\`, `\n`, `\t`, `\r` are refused (`bad-escape`), so `\u0075` is no longer read as text; `disabled` only skips a seal for the HCL boolean `true`, and any non-boolean value (`"true"`, `1`, `"false"`, a list) is `seal-unreadable` with no edge.
+- **m6.** An awskms seal without a usable region is no edge and `region-unresolved` (no region-less `external:aws-kms`); a transit address with no Service match keeps its host as the external's name (`external:<host>`) when it cannot be in-cluster, else no edge and `host-unplaced`; a transit seal with no address is no edge and `address-missing` (no `vault-transit` node). `gcp-kms` and `azure-keyvault` keep Q2's fixed names. The transit edge's evidence field is now `…seal.transit.address`.
+- **m7.** StatefulSets are indexed once by namespace, destination and name (40,000 ConfigMaps with 40,000 StatefulSets in 321 ms).
+- **Nits.** n1: a Bucket `spec.endpoint` positive test. n2: the `{{` guard is not dead (a partly templated url such as `https://github.com/acme/{{.repo}}` still normalises, the braces percent-encoded); a test now shows it, and the file header says why. n3: a backslash before a line break is tested. n4: the header says Argo CD takes the first matching `repo-creds` in its own order and crankpath, not modelling that order, takes the most specific and calls a tie ambiguous.
+
+**What changed in meaning:** results now differ from the reviewed commit in these ways, all towards fewer edges and more items:
+- Hosts that may be in-cluster (`<svc>.<ns>`, `kubernetes.default` and the like) are `host-unplaced` items instead of externals.
+- Bare names in namespaced stores and issuers now resolve to their own namespace's Service: a new edge where there was an ambiguity item.
+- Credentials outside Argo CD's namespace no longer make edges or ties.
+- The region-less KMS and generic transit nodes are gone.
+- Unquoted values, unknown escapes and non-boolean `disabled` make a seal unreadable.
+
+The Vault fixture's results (cycle A 3/3, cycle B 5/5, the three externals, nothing else unresolved) are unchanged.
+
+Outside B4's diff, the review notes that the base branch already tracks the design tool's workspace files (since the initial commit on `main`); B4 adds none. That is for the lead.
+
+`npm run verify` after the fixes, 2026-11-15 (Node v22.23.2), exit 0:
+```
+Checked 90 files in 113ms. No fixes applied.
+ Test Files  35 passed (35)
+      Tests  549 passed (549)
+Statements   : 94.68% ( 2603/2749 )
+Branches     : 87.21% ( 1862/2135 )
+Functions    : 96.99% ( 355/366 )
+Lines        : 96.31% ( 2221/2306 )
+check-tree: 148 files read, 0 finding(s)
+```
+
+### Review fixes, pass 2 (bolt-4-review-pass-2, 2026-11-15)
+
+The second review (`reviews/bolt-4-review-pass-2.md`, committed) found 2 Major, 5 Minor, 4 Nit in the first pass's fixes. The lead's decisions were applied, tests first: 23 new or changed tests failed on `b28973b` ("23 failed | 317 passed (340)" over u5, u6, u8 and u11) and pass after the fixes.
+
+- **M1 (Argo CD's namespace from the estate).** `argoNamespace` in `credential-extractor.ts` derives Argo CD's control-plane namespace in this order:
+  1. the one namespace where the estate renders Argo CD's install (`argocd-cm`, or a Deployment or StatefulSet whose name ends `argocd-repo-server` or `argocd-application-controller`);
+  2. else, when every Application and ApplicationSet sits in one namespace, that one, listed as an assumption (`argocd-namespace-assumed`, subject `Namespace/<ns>`);
+  3. else unknown: no credential edge at all, and one `argocd-namespace-unknown` item (subject `argocd-namespace`, candidates the namespaces seen).
+
+  Credentials count only in that namespace, for every Application wherever it sits. Objects of a foreign destination are not read. Items are made only when the estate holds a credential. With no Application at all, the namespace is unknown (n4).
+- **M2 (bare hosts of stores and issuers).** These revert to `bareNamespace: null`: the operator's or cert-manager's controller dials the server, from a namespace the estate does not show. Only the transit seal resolves a bare name in the Vault pod's namespace. The two tests that asserted the wrong edge are replaced.
+- **m1 (dated root-zone list).** The fixed ten-word list is replaced by the registry's root-zone list (1,436 entries, version line recorded, `docs/lookups.md`), committed as data in `root-zone-tlds.ts`. A two-label name is external only when its last label is a delegated top-level domain and no estate namespace has that name. The override is tested (`github.com` with a `com` namespace is unplaced).
+  - **For the lead:** the list is a copy of a public registry file of facts with no stated licence, so it has no licence file or NOTICE line; please confirm that is acceptable.
+- **m2.** `disabled = "true"` and `"false"` are read as Vault's seal migration documentation writes them; any other non-boolean value is `seal-unreadable`.
+- **m3.** An IPv6 literal host keeps its brackets and is a `host-unplaced` item, as an IPv4 literal is.
+- **m4.** `credential-outside-argocd` is listed once per Secret.
+- **m5.** Unresolved items carry an optional `value` (repo text: the host of a `host-unplaced` or `host-ambiguous` item). The text report prints it quoted after `host:` on the item's `where:` line, and the JSON adds `value` to every item (null when absent). This touched `src/u1-graph-model/status-model.ts`, `src/u8-output/text-renderer.ts` and `src/u8-output/json-renderer.ts`. The JSON change is additive; the thin-slice golden has no unresolved item and is unchanged.
+- **n1.** A bare name with no stated namespace and exactly one same-named Service is `host-unplaced` listing that Service, not a one-candidate ambiguity (a B1 Argo test now expects this).
+- **n2.** The reader's header says its refusals hold anywhere in the text.
+- **n3.** The root-zone list is tested as data (size, version, label syntax, absent cluster words) and by a table of hosts.
+
+**What changed in meaning (pass 2):**
+- `needs-credential` edges now depend on the estate showing Argo CD's namespace. The Vault fixture gains one item, `argocd-namespace-assumed Namespace/argocd`; its cycles and externals are unchanged.
+- Bare store and issuer hosts no longer make edges.
+- Two-label hosts ending in a delegated top-level domain outside the old ten (`sr.ht`, `charts.dev`) are externals again.
+- IPv6 hosts and in-cluster repo hosts are now visible in the report.
+- One-candidate "ambiguities" read as unplaced.
+
+`npm run verify` after pass 2, 2026-11-15 (Node v22.23.2), exit 0:
+```
+Checked 91 files in 67ms. No fixes applied.
+ Test Files  35 passed (35)
+      Tests  572 passed (572)
+Statements   : 94.74% ( 2632/2778 )
+Branches     : 87.47% ( 1892/2163 )
+Functions    : 97.03% ( 360/371 )
+Lines        : 96.35% ( 2247/2332 )
+check-tree: 150 files read, 0 finding(s)
+```
+
+### Review fixes, pass 3 (bolt-4-review-pass-3, 2026-11-15)
+
+The third review (`reviews/bolt-4-review-pass-3.md`, committed) found 1 Major, 3 Minor and 3 Nit. The lead's decisions are applied, tests first: 14 new or changed tests failed on `314e01a` ("14 failed | 321 passed (335)" over u5, u6 and u11). The foreign-destination test passed there; it pins a skip that already existed. All pass after the fixes.
+
+- **M1 (install objects).**
+  - An install object counts only under Argo CD's exact upstream names: the ConfigMap `argocd-cm`, and a Deployment or StatefulSet named `argocd-repo-server`, `argocd-application-controller` or `argocd-server`. The Helm release form `<release>-argocd-...` counts only when the object carries `app.kubernetes.io/part-of: argocd`.
+  - The install must be corroborated: every Application and ApplicationSet must sit in the install's namespace. Otherwise the namespace is unknown, with one item and no credential edge.
+  - **Decision:** I read "the Applications that need credentials" as all Applications and ApplicationSets. Which ones "need" a credential is itself computed from repo-controlled URLs, so all of them is the stricter reading.
+  - How the namespace was found is always listed:
+    - `argocd-namespace-derived`: subject `Namespace/<ns>`, candidates the install objects;
+    - `argocd-namespace-assumed`: from the Applications' namespace.
+
+  A lone decoy (`evil-argocd-repo-server`, or `argocd-cm` in another namespace) now gives the assumption or the unknown namespace, never a credential edge to the decoy's namespace.
+- **m1.** A test shows that an install object rendered for a foreign destination is not read.
+- **m2.** `placeUrl` handles every URL-valued server and source field: text that yields no host (unparseable, an IPv6 zone id such as `[fe80::1%25eth0]`) is a `host-unplaced` item quoting the text. A transit seal's address of that kind is `address-missing` quoting the text.
+- **m3.** `docs/host-placement.md` states the placement rules, the root-zone rule and its source, and that reserved names such as `x.example`, `x.test`, `x.internal` and `x.localhost` are unplaced. `docs/limits.md` (B0's, read by a test) is unchanged.
+  - **The IANA list is a factual data source:** the registry's list of delegated top-level domains, committed lower-cased with its version line, with no stated licence. The lead lists it in `NOTICE` in B9.
+- **n1.** The `disabledOf` header says other spellings Vault's boolean parsing accepts ("TRUE", "t", "1") are listed as unreadable, not read.
+- **n2.** NOTICE is left to B9, as the lead decided.
+- **n3.** No change.
+
+**What changed in meaning (pass 3):**
+- A namespace from install objects is used only with Argo CD's exact names (or a prefixed name with the part-of label) and when the Applications agree; otherwise it is unknown.
+- Every derived namespace is now an item, where pass 2 printed nothing.
+- Unparseable server, source and transit URLs are now items quoting the text, where they were silent.
+
+The Vault fixture's results are unchanged: cycles A and B, the three externals, and the `argocd-namespace-assumed` item.
+
+`npm run verify` after pass 3, 2026-11-15 (Node v22.23.2), exit 0:
+```
+Checked 91 files in 101ms. No fixes applied.
+ Test Files  35 passed (35)
+      Tests  583 passed (583)
+Statements   : 94.73% ( 2646/2793 )
+Branches     : 87.64% ( 1902/2170 )
+Functions    : 97.05% ( 362/373 )
+Lines        : 96.32% ( 2257/2343 )
+check-tree: 152 files read, 0 finding(s)
+```
+
+### Merge of main (B0 `82c9a27`, B1 `df1724c`), 2026-11-15
+- `main` merged into `bolt/b4` (a merge commit). Both bolts were squash-merged, so git saw add/add conflicts on 53 files. Each was re-merged three-way with the B1 tip `9ac9590` as base: 40 files B4 never touched take main's version; the other 13 merge B4's changes onto main's (8 cleanly).
+- Five files had real conflicts, resolved by keeping both sides:
+  - `UnresolvedItem` has B1's `candidatesTruncated` (the optional 6th parameter of `unresolvedItem`) and B4's `value` (now the optional 7th; B4's four callers pass `false` before it). The JSON renderer emits both. The text renderer prints B1's truncated-candidates lead and B4's `host:`/`value:` label.
+  - `docs/lookups.md`: B0's review rows, then B4's.
+  - `BUILD-NOTES.md`: B0 and B1 (with their review sections), then B4.
+- No B4 behaviour changed in the merge. `npm run verify` after it, exit 0:
+  ```
+  Checked 102 files in 46ms. No fixes applied.
+   Test Files  38 passed (38)
+        Tests  754 passed (754)
+  Statements   : 95.27% ( 2842/2983 )
+  Branches     : 88.53% ( 2054/2320 )
+  Functions    : 97.15% ( 376/387 )
+  Lines        : 96.57% ( 2427/2513 )
+  check-tree: 169 files read, 0 finding(s)
+  ```

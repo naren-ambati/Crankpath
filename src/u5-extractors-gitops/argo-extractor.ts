@@ -4,7 +4,10 @@
 // ApplicationSet's git generator and template `repoURL`, depend on the in-estate Service their host
 // matches (`reads-source`, from the named field only, whether or not the repo is readable: FR2.5);
 // a sync-wave annotation is an ordering attribute, never an edge; objects of a foreign destination
-// are flagged. Credentials (`needs-credential`) are B4's. Pure (C3).
+// are flagged. A repoURL host that matches no Service and cannot be in-cluster is an external
+// precondition (`external:<host>`, for example `github.com`); one that may be in-cluster is an
+// item, never silence (see external-host.ts). Credentials
+// (`needs-credential`) are the credential extractor's. Pure (C3).
 
 import {
   asArray,
@@ -21,6 +24,7 @@ import {
 import { makeEdge } from "../u1-graph-model/graph-model.js";
 import { unresolvedItem } from "../u1-graph-model/status-model.js";
 import { repoUrlHost } from "../u2-intake-config/repo-identity.js";
+import { estateNamespaces, placeHost } from "../u6-extractors-workload/external-host.js";
 
 export const SYNC_WAVE_ANNOTATION = "argocd.argoproj.io/sync-wave";
 const WAVE = /^[+-]?\d{1,15}$/;
@@ -63,6 +67,7 @@ export const argoExtractor: Extractor = Object.freeze({
   name: "argo",
   extract(objects: readonly RenderedObject[], ctx: ExtractContext): ExtractResult {
     const out = emptyResult();
+    const namespaces = estateNamespaces(objects);
     for (const object of objects) {
       let used = false;
       const file = object.origin.path ?? object.renderedPath;
@@ -113,22 +118,15 @@ export const argoExtractor: Extractor = Object.freeze({
         used = true;
         const host = repoUrlHost(url);
         if (host === null) continue;
-        const match = ctx.matchHost({ host, field, bareNamespace: null });
-        if (match.outcome === "unique" && match.node !== null) {
-          out.edges.push(
-            makeEdge({
-              from: object.id,
-              to: match.node,
-              kind: "reads-source",
-              source: "extracted",
-              evidence: { file, field, renderedPath: object.renderedPath, line: null },
-            }),
-          );
-        } else if (match.outcome === "ambiguous") {
-          out.unresolved.push(
-            unresolvedItem(object.id, "host-ambiguous", object.renderedPath, field, match.candidates),
-          );
-        }
+        placeHost(out, ctx, {
+          from: object.id,
+          evidence: object,
+          host,
+          field,
+          kind: "reads-source",
+          namespaces,
+          bareNamespace: null,
+        });
       }
       if (!used) out.ignoredKinds += 1;
     }

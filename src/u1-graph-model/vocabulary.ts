@@ -6,6 +6,7 @@
 export const PRINTABLE_KINDS: ReadonlySet<string> = new Set([
   "Application",
   "ApplicationSet",
+  "Bucket",
   "Certificate",
   "ClusterIssuer",
   "ClusterRole",

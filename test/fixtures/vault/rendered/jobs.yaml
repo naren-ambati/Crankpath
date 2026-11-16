@@ -1,0 +1,29 @@
+# Render jobs of the Vault fixture, for FixtureKit (test/helpers/fixture-kit.ts).
+sources:
+  - gitops
+jobs:
+  - owner: Application/argocd/root
+    ownerFile: bootstrap/root.yaml
+    ownerField: spec.source.path
+    namespace: argocd
+    read: gitops/apps
+  - owner: Application/argocd/platform
+    ownerFile: apps/platform.yaml
+    ownerField: spec.source.path
+    namespace: platform
+    read: platform/manifests
+  - owner: Application/argocd/vault
+    ownerFile: apps/vault.yaml
+    ownerField: spec.sources[0].path
+    namespace: vault
+    read: rendered/vault
+  - owner: Application/argocd/platform-secrets
+    ownerFile: apps/platform-secrets.yaml
+    ownerField: spec.source.path
+    namespace: platform-secrets
+    read: rendered/platform-secrets
+  - owner: Application/argocd/external-secrets
+    ownerFile: apps/external-secrets.yaml
+    ownerField: spec.sources[0].path
+    namespace: external-secrets
+    read: rendered/external-secrets

@@ -23,17 +23,39 @@ function line(text: string, prefix: string): string {
 }
 
 const CM = "apiVersion: v1\nkind: ConfigMap\nmetadata: {name: c}\n";
+// The cases that count edges and items scan a repo on a public host: an external precondition,
+// declared available so the wording under test is not about it. (The thin-slice URL's host,
+// `gitea-http.gitea`, may be in-cluster: with no Service it would be an unplaced item.)
+const PUBLIC_URL = "https://git.example.org/ops/thin-slice";
+const SELF_AVAILABLE = "external:\n  git.example.org: {cold_start: available}\n";
+function scanPublic(files: Record<string, string>): string {
+  const d = estate(files);
+  cleanup.push(d);
+  const r = run([d, "--repo-url", PUBLIC_URL], process.cwd());
+  expect(r.code).toBe(0);
+  return r.stdout;
+}
 
 describe("no-cycle wording (BR8.13, M9)", () => {
   it("says none found among N nodes and E edges read, with the opaque and unresolved counts, never a bare none", () => {
-    const text = scan({ "apps/a.yaml": app("a", "cfg"), "cfg/cm.yaml": CM });
+    const text = scanPublic({
+      "apps/a.yaml": app("a", "cfg", PUBLIC_URL),
+      "cfg/cm.yaml": CM,
+      "crankpath.yaml": SELF_AVAILABLE,
+    });
     expect(line(text, "Cycles:")).toBe(
-      "Cycles: none found among 2 nodes and 1 edge read (0 nodes opaque; 0 unresolved items)",
+      "Cycles: none found among 3 nodes and 2 edges read (0 nodes opaque; 0 unresolved items)",
     );
     expect(text).not.toMatch(/Cycles: (?:none|0)\s*$/m);
   });
   it("says no dependency edges were extracted when there are none, and the run has gaps", () => {
-    const text = scan({ "apps/a.yaml": app("a", "empty"), "empty/README.md": "x\n" });
+    // An in-cluster address that matches no Service: no edge and no external.
+    const inCluster = "http://gitea-http.gitea.svc:3000/ops/thin-slice";
+    const d = estate({ "apps/a.yaml": app("a", "empty", inCluster), "empty/README.md": "x\n" });
+    cleanup.push(d);
+    const r = run([d, "--repo-url", inCluster], process.cwd());
+    expect(r.code).toBe(0);
+    const text = r.stdout;
     expect(line(text, "Cycles:")).toBe("Cycles: none found among 1 node; no dependency edges were extracted.");
     expect(line(text, "  gaps:")).toContain("no dependency edges were extracted");
   });
@@ -58,7 +80,11 @@ describe("opacity statement (FR4.4, M3)", () => {
     expect(text).not.toContain("(nothing opaque, nothing skipped)");
   });
   it("says nothing opaque only when nothing was opaque or skipped", () => {
-    const text = scan({ "apps/a.yaml": app("a", "cfg"), "cfg/cm.yaml": CM });
+    const text = scanPublic({
+      "apps/a.yaml": app("a", "cfg", PUBLIC_URL),
+      "cfg/cm.yaml": CM,
+      "crankpath.yaml": SELF_AVAILABLE,
+    });
     expect(text).toContain("  (nothing opaque, nothing skipped)");
     expect(line(text, "Run status:")).toBe("Run status: ANALYSED WITH GAPS");
     expect(line(text, "  gaps:")).toBe("  gaps: node statuses and the restoration plan not computed in this build");
@@ -85,11 +111,12 @@ describe("unresolved items, externals and declared edges", () => {
     const dep = (n: string) =>
       `apiVersion: apps/v1\nkind: Deployment\nmetadata: {name: ${n}}\nspec:\n  template:\n    metadata: {labels: {tier: web}}\n    spec: {containers: []}\n`;
     const svc = "apiVersion: v1\nkind: Service\nmetadata: {name: web}\nspec: {selector: {tier: web}}\n";
-    const text = scan({
-      "apps/a.yaml": app("a", "cfg"),
+    const text = scanPublic({
+      "apps/a.yaml": app("a", "cfg", PUBLIC_URL),
       "cfg/d1.yaml": dep("one"),
       "cfg/d2.yaml": dep("two"),
       "cfg/svc.yaml": svc,
+      "crankpath.yaml": SELF_AVAILABLE,
     });
     expect(text).toContain('  unresolved 1 of 1  why: selector-ambiguous  subject: Service "a/web"');
     expect(text).toContain('    candidates: Deployment "a/one", Deployment "a/two"');
@@ -98,11 +125,16 @@ describe("unresolved items, externals and declared edges", () => {
     const config = [
       "external:",
       "  github.com: {cold_start: available}",
+      "  git.example.org: {cold_start: available}",
       "  kms:",
       "edges:",
       '  - {from: "Application/argocd/a", to: "ConfigMap/a/c", why: "the runbook says the Application reads it"}',
     ].join("\n");
-    const text = scan({ "apps/a.yaml": app("a", "cfg"), "cfg/cm.yaml": CM, "crankpath.yaml": `${config}\n` });
+    const text = scanPublic({
+      "apps/a.yaml": app("a", "cfg", PUBLIC_URL),
+      "cfg/cm.yaml": CM,
+      "crankpath.yaml": `${config}\n`,
+    });
     expect(text).toContain('  external "github.com"  available (declared, not verified)');
     expect(text).toContain('  external "kms"  UNRESOLVED (not declared in crankpath.yaml)');
     expect(text).toMatch(/cycle c-[0-9a-f]{8} {2}label: declared \(unverified\)/);
@@ -132,5 +164,17 @@ describe("node references (SafeText vocabulary)", () => {
   it("never uses a claim word in its own voice across these reports", () => {
     const text = scan({ "apps/a.yaml": app("a", "cfg"), "cfg/cm.yaml": CM });
     expect(claimWordsInOwnVoice(text)).toEqual([]);
+  });
+});
+
+describe("pass 2: an in-cluster repo host that matches no Service is named (m5)", () => {
+  it("prints the host after a fixed label on the item's line, quoted, and keeps it in the JSON", () => {
+    const text = scan({ "apps/a.yaml": app("a", "cfg"), "cfg/cm.yaml": CM });
+    expect(text).toContain('  unresolved 1 of 1  why: host-unplaced  subject: Application "argocd/a"');
+    expect(text).toContain('    where: "apps/a.yaml#1"  field: "spec.source.repoURL"  host: "gitea-http.gitea"');
+    const json = JSON.parse(scan({ "apps/a.yaml": app("a", "cfg"), "cfg/cm.yaml": CM }, ["--format", "json"]));
+    expect(json.unresolved.map((u: { why: string; value: string | null }) => [u.why, u.value])).toEqual([
+      ["host-unplaced", "gitea-http.gitea"],
+    ]);
   });
 });

@@ -38,6 +38,7 @@ describe("Argo CD Applications (BR5.1, BR5.2)", () => {
     });
     expect(run([svc, a, b]).list).toEqual([
       "Application/argocd/b reads-source Service/gitea/gitea-http @apps/b.yaml:spec.sources[0].repoURL",
+      "Application/argocd/b reads-source external:github.com @apps/b.yaml:spec.sources[1].repoURL",
       "Application/argocd/gitea reads-source Service/gitea/gitea-http @apps/gitea.yaml:spec.source.repoURL",
     ]);
   });
@@ -72,7 +73,11 @@ describe("Argo CD Applications (BR5.1, BR5.2)", () => {
     const a = app("gitea", { source: { repoURL: "http://gitea-http:3000/ops/thin-slice" } });
     const { r, list } = run([svc, a]);
     expect(list).toEqual([]);
-    expect(r.unresolved.map((u) => [u.why, u.candidates])).toEqual([["host-ambiguous", ["Service/gitea/gitea-http"]]]);
+    // A bare name with no stated namespace and one same-named Service: unplaced, listing the Service
+    // (pass 2, n1; it was an "ambiguity" of one candidate).
+    expect(r.unresolved.map((u) => [u.why, u.candidates, u.value])).toEqual([
+      ["host-unplaced", ["Service/gitea/gitea-http"], "gitea-http"],
+    ]);
   });
 });
 

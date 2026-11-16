@@ -1,0 +1,20 @@
+# The private platform repository: the credential Argo CD needs to read it comes from an
+# ExternalSecret that this same Application delivers (cycle A).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: platform
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: git@github.com:acme/platform.git
+    targetRevision: main
+    path: manifests
+    directory:
+      recurse: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: platform
+  syncPolicy:
+    automated: {}

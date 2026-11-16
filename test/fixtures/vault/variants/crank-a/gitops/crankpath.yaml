@@ -1,0 +1,5 @@
+# The documented manual step for cycle A.
+cranks:
+  - creates: Secret/argocd/repo-platform
+    by: "kubectl create secret from the offline key backup, runbook DR-3"
+    ref: runbooks/dr-3.md

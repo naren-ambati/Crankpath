@@ -58,3 +58,11 @@ Every read-only lookup the build made, with its date. Nothing was published or w
 | 2026-11-15 | v8/v8 branch `12.4-lkgr`, `src/heap/heap.h` and `src/heap/heap.cc` | `kPhysicalMemoryToOldGenerationRatio = 4`; `kHeapLimitMultiplier = kSystemPointerSize / 4` (2 on 64-bit without pointer compression); `HeapSizeFromPhysicalMemory`: old generation = physical memory / 4 x multiplier, capped by `MaxOldGenerationSize` |
 | 2026-11-15 | `node -e 'require("v8").getHeapStatistics().heap_size_limit'` on this machine | 4,144 MiB (the cap), so the 5 GB runner's heap (2,500,000,000 bytes) was simulated with `--max-old-space-size=2384` in `scripts/measure-limits.mjs` |
 
+## B4 (2026-11-15): the Vault fixture's chart sources
+
+| Date | Lookup | Result |
+|---|---|---|
+| 2026-11-15 | `git ls-remote --tags https://github.com/hashicorp/vault-helm 'v0.34*'` (read-only) | tags `v0.34.0` and `v0.34.1` exist; the fixture's `vault` and `platform-secrets` Applications name `v0.34.1` (the version research section 5 measured). Nothing fetched or copied. |
+| 2026-11-15 | `git ls-remote --tags https://github.com/external-secrets/external-secrets 'helm-chart-*'` and `'v1.*'` (read-only) | the newest chart tags listed include `helm-chart-2.9.0`; release tags include `v1.3.2`. The fixture's `external-secrets` Application names `helm-chart-2.9.0` and its hand-written Deployment the image tag `v1.3.2`, as placeholders of the shape; neither was rendered or fetched. |
+| 2026-11-15 | ConfigMap size (from the B0 row above: kubernetes/website `configmap.md`, "ConfigMap cannot exceed 1 MiB") | basis of `HCL_VALUE_BYTES` (1,048,576 bytes), the most text the Vault seal reader accepts. |
+| 2026-11-15 | `curl` (read-only) of https://data.iana.org/TLD/tlds-alpha-by-domain.txt into the shared cache | first line "# Version 2026111500, Last Updated Sun Nov 15 07:07:01 2026 UTC"; 1,436 top-level domains (151 of them `XN--` labels); sha256 `2d991942f2ed167166d5c8cc8420bc9db25788cdb9dc77cc48970e5a21923036`. Committed, lower-cased and sorted, as `src/u6-extractors-workload/root-zone-tlds.ts` with its version line: the list of delegated top-level domains that decides whether a two-label host can be a public name. |

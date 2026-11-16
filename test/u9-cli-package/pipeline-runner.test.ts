@@ -46,6 +46,11 @@ describe("pipeline composition", () => {
       "Application/root/child deployed-by Application/argocd/root",
       "ConfigMap/child/c deployed-by Application/root/child",
     ]);
+    // The repo's host may be in-cluster (`<svc>.<ns>`) and matches no Service: listed, no edge.
+    expect(r.unresolved.map((u) => `${u.why} ${u.subject}`)).toEqual([
+      "host-unplaced Application/argocd/root",
+      "host-unplaced Application/root/child",
+    ]);
     expect(r.skipped).toEqual([]);
     expect(r.runStatus.counts.sourcesFound).toBe(2);
   });
@@ -65,7 +70,10 @@ describe("pipeline composition", () => {
     const r = report(make({ "a.yaml": app("a", "cfg"), "cfg/cm.yaml": CM("c") }), {
       extractors: [...EXTRACTORS, boom],
     });
-    expect(r.unresolved.map((u) => [u.subject, u.why])).toEqual([["extractor:boom", "extractor-failed"]]);
+    expect(r.unresolved.map((u) => [u.subject, u.why])).toEqual([
+      ["Application/argocd/a", "host-unplaced"],
+      ["extractor:boom", "extractor-failed"],
+    ]);
     expect(r.runStatus.state).toBe("ANALYSED WITH GAPS");
     expect(r.edges).toHaveLength(1);
   });

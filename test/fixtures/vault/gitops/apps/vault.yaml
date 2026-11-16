@@ -1,0 +1,26 @@
+# Vault from the public chart, with its values from the private platform repository. Its TLS
+# certificate is issued by a ClusterIssuer that signs through this same Vault (cycle B), and it
+# auto-unseals with AWS KMS through an IAM role for its service account.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: vault
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://github.com/hashicorp/vault-helm
+      targetRevision: v0.34.1
+      path: .
+      helm:
+        releaseName: vault
+        valueFiles:
+          - $values/values/vault.yaml
+    - repoURL: git@github.com:acme/platform.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: vault
+  syncPolicy:
+    automated: {}

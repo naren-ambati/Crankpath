@@ -306,8 +306,9 @@ function unverified(r: Report, out: string[]): void {
   r.unresolved.forEach((u, i) => {
     const subject = u.why === "invalid-reference" ? quote("name:", u.subject, T) : `subject: ${nodeRef(u.subject)}`;
     const field = u.field === null ? "" : `  ${quote("field:", u.field, T)}`;
+    const value = u.value === null ? "" : `  ${quote(u.why.startsWith("host-") ? "host:" : "value:", u.value, T)}`;
     out.push(`  unresolved ${i + 1} of ${r.unresolved.length}  why: ${u.why}  ${subject}`);
-    out.push(`    ${quote("where:", u.where, T)}${field}`);
+    out.push(`    ${quote("where:", u.where, T)}${field}${value}`);
     if (u.candidates.length > 0) {
       const lead = u.candidatesTruncated ? `first ${u.candidates.length} of more than ${u.candidates.length}: ` : "";
       out.push(`    candidates: ${lead}${u.candidates.map(nodeRef).join(", ")}`);

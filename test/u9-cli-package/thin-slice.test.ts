@@ -64,8 +64,10 @@ describe("thin slice: a mutation changes the output (B1, MutationChecker arrives
     expect(text.stdout).not.toBe(expected("expected.txt"));
     expect(json.cycles).toEqual([]);
     expect(text.stdout).toContain(
-      "Cycles: none found among 5 nodes and 5 edges read (1 node opaque, so cycles inside it cannot be seen; 0 unresolved items; 2 objects skipped)",
+      "Cycles: none found among 5 nodes and 5 edges read (1 node opaque, so cycles inside it cannot be seen; 2 unresolved items; 2 objects skipped)",
     );
+    // The host may be in-cluster and now matches no Service: each Application that names it is listed.
+    expect(text.stdout).toContain('  unresolved 1 of 2  why: host-unplaced  subject: Application "argocd/gitea"');
   });
   it("pointing the repoURL at a host no Service has removes the cycle", () => {
     const repo = copyThinSlice();

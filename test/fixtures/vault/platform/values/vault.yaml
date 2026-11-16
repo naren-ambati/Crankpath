@@ -1,0 +1,27 @@
+# Values of the `vault` release: standalone, TLS from the `vault-tls` Secret, auto-unseal with AWS
+# KMS in us-east-1 through an IAM role for the service account.
+injector:
+  enabled: false
+server:
+  serviceAccount:
+    annotations:
+      eks.amazonaws.com/role-arn: arn:aws:iam::111122223333:role/vault-unseal
+  extraVolumes:
+    - type: secret
+      name: vault-tls
+  standalone:
+    enabled: true
+    config: |
+      ui = true
+      listener "tcp" {
+        address       = "[::]:8200"
+        tls_cert_file = "/vault/userconfig/vault-tls/tls.crt"
+        tls_key_file  = "/vault/userconfig/vault-tls/tls.key"
+      }
+      storage "file" {
+        path = "/vault/data"
+      }
+      seal "awskms" {
+        region     = "us-east-1"
+        kms_key_id = "alias/vault-unseal"
+      }

@@ -38,17 +38,30 @@ export function unverified(node: NodeId, blockers: readonly string[]): NodeStatu
 
 /** Why an item is unresolved: fixed words, printed bare. */
 export const UNRESOLVED_WHY = Object.freeze([
+  "address-missing",
+  "argocd-namespace-assumed",
+  "argocd-namespace-derived",
+  "argocd-namespace-unknown",
   "conflicting-definitions",
+  "credential-ambiguous",
+  "credential-outside-argocd",
+  "credential-url-unresolved",
   "declared-edge-endpoint-missing",
   "external-unspecified",
   "extractor-failed",
   "host-ambiguous",
+  "host-unplaced",
   "invalid-reference",
   "invalid-sync-wave",
+  "namespace-unknown",
   "not-defined",
+  "region-unresolved",
+  "seal-unreadable",
+  "seal-workload-unidentified",
   "selector-ambiguous",
   "selector-invalid",
   "served-by-missing",
+  "unsupported-provider",
 ] as const);
 export type UnresolvedWhy = (typeof UNRESOLVED_WHY)[number];
 
@@ -64,6 +77,8 @@ export interface UnresolvedItem {
   readonly candidates: readonly NodeId[];
   /** True when more candidates exist than are listed (a selector stops at its third match). */
   readonly candidatesTruncated: boolean;
+  /** The repo text the item is about (a host that could not be placed), or null; quoted on output. */
+  readonly value: string | null;
 }
 
 export function unresolvedItem(
@@ -73,6 +88,7 @@ export function unresolvedItem(
   field: string | null,
   candidates: readonly NodeId[] = [],
   candidatesTruncated = false,
+  value: string | null = null,
 ): UnresolvedItem {
   if (!(UNRESOLVED_WHY as readonly string[]).includes(why)) throw new StatusConstructionError("unresolved why");
   return Object.freeze({
@@ -82,6 +98,7 @@ export function unresolvedItem(
     field,
     candidates: Object.freeze(sortedUnique(candidates)),
     candidatesTruncated,
+    value,
   });
 }
 

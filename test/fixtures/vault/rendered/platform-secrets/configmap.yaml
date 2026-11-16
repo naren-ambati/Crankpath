@@ -1,0 +1,21 @@
+# Hand-written in the shape the Vault chart renders (not chart output): the server configuration
+# from the release's values, under the key the chart uses, in the ConfigMap named <fullname>-config.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: platform-secrets-vault-config
+  namespace: platform-secrets
+data:
+  extraconfig-from-values.hcl: |-
+    ui = true
+    listener "tcp" {
+      address     = "[::]:8200"
+      tls_disable = 1
+    }
+    storage "file" {
+      path = "/vault/data"
+    }
+    seal "awskms" {
+      region     = "us-east-1"
+      kms_key_id = "alias/platform-secrets-unseal"
+    }

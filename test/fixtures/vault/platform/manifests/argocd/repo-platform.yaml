@@ -1,0 +1,28 @@
+# The Argo CD repository credential for this repository, made by the External Secrets Operator
+# from the platform-secrets Vault. Argo CD needs it to read this repository, and it is delivered by
+# the Application that reads this repository: cycle A.
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: repo-platform
+  namespace: argocd
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: platform-secrets
+  target:
+    name: repo-platform
+    template:
+      metadata:
+        labels:
+          argocd.argoproj.io/secret-type: repository
+      data:
+        type: git
+        url: git@github.com:acme/platform.git
+        sshPrivateKey: "{{ .sshPrivateKey }}"
+  data:
+    - secretKey: sshPrivateKey
+      remoteRef:
+        key: argocd/repo-platform
+        property: sshPrivateKey

@@ -1,0 +1,22 @@
+# Hand-written in the shape the Vault chart renders (not chart output): the server configuration
+# from the release's values, under the key the chart uses, in the ConfigMap named <fullname>-config.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vault-config
+  namespace: vault
+data:
+  extraconfig-from-values.hcl: |-
+    ui = true
+    listener "tcp" {
+      address       = "[::]:8200"
+      tls_cert_file = "/vault/userconfig/vault-tls/tls.crt"
+      tls_key_file  = "/vault/userconfig/vault-tls/tls.key"
+    }
+    storage "file" {
+      path = "/vault/data"
+    }
+    seal "awskms" {
+      region     = "us-east-1"
+      kms_key_id = "alias/vault-unseal"
+    }
