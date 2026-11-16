@@ -107,7 +107,13 @@ describe("M3: a hostile size never ends in an uncaught throw", () => {
     );
   });
   it("writes JSON in bounded chunks, never building the whole document as one string", () => {
-    const outcome = runPipeline({ path: path.join(FIXTURE, "repo"), cwd: process.cwd(), repoUrl: THIN_SLICE_URL });
+    // no helm or kustomize on the tool PATH, so the toolchain in the expected output holds on every machine
+    const outcome = runPipeline({
+      path: path.join(FIXTURE, "repo"),
+      cwd: process.cwd(),
+      repoUrl: THIN_SLICE_URL,
+      toolPath: "",
+    });
     if (outcome.kind !== "report") throw new Error("run");
     const chunks: string[] = [];
     writeJson(outcome.report, (c) => chunks.push(c));

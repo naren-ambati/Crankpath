@@ -4,6 +4,8 @@
 
 Status: in development (v0.1.0 being built; see BUILD-NOTES.md). The command is `crankpath`; the package's library entry (`src/u9-cli-package/library.ts`) is unstable until 1.0, and the JSON output with its `schemaVersion` is the stable contract: schema version 1, frozen in B6, described in `docs/json-output.md` with its JSON Schema in `schemas/crankpath-report.schema.json`. Formats: `--format text` (default), `json` and `mermaid`; `--explain [id]` prints the evidence behind a cycle or node.
 
+helm and kustomize are found on `PATH` and run with an empty `PATH` of their own, so each must be the real binary: a version-manager shim or a wrapper script that looks a program up on `PATH` does not run, and the toolchain line says so.
+
 ## Why it should exist
 
 After a total blackout, grid operators follow a black-start plan: which plants can start with no grid power and in what order the rest come back. GitOps estates have the same circularity hidden in YAML, and no tool reports it.

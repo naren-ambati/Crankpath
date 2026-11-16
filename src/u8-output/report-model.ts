@@ -44,11 +44,29 @@ export interface ReportRepo {
 
 export interface ReportToolchain {
   readonly crankpath: string;
-  /** Null when not detected (this build runs neither tool). */
+  /** The version found (`vX.Y.Z`), or null when the tool is missing or its version could not be read. */
   readonly helm: string | null;
   readonly kustomize: string | null;
   /** True only when both versions are the tested pair. */
   readonly tested: boolean;
+  /** The tested pair (OD-13), named in the note when another version is in use. */
+  readonly testedPair: { readonly helm: string; readonly kustomize: string };
+  /** Tools not found on PATH, sorted. */
+  readonly missing: readonly ("helm" | "kustomize")[];
+  /** Tools found whose version could not be read, sorted. */
+  readonly unrecognised: readonly ("helm" | "kustomize")[];
+  /** Why an unrecognised tool's version command did not succeed (text output only; B2 review pass 3, m6). */
+  readonly problems?: Readonly<Partial<Record<"helm" | "kustomize", "script" | "failed">>>;
+}
+
+/** A floating revision or chart version (OD-12): flagged, with the chart version helm rendered. */
+export interface FloatingRevision {
+  readonly node: NodeId;
+  readonly field: string;
+  /** The value as written in the repo (repo text). */
+  readonly value: string;
+  /** The chart version rendered, for a chart from a repository; null for a Git revision (read as checked out). */
+  readonly resolved: string | null;
 }
 
 export interface OpaqueEntry extends OpaqueMark {
@@ -131,6 +149,12 @@ export interface Report {
   readonly scannedPathAbsolute: boolean;
   /** Cranks declared in crankpath.yaml. */
   readonly cranksDeclared: number;
+  /** Sorted by (node, field). */
+  readonly floating: readonly FloatingRevision[];
+  /** Kustomize roots no Application or Flux Kustomization renders: built on their own, objects not in the graph. Sorted. */
+  readonly undeployedKustomizeRoots: readonly string[];
+  /** Sources opaque `tool-missing`, by the tool they need. */
+  readonly toolMissing: { readonly helm: number; readonly kustomize: number };
   /**
    * For --explain only (never in JSON, text or Mermaid): rendered objects that match a GitOps
    * controller signature, with the source that rendered them (US5.4). Explanatory: nothing else in

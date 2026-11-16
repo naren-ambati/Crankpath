@@ -17,6 +17,7 @@ import {
   type SourceKind,
 } from "../u1-graph-model/status-model.js";
 import type { ScannedRepo } from "../u2-intake-config/repo-identity.js";
+import { NO_TOOLS, TESTED_VERSIONS, type Toolchain } from "../u4-render-engine/toolchain.js";
 import { type AnalysisResult, type HiddenCycle, NOT_MODELLED } from "../u7-graph-analysis/analysis.js";
 import type { EstateGraph } from "../u7-graph-analysis/graph-builder.js";
 import type { ControllerMatch } from "../u5-extractors-gitops/controller-signatures.js";
@@ -40,6 +41,13 @@ export interface SourceOutcome {
   readonly mark: OpaqueMark | null;
 }
 
+export interface FloatingEntry {
+  readonly node: NodeId;
+  readonly field: string;
+  readonly value: string;
+  readonly resolved: string | null;
+}
+
 export interface AssemblyInput {
   readonly scanned: ScannedRepo;
   readonly scannedPath: string;
@@ -52,6 +60,12 @@ export interface AssemblyInput {
   readonly ignoredFiles: number;
   readonly droppedHooks: number;
   readonly timeouts: number;
+  /** The tools found (none when absent: a report assembled without a run). */
+  readonly toolchain?: Toolchain;
+  readonly floating?: readonly FloatingEntry[];
+  readonly undeployedKustomizeRoots?: readonly string[];
+  /** True when helm rendered at least one chart: its cluster-free rendering is then a stated limit (FR3.8). */
+  readonly helmRendered?: boolean;
   /** What the run's memory budget refused (all zero when it was not reached). */
   readonly limits: { readonly refusedFiles: number; readonly refusedJobs: number; readonly droppedEdges: number };
   /** `match:` entries that matched no host (from the run's HostMatcher). */
@@ -66,6 +80,9 @@ export interface AssemblyInput {
   readonly controllerMatches?: readonly ControllerMatch[];
 }
 
+/** What `helm template` cannot see without a cluster (FR3.8, OD-13): stated whenever helm rendered. */
+export const HELM_NOT_MODELLED =
+  "helm renders with no cluster: `lookup` is empty, only helm's default API versions are seen, values are not checked against a chart's values.schema.json (its `$ref`s would be fetched), a template may resolve host names (`getHostByName`) even under --no-network, helm follows a chart repository's redirects, a chart host is checked by name, not by the address it resolves to, each chart is rendered twice and compared, which cannot prove its output never varies, and a controller's bundled helm may differ";
 const REASON_ORDER: readonly string[] = [...BLOCKED_REASONS, ...UNVERIFIED_REASONS];
 
 function compareSkipped(a: SkippedObject, b: SkippedObject): number {
@@ -77,7 +94,14 @@ function compareSkipped(a: SkippedObject, b: SkippedObject): number {
   );
 }
 
-export function assembleReport(input: AssemblyInput): Report {
+export function assembleReport(given: AssemblyInput): Report {
+  const input = {
+    ...given,
+    toolchain: given.toolchain ?? NO_TOOLS,
+    floating: given.floating ?? [],
+    undeployedKustomizeRoots: given.undeployedKustomizeRoots ?? [],
+    helmRendered: given.helmRendered ?? false,
+  };
   const { graph, analysis, config } = input;
   const byKind = Object.fromEntries(SOURCE_KINDS.map((k) => [k, 0])) as Record<SourceKind, number>;
   for (const s of input.sources) byKind[s.kind] += 1;
@@ -209,7 +233,27 @@ export function assembleReport(input: AssemblyInput): Report {
       commit: null,
       floating: false,
     }),
-    toolchain: Object.freeze({ crankpath: CRANKPATH_VERSION, helm: null, kustomize: null, tested: false }),
+    toolchain: Object.freeze({
+      crankpath: CRANKPATH_VERSION,
+      helm: input.toolchain.helm.version,
+      kustomize: input.toolchain.kustomize.version,
+      tested: input.toolchain.tested,
+      testedPair: Object.freeze({ ...TESTED_VERSIONS }),
+      missing: Object.freeze((["helm", "kustomize"] as const).filter((t) => !input.toolchain[t].present)),
+      unrecognised: Object.freeze(
+        (["helm", "kustomize"] as const).filter(
+          (t) => input.toolchain[t].present && input.toolchain[t].version === null,
+        ),
+      ),
+      problems: Object.freeze(
+        Object.fromEntries(
+          (["helm", "kustomize"] as const).flatMap((t) => {
+            const p = input.toolchain[t].problem;
+            return p === undefined ? [] : [[t, p]];
+          }),
+        ),
+      ),
+    }),
     runStatus,
     nodes: graph.nodes,
     edges: graph.edges,
@@ -229,11 +273,21 @@ export function assembleReport(input: AssemblyInput): Report {
     skipped: Object.freeze(skipped),
     unreadable: Object.freeze(unreadable),
     notComputed: analysis.notComputed,
-    notModelled: NOT_MODELLED,
+    notModelled: input.helmRendered ? Object.freeze([...NOT_MODELLED, HELM_NOT_MODELLED]) : NOT_MODELLED,
     notVerified: Object.freeze(notVerified),
     scannedPath: path.isAbsolute(input.scannedPath) ? path.basename(input.scannedPath) : input.scannedPath,
     scannedPathAbsolute: path.isAbsolute(input.scannedPath),
     cranksDeclared: config.cranks.length,
+    floating: Object.freeze(
+      [...input.floating]
+        .sort((x, y) => compareCodePoints(x.node, y.node) || compareCodePoints(x.field, y.field))
+        .map((f) => Object.freeze({ ...f })),
+    ),
+    undeployedKustomizeRoots: Object.freeze([...input.undeployedKustomizeRoots].sort(compareCodePoints)),
+    toolMissing: Object.freeze({
+      helm: opaque.filter((o) => o.reason === "tool-missing" && o.detail === "helm not found on PATH").length,
+      kustomize: opaque.filter((o) => o.reason === "tool-missing" && o.detail === "kustomize not found on PATH").length,
+    }),
     controllerMatches: Object.freeze([...(input.controllerMatches ?? [])]),
   });
 }

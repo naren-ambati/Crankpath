@@ -58,6 +58,35 @@ export function checkDirectory(
   return canon;
 }
 
+export type EntryKind = "file" | "dir" | "symlink" | "missing" | "other" | "outside";
+
+/**
+ * What a canonical path under the root is, without reading it: every component is lstat-ed, so a
+ * symlink anywhere on the path is `symlink` (never followed); `outside` for an absolute path or a
+ * `..` segment.
+ */
+export function entryKind(root: ScanRoot, request: string): EntryKind {
+  const canon = canonicalDir(request);
+  if (!canon.ok) return canon.refusal.outcome === "traversal" ? "outside" : "other";
+  if (canon.path === "") return "dir";
+  let current = root.real;
+  const parts = canon.path.split("/");
+  for (let i = 0; i < parts.length; i++) {
+    current = path.join(current, parts[i] as string);
+    let st: fs.Stats;
+    try {
+      st = fs.lstatSync(current);
+    } catch {
+      return "missing";
+    }
+    if (st.isSymbolicLink()) return "symlink";
+    const last = i === parts.length - 1;
+    if (!last && !st.isDirectory()) return "missing";
+    if (last) return st.isDirectory() ? "dir" : st.isFile() ? "file" : "other";
+  }
+  return "missing";
+}
+
 export interface WalkOptions {
   readonly recurse: boolean;
   /** Directory names skipped at any depth (for example `.git`). */

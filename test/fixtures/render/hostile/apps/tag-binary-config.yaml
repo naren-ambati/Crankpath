@@ -1,0 +1,13 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: tag-binary-config
+  namespace: argocd
+spec:
+  source:
+    repoURL: https://example.org/ops/hostile
+    path: kustomize/tag-binary-config
+    targetRevision: 0123456789abcdef0123456789abcdef01234567
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: tag-binary-config

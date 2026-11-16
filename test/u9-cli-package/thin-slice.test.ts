@@ -139,6 +139,8 @@ describe("thin slice: hostile input (FR8.6, NFR4, BR1.3)", () => {
   // crankpath's own first words; anything from the repo comes later on a line, quoted.
   const OWN = new Set([
     "crankpath",
+    "Floating",
+    "floating",
     "toolchain:",
     "scanned:",
     "Run",

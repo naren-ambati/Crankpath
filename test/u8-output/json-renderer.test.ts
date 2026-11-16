@@ -40,7 +40,15 @@ describe("JSON layout (C7)", () => {
     expect(out.endsWith("}\n")).toBe(true);
     expect(out.endsWith("\n\n")).toBe(false);
     expect(out.split("\n")[1]).toMatch(/^ {2}"/);
-    expect(r.toolchain).toEqual({ crankpath: "0.1.0", helm: null, kustomize: null, tested: false });
+    expect(r.toolchain).toEqual({
+      crankpath: "0.1.0",
+      helm: null,
+      kustomize: null,
+      tested: false,
+      testedPair: { helm: "v4.3.2", kustomize: "v5.8.1" },
+      missing: ["helm", "kustomize"],
+      unrecognised: [],
+    });
   });
   it("holds repo text as escaped data: no raw control character, the visible code instead", () => {
     // biome-ignore lint/suspicious/noControlCharactersInRegex: the test is about control characters

@@ -5,8 +5,9 @@
 // `--explain` id that names no cycle and no node is a usage error. Colour (text and --explain only)
 // is decoration, used only on a terminal without `NO_COLOR` or `--no-color`. Exit codes: 0 the analysis ran (whatever it found), 1 a tool or usage error, 2 nothing
 // analysed. Writes only stdout, stderr and the `--out` file, which may not be inside the scanned
-// tree and is never written through a symlink. `--verbose` prints counts only (no repo text, no
-// token, no Secret value).
+// tree and is never written through a symlink, and `.crankpath` (or `--cache-dir`), through the
+// pipeline's WorkDir. `--verbose` prints counts and fixed words only (no repo text, no token, no
+// Secret value, no command line: arguments hold repo text and private paths).
 
 import fs from "node:fs";
 import path from "node:path";
@@ -18,12 +19,23 @@ import { explainTarget, renderExplainLines } from "../u8-output/explain-renderer
 import { renderMermaidLines } from "../u8-output/mermaid-renderer.js";
 import { colourLine, useColour } from "../u8-output/text-layout.js";
 import { renderTextLines } from "../u8-output/text-renderer.js";
+import { buildChildEnv, createCommandRunner } from "../u4-render-engine/command-runner.js";
+import {
+  detectToolchain,
+  findTool,
+  TESTED_VERSIONS,
+  TOOL_PROBLEM_WORDS,
+  type ToolVersion,
+} from "../u4-render-engine/toolchain.js";
+import { CACHE_DIR_NAME, createWorkDir } from "../u4-render-engine/work-dir.js";
 import { runPipeline } from "./pipeline-runner.js";
 
 export interface CliIo {
   readonly stdout: (text: string) => void;
   readonly stderr: (text: string) => void;
   readonly cwd: string;
+  /** The PATH searched for helm and kustomize (default: this process's PATH). */
+  readonly toolPath?: string;
   /** The pipeline to run; tests inject a failing one to reach the top-level guard. */
   readonly run?: typeof runPipeline;
   /** True when standard output is a terminal (colour is considered only then). */
@@ -42,15 +54,33 @@ const FORMATS = ["text", "json", "mermaid"] as const;
 const HELP_ORDER =
   "\nThe path comes first: `crankpath ./repo --explain` explains every cycle, and\n`crankpath ./repo --explain <id>` one cycle or node; an argument right after\n--explain is read as its id.\n";
 
-/** The `--version` text: crankpath's version and the tools this build detects (none). */
-export function versionText(): string {
-  return [
-    `crankpath ${CRANKPATH_VERSION}`,
-    "helm: not detected (this build runs no helm)",
-    "kustomize: not detected (this build runs no kustomize)",
-    "",
-  ].join("\n");
+function versionLine(v: ToolVersion): string {
+  if (!v.present) return `${v.tool}: not found on PATH`;
+  if (v.version === null) {
+    return v.problem === undefined
+      ? `${v.tool}: version not recognised`
+      : `${v.tool}: version not recognised (${TOOL_PROBLEM_WORDS[v.problem]})`;
+  }
+  return v.tested
+    ? `${v.tool}: ${v.version} (tested)`
+    : `${v.tool}: ${v.version} (not the tested ${TESTED_VERSIONS[v.tool]})`;
 }
+
+/** The `--version` text: crankpath's version and the helm and kustomize versions detected (BR9.2). */
+export function versionText(toolPath: string, cwd: string): string {
+  // the version commands write nothing; the private homes they are given are never created
+  const work = createWorkDir(path.resolve(cwd, CACHE_DIR_NAME), true);
+  const runner = createCommandRunner({
+    binaries: { helm: findTool("helm", toolPath), kustomize: findTool("kustomize", toolPath) },
+    env: buildChildEnv(work.homes),
+  });
+  const t = detectToolchain(runner, cwd);
+  return [`crankpath ${CRANKPATH_VERSION}`, versionLine(t.helm), versionLine(t.kustomize), ""].join("\n");
+}
+
+/** What a signal does (B2 review pass 2, M2), printed after the option list by --help. */
+export const SIGNALS_HELP =
+  "\nSignals: SIGINT or SIGTERM ends crankpath at once (a run is one uninterrupted\npass). A helm or kustomize it is running is not stopped (a terminal's Ctrl-C\nreaches it too, a signal to crankpath alone does not) and runs on with no time\nlimit; a private directory left under the cache's tmp/ is removed by the next\nrun that uses the same cache.\n";
 
 function program(): Command {
   return new Command()
@@ -72,8 +102,8 @@ function program(): Command {
     .option("--rev <rev>", "revision of a URL to fetch")
     .option("--explain [id]", "evidence trail for a cycle or node id (every cycle without an id)")
     .option("--no-color", "no colour, even on a terminal (NO_COLOR does the same)")
-    .option("--no-network", "cache only (this build makes no network call)")
-    .option("--cache-dir <dir>", "cache root (this build caches nothing)")
+    .option("--no-network", "fetch nothing: charts come from the cache only; a miss is opaque offline")
+    .option("--cache-dir <dir>", "crankpath's cache and private directory (default .crankpath)")
     .option("--verbose", "counts on standard error")
     .option("--version", "the crankpath version and the detected helm and kustomize versions")
     .allowExcessArguments(false)
@@ -148,7 +178,7 @@ function mainUnguarded(argv: readonly string[], io: CliIo): number {
   } catch (e) {
     if (e instanceof CommanderError) {
       if (e.code === "commander.helpDisplayed" || e.code === "commander.help") {
-        io.stdout(`${cmd.helpInformation()}${HELP_ORDER}`);
+        io.stdout(`${cmd.helpInformation()}${HELP_ORDER}${SIGNALS_HELP}`);
         return 0;
       }
       io.stderr(`${commanderMessage(e)}\n`);
@@ -170,8 +200,9 @@ function mainUnguarded(argv: readonly string[], io: CliIo): number {
     verbose?: boolean;
     version?: boolean;
   }>();
+  const toolPath = io.toolPath ?? process.env.PATH ?? "";
   if (o.version === true) {
-    io.stdout(versionText());
+    io.stdout(versionText(toolPath, io.cwd));
     return 0;
   }
   const target = (cmd.args[0] as string | undefined) ?? ".";
@@ -191,6 +222,9 @@ function mainUnguarded(argv: readonly string[], io: CliIo): number {
     path: target,
     cwd: io.cwd,
     repoAliases: o.repoAlias,
+    noNetwork: o.network === false,
+    toolPath,
+    ...(o.cacheDir === undefined ? {} : { cacheDir: o.cacheDir }),
     ...(o.repoUrl === undefined ? {} : { repoUrl: o.repoUrl }),
     ...(o.config === undefined ? {} : { config: o.config }),
   });

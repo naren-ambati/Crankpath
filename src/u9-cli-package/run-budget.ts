@@ -68,6 +68,24 @@ export class RunBudget {
     return ok;
   }
 
+  /**
+   * Whether a render output's parse transient fits in what the run has not yet held (B2): as
+   * fitsTransient, but a refusal is a refused job (its owner is opaque `limit`). A comparison
+   * render's refusal (`count` false) is not: its job keeps the first render (B2 review pass 3, m4).
+   */
+  fitsRenderTransient(cost: number, count = true): boolean {
+    if (this.spent + cost <= this.spec.bytes) return true;
+    if (count) this.refusedJobs += 1;
+    return false;
+  }
+
+  /** Charges a render's output bytes, held parsed like a file's (B2); false (and a refused job) when the budget is reached. */
+  render(bytes: number): boolean {
+    const ok = this.charge(bytes * this.spec.rates.perFileByte);
+    if (!ok) this.refusedJobs += 1;
+    return ok;
+  }
+
   /** Charges a render's objects and their string values; false (and counted) when the budget is reached. */
   objects(count: number, stringLeaves: number): boolean {
     const ok = this.charge(count * this.spec.rates.perObject + stringLeaves * this.spec.rates.perStringLeaf);

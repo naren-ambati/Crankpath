@@ -1,19 +1,13 @@
-// The one dispatch point for render jobs (C4): each job kind has exactly one renderer here. B2 adds
-// the helm and kustomize renderers (and the CommandRunner they use) to this table; the pipeline
-// never branches on a job kind itself.
+// The one dispatch point for render jobs (C4): each job kind has exactly one renderer here, and
+// the pipeline never branches on a job kind itself.
 
-import type { ReadResult } from "../u2-intake-config/bounded-reader.js";
-import type { WalkOptions, WalkOutcome } from "../u2-intake-config/tree-walk.js";
 import type { RenderedSet, RenderJob } from "../u3-discovery-expansion/render-job.js";
+import { renderHelm } from "./helm-renderer.js";
+import { renderKustomize } from "./kustomize-renderer.js";
 import { renderPlain } from "./plain-renderer.js";
+import type { RenderIo } from "./render-io.js";
 
-/** What a renderer may do: list and read files under a root label, and name a file for output. */
-export interface RenderIo {
-  walk(root: string, dir: string, options: WalkOptions): WalkOutcome;
-  read(root: string, path: string): ReadResult;
-  /** The display path of a file under a root label (`alias:N/` prefixed outside the scanned root). */
-  display(root: string, path: string): string;
-}
+export type { RenderIo, RenderRuntime, ValuesData } from "./render-io.js";
 
 type RendererTable = {
   readonly [K in RenderJob["kind"]]: (job: Extract<RenderJob, { kind: K }>, io: RenderIo) => RenderedSet;
@@ -21,6 +15,8 @@ type RendererTable = {
 
 export const RENDERERS: RendererTable = Object.freeze({
   plain: renderPlain,
+  helm: renderHelm,
+  kustomize: renderKustomize,
 });
 
 /** Renders one job with the renderer of its kind. */

@@ -33,19 +33,32 @@ describe("LimitSet (OD-5)", () => {
     expect(Object.keys(limitsModule).sort()).toEqual(["LIMITS", "MINIMAL_OBJECT_DOCUMENT", "limitValue"]);
   });
 
-  it("lists the render-dependent limits as not yet derived (B2 step 0), not as done", () => {
-    for (const name of ["renderWallClock", "renderStdoutBytes", "renderStderrBytes", "renderedObjects"] as const) {
-      expect(LIMITS[name].status).toBe("notYetDerived");
-      expect(LIMITS[name].derivedIn).toBe("B2 step 0");
+  it("derives the render-dependent limits at B2 step 0 from their stated bases (OD-5)", () => {
+    expect(LIMITS.renderWallClock.value).toBe(90 * 1000);
+    expect(LIMITS.renderStdoutBytes.value).toBe(100 * 1024 * 1024);
+    expect(LIMITS.renderStderrBytes.value).toBe(LIMITS.renderStdoutBytes.value);
+    expect(LIMITS.renderedObjects.basis).toContain("/ 24 bytes");
+    expect(LIMITS.renderedObjects.basis).toContain("ResourceStatus is 39 bytes");
+    expect(LIMITS.renderedObjects.value).toBe(Math.floor((1.5 * 1024 * 1024) / 24));
+    expect(LIMITS.renderedObjects.value).toBeGreaterThan(Math.floor((1.5 * 1024 * 1024) / 39));
+    expect(LIMITS.renderedDocumentBytes.value).toBe(3 * 1024 * 1024);
+    for (const name of [
+      "renderWallClock",
+      "renderStdoutBytes",
+      "renderStderrBytes",
+      "renderedObjects",
+      "renderedDocumentBytes",
+    ] as const) {
+      expect(LIMITS[name].status).toBe("derived");
     }
   });
 
   it("makes a not-yet-derived limit unusable as a number (type and runtime)", () => {
     // @ts-expect-error a not-yet-derived limit has no value
-    const v: number | undefined = LIMITS.renderWallClock.value;
+    const v: number | undefined = LIMITS.filesPerScan.value;
     expect(v).toBeUndefined();
     // @ts-expect-error limitValue takes derived limits only
-    expect(() => limitValue(LIMITS.renderedObjects)).toThrow(/not-yet-derived/);
+    expect(() => limitValue(LIMITS.filesPerScan)).toThrow(/not-yet-derived/);
     expect(limitValue(LIMITS.fileBytes)).toBe(10_000_000);
   });
 

@@ -1,0 +1,19 @@
+apiVersion: source.toolkit.fluxcd.io/v1
+kind: GitRepository
+metadata:
+  name: flux-system
+  namespace: flux-system
+spec:
+  interval: 10m
+  url: https://example.org/ops/render-demo
+  ref:
+    branch: main
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: web-values
+  namespace: flux-system
+data:
+  values.yaml: |
+    replicas: 3

@@ -119,6 +119,37 @@ describe("rendered set builder (BR1.3, BR4.6, BR4.7, FR1.7)", () => {
     expect(b.droppedHooks).toBe(1);
     expect(b.objects.map((o) => o.name)).toEqual(["u"]);
   });
+  it("drops exactly helm's test hook values (BR4.6)", () => {
+    const b = build(
+      [
+        { apiVersion: "v1", kind: "Pod", metadata: { name: "v", annotations: { "helm.sh/hook": "test-success" } } },
+        {
+          apiVersion: "v1",
+          kind: "Pod",
+          metadata: { name: "w", annotations: { "helm.sh/hook": "post-install,test-failure" } },
+        },
+        { apiVersion: "v1", kind: "Pod", metadata: { name: "x", annotations: { "helm.sh/hook": "testing" } } },
+      ],
+      "gitea",
+      true,
+    );
+    expect(b.droppedHooks).toBe(2);
+    expect(b.objects.map((o) => o.name)).toEqual(["x"]);
+  });
+  it("replaces every namespaced object's namespace with a Flux targetNamespace, never a cluster-scoped one's", () => {
+    const b = buildObjects(
+      [
+        {
+          file: "f",
+          document: 1,
+          value: { apiVersion: "v1", kind: "ConfigMap", metadata: { name: "c", namespace: "own" } },
+        },
+        { file: "f", document: 2, value: { apiVersion: "v1", kind: "Namespace", metadata: { name: "n" } } },
+      ],
+      { renderJob: "j", defaultNamespace: "d", namespaceOverride: "target", destination: "in-cluster" },
+    );
+    expect(b.objects.map((o) => o.id)).toEqual(["ConfigMap/target/c", "Namespace/n"]);
+  });
   it("gives one digest to one content and another to a change or another destination", () => {
     const doc = { apiVersion: "v1", kind: "ConfigMap", metadata: { name: "c" }, data: { a: "1" } };
     const a = build([doc]).objects[0]?.digest;
@@ -156,7 +187,12 @@ describe("plain renderer (FR3.11)", () => {
   const io = (): RenderIo => ({
     walk: (_label, dir, options) => walkFiles(root, dir, options),
     read: (_label, p) => readYaml(root, p),
+    readText: (_label, p) => ({ outcome: "not-found", path: p, reasonWord: "not found" }),
+    readBytes: (_label, p) => ({ outcome: "not-found", path: p, reasonWord: "not found" }),
+    kind: () => "missing",
     display: (_label, p) => p,
+    // a plain job runs nothing and writes nothing: no runtime is needed
+    runtime: {} as RenderIo["runtime"],
   });
   const job = (recurse: boolean): PlainJob => ({
     kind: "plain",
@@ -167,10 +203,13 @@ describe("plain renderer (FR3.11)", () => {
     ownerRenderedPath: "apps/a.yaml#1",
     destination: "in-cluster",
     namespace: "ns",
+    namespaceOverride: null,
     releaseName: null,
     valuesInputs: [],
     source: { repo: null, path: "app", chart: null, version: null, floating: false },
     generatedBy: null,
+    substitute: null,
+    floating: [],
     root: ".",
     dir: "app",
     recurse,
@@ -190,7 +229,7 @@ describe("plain renderer (FR3.11)", () => {
     expect(deep.unreadable.map((u) => u.outcome).sort()).toEqual(["parse-error", "symlink"]);
   });
   it("is dispatched from the one renderer table", () => {
-    expect(Object.keys(RENDERERS)).toEqual(["plain"]);
+    expect(Object.keys(RENDERERS)).toEqual(["plain", "helm", "kustomize"]);
   });
   it("marks the owner limit when a limit stopped a read", () => {
     const limited: RenderIo = {

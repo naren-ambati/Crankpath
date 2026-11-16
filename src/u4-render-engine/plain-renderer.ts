@@ -6,16 +6,20 @@
 
 import { makeOpaqueMark, type UnreadableFile } from "../u1-graph-model/graph-model.js";
 import type { PlainJob, RenderedSet } from "../u3-discovery-expansion/render-job.js";
-import { SKIP_DIRS } from "../u3-discovery-expansion/source-discovery.js";
-import { buildObjects, type SourceDocument } from "./rendered-set-builder.js";
-import type { RenderIo } from "./renderers.js";
+import { SKIP_AT_ROOT, SKIP_DIRS } from "../u3-discovery-expansion/source-discovery.js";
+import { buildSet, type RenderIo } from "./render-io.js";
+import type { SourceDocument } from "./rendered-set-builder.js";
 
 const MANIFEST = /\.(?:ya?ml|json)$/;
 const LIMIT_OUTCOMES: ReadonlySet<string> = new Set(["too-large", "too-deep", "too-many-documents", "alias-limit"]);
 
 export function renderPlain(job: PlainJob, io: RenderIo): RenderedSet {
   const unreadable: UnreadableFile[] = [];
-  const walk = io.walk(job.root, job.dir, { recurse: job.recurse, skipNames: SKIP_DIRS });
+  const walk = io.walk(job.root, job.dir, {
+    recurse: job.recurse,
+    skipNames: SKIP_DIRS,
+    ...(job.root === "." && job.dir === "" ? { skipAtStart: SKIP_AT_ROOT } : {}),
+  });
   if (!walk.ok) {
     const r = walk.refusal;
     unreadable.push({
@@ -52,12 +56,6 @@ export function renderPlain(job: PlainJob, io: RenderIo): RenderedSet {
       documents.push({ file: display, document: i + 1, value });
     });
   }
-  const built = buildObjects(documents, {
-    renderJob: job.jobId,
-    defaultNamespace: job.namespace,
-    destination: job.destination,
-    generatedBy: job.generatedBy,
-  });
   const limited = unreadable.some((u) => LIMIT_OUTCOMES.has(u.outcome));
   const opaque =
     unreadable.length === 0
@@ -68,15 +66,5 @@ export function renderPlain(job: PlainJob, io: RenderIo): RenderedSet {
           detail: `${unreadable.length} ${unreadable.length === 1 ? "file" : "files"} under its source path not read`,
           field: job.ownerField,
         });
-  return Object.freeze({
-    jobId: job.jobId,
-    objects: built.objects,
-    droppedHooks: built.droppedHooks,
-    outcome: unreadable.length === 0 ? "ok" : limited ? "limit" : "unreadable-file",
-    skipped: built.skipped,
-    unreadable,
-    opaque,
-    timedOut: false,
-    stringLeaves: built.stringLeaves,
-  });
+  return buildSet(job, documents, { unreadable, opaque });
 }

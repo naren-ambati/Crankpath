@@ -1,0 +1,7 @@
+{{- $existing := lookup "v1" "Secret" .Release.Namespace "anything" }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: lookup
+data:
+  found: {{ if $existing }}"yes"{{ else }}"no"{{ end }}

@@ -62,10 +62,12 @@ export interface LimitSet {
   readonly declaredEntries: DerivedLimit<"entries">;
   readonly hostPatternComparisons: DerivedLimit<"steps">;
   readonly filesPerScan: NotYetDerivedLimit<"files">;
-  readonly renderWallClock: NotYetDerivedLimit<"milliseconds">;
-  readonly renderStdoutBytes: NotYetDerivedLimit<"bytes">;
-  readonly renderStderrBytes: NotYetDerivedLimit<"bytes">;
-  readonly renderedObjects: NotYetDerivedLimit<"objects">;
+  readonly renderWallClock: DerivedLimit<"milliseconds">;
+  readonly renderStdoutBytes: DerivedLimit<"bytes">;
+  readonly renderStderrBytes: DerivedLimit<"bytes">;
+  readonly renderedObjects: DerivedLimit<"objects">;
+  readonly renderedDocumentBytes: DerivedLimit<"bytes">;
+  readonly lexemesPerRender: DerivedLimit<"lexemes">;
 }
 
 const DATE = "2026-11-15";
@@ -116,6 +118,21 @@ const READER_BASELINE_BYTES = MEASURED.baselineMiB * 1024 * 1024;
 const TEXT_RESERVE_BYTES = 3 * ARGO_COMBINED_DIRECTORY_MANIFESTS_BYTES;
 const WORST_BYTES_PER_LEXEME = MEASURED.worstBytesPerLexeme;
 const LEXEMES_BASIS = `(the default old-generation heap V8 12.4 gives Node 22 on the smallest GitHub-hosted runner, ubuntu-slim with 5 GB: 5,000,000,000 / 4 x 2 = 2,500,000,000 bytes; minus the reader's largest measured baseline before the text exists, ${MEASURED.baselineMiB} MiB; minus a reserve for the text, 3 x fileBytes: the read buffer plus a decoded string of at most 2 bytes per input byte) / ${MEASURED.worstBytesPerLexeme} bytes, the worst resident memory per lexeme of the 39 shapes measured (scripts/measure-limits.mjs, part 1: multi-document files, comments, whitespace, nested collections and invalid YAML included; the worst was a run of commas, which the parser refuses only after spending the memory). It is the worst of the shapes measured, not a proven maximum. Every lexeme counts, in every document of the file.`;
+// Argo CD v3.6.1 util/exec/exec.go: the repo-server stops a helm or kustomize command after
+// ARGOCD_EXEC_TIMEOUT, default `90 * time.Second`.
+const ARGO_EXEC_TIMEOUT_MS = 90 * 1000;
+// Argo CD v3.6.1 reposerver/apiclient/clientset.go: MaxGRPCMessageSize, ARGOCD_GRPC_MAX_SIZE_MB
+// default 100, times 1024 * 1024: the largest manifest response the repo-server can send.
+const ARGO_GRPC_MAX_MESSAGE_BYTES = 100 * 1024 * 1024;
+// etcd v3.7.3 server/embed/config.go: DefaultMaxRequestBytes = 1.5 * 1024 * 1024, the largest
+// object etcd stores at its default, so the largest status a controller can write.
+const ETCD_MAX_REQUEST_BYTES = 1.5 * 1024 * 1024;
+// The shortest entry of each controller's per-object status list, as JSON with its separator:
+// Flux kustomize-controller v1.10.1 ResourceRef {id: "<namespace>_<name>_<group>_<kind>", v: version},
+// a cluster-scoped core object: `{"id":"_a__X","v":"v1"},`; Argo CD v3.6.1 ResourceStatus with its
+// required non-empty kind, name and version: `{"version":"v1","kind":"X","name":"a"},`.
+const FLUX_MINIMAL_INVENTORY_ENTRY = '{"id":"_a__X","v":"v1"},';
+const ARGO_MINIMAL_RESOURCE_STATUS = '{"version":"v1","kind":"X","name":"a"},';
 
 export const LIMITS: LimitSet = freezeAll({
   fileBytes: {
@@ -260,32 +277,61 @@ export const LIMITS: LimitSet = freezeAll({
     why: "no tool or host publishes a file-count ceiling for a repository (GitHub recommends at most 3,000 entries per directory and a depth of 50, which bound no total); the basis needs discovery's measured per-file cost.",
   },
   renderWallClock: {
-    status: "notYetDerived",
+    status: "derived",
+    value: ARGO_EXEC_TIMEOUT_MS,
     unit: "milliseconds",
-    protects: "a render subprocess that never ends (backstop only, OD-30)",
-    derivedIn: "B2 step 0",
-    why: "needs real helm and kustomize renders to measure.",
+    protects:
+      "a render subprocess that never ends (a backstop only, OD-30: a job it stops is opaque limit, detail timeout)",
+    basis:
+      "Argo CD v3.6.1 repo-server stops a helm or kustomize command after ARGOCD_EXEC_TIMEOUT, default 90 s (util/exec/exec.go; docs/operator-manual/high_availability.md): a render that takes longer fails in Argo CD itself at its defaults. First real renders on 2026-11-15 took 0.05 to 0.9 s (docs/limits.md).",
+    date: DATE,
   },
   renderStdoutBytes: {
-    status: "notYetDerived",
+    status: "derived",
+    value: ARGO_GRPC_MAX_MESSAGE_BYTES,
     unit: "bytes",
     protects: "memory held by one render's standard output",
-    derivedIn: "B2 step 0",
-    why: "needs real helm and kustomize renders to measure.",
+    basis:
+      "Argo CD v3.6.1 MaxGRPCMessageSize (reposerver/apiclient/clientset.go: ARGOCD_GRPC_MAX_SIZE_MB default 100, times 1024 * 1024): the repo-server cannot return a larger manifest response for one source at its defaults. The largest real render measured on 2026-11-15 was 5,308,974 bytes (kube-prometheus-stack 93.3.0 with CRDs).",
+    date: DATE,
   },
   renderStderrBytes: {
-    status: "notYetDerived",
+    status: "derived",
+    value: ARGO_GRPC_MAX_MESSAGE_BYTES,
     unit: "bytes",
-    protects: "memory held by one render's standard error",
-    derivedIn: "B2 step 0",
-    why: "needs real helm and kustomize renders to measure.",
+    protects: "memory held by one render's standard error (read only to classify a failure, never shown)",
+    basis:
+      "the same bound as renderStdoutBytes: Node's spawnSync holds both streams under one maxBuffer, so the memory a call can hold for standard error is the standard-output bound whatever smaller number is written here; no tool publishes a standard-error size. Measured need on 2026-11-15: 0 bytes for every successful real render.",
+    date: DATE,
   },
   renderedObjects: {
-    status: "notYetDerived",
+    status: "derived",
+    value: Math.floor(ETCD_MAX_REQUEST_BYTES / FLUX_MINIMAL_INVENTORY_ENTRY.length),
     unit: "objects",
     protects: "graph size from one render",
-    derivedIn: "B2 step 0",
-    why: "needs real helm and kustomize renders to measure.",
+    basis: `no GitOps controller can track more objects from one source than its status lists in one etcd object: etcd v3.7.3 DefaultMaxRequestBytes 1.5 MiB / ${FLUX_MINIMAL_INVENTORY_ENTRY.length} bytes, the shortest Flux kustomize-controller v1.10.1 inventory entry (Argo CD v3.6.1's shortest ResourceStatus is ${ARGO_MINIMAL_RESOURCE_STATUS.length} bytes, a smaller bound; the larger is kept so nothing either controller can apply is cut). The most objects in one real render on 2026-11-15 was 136.`,
+    date: DATE,
+  },
+  renderedDocumentBytes: {
+    status: "derived",
+    value: APISERVER_MAX_REQUEST_BODY_BYTES,
+    unit: "bytes",
+    protects: "parse memory and time of one document of a render's output",
+    basis:
+      "kube-apiserver MaxRequestBodyBytes 3 MiB (k8s.io/apiserver pkg/server/config.go): a rendered object larger than this cannot be sent to the API server, so a larger document is a named limit outcome.",
+    date: DATE,
+  },
+  lexemesPerRender: {
+    status: "derived",
+    value: Math.floor(
+      (SMALLEST_RUNNER_OLD_GENERATION_BYTES - READER_BASELINE_BYTES - 3 * ARGO_GRPC_MAX_MESSAGE_BYTES) /
+        WORST_BYTES_PER_LEXEME,
+    ),
+    unit: "lexemes",
+    protects:
+      "crankpath's own memory and time while it parses one render's output: the yaml package's syntax trees and the converted values of all its documents",
+    basis: `lexemesPerFile's derivation with a render's output in place of a file: (2,500,000,000 bytes, the default old-generation heap V8 12.4 gives Node 22 on ubuntu-slim; minus the reader's measured baseline, ${MEASURED.baselineMiB} MiB; minus a reserve for the output text, 3 x renderStdoutBytes: the output buffer plus a decoded string of at most 2 bytes per byte) / ${MEASURED.worstBytesPerLexeme} bytes, the most resident memory per lexeme measured. Every lexeme of every document of the output counts.`,
+    date: DATE,
   },
 } satisfies LimitSet);
 

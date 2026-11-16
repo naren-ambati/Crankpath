@@ -1,5 +1,5 @@
 // RenderedSetBuilder (U4, contract C4; BR4.6, BR4.7, FR1.7): turns parsed documents (from plain
-// files now; from helm and kustomize output in B2) into RenderedObjects with their origin. Every
+// files, and from helm and kustomize output) into RenderedObjects with their origin. Every
 // object gets its canonical id here or is skipped and named (BR1.3); a `List` is expanded into its
 // items; Helm test hooks are dropped and counted (Helm renders only); Secret `data` and `stringData` values are
 // discarded at once, except the `url` of an Argo CD credential Secret, which is kept with its
@@ -25,6 +25,8 @@ export interface BuildOptions {
   readonly renderJob: string | null;
   /** The namespace an object without its own gets (an Application's destination namespace), or null. */
   readonly defaultNamespace: string | null;
+  /** A namespace that replaces every object's own (Flux `targetNamespace`), or null. */
+  readonly namespaceOverride?: string | null;
   /** The destination key of the job (`in-cluster` or a foreign key), part of an object's identity of content. */
   readonly destination: string;
   readonly generatedBy?: string | null;
@@ -95,6 +97,17 @@ function decodeBase64(text: string): string | undefined {
   }
 }
 
+const SECRET_KEPT = ["apiVersion", "kind", "metadata", "type", "immutable"] as const;
+const SECRET_METADATA_KEPT = [
+  "name",
+  "namespace",
+  "generateName",
+  "labels",
+  "annotations",
+  "ownerReferences",
+  "finalizers",
+] as const;
+
 /** A copy of a Secret with every data value removed (and the annotation that would repeat them). */
 function stripSecret(body: DataMap): { body: DataMap; credentialUrl: string | null } {
   const labels = stringEntries(getPath(body, ["metadata", "labels"]));
@@ -105,12 +118,15 @@ function stripSecret(body: DataMap): { body: DataMap; credentialUrl: string | nu
     const raw = plain ?? (encoded === undefined ? undefined : decodeBase64(encoded));
     credentialUrl = raw === undefined ? null : (redactUrl(raw) ?? null);
   }
+  // Only a Secret's identity fields are kept, spelled exactly (B2 review m1): any other key, whatever
+  // its case (`Data`, `StringData`, a field crankpath does not know), may hold a value and is dropped.
   const out: { [key: string]: DataValue } = {};
-  for (const k of Object.keys(body)) {
-    if (k === "data" || k === "stringData") continue;
+  for (const k of SECRET_KEPT) {
+    if (!Object.hasOwn(body, k)) continue;
     if (k === "metadata" && isDataMap(body.metadata)) {
       const meta: { [key: string]: DataValue } = {};
-      for (const mk of Object.keys(body.metadata)) {
+      for (const mk of SECRET_METADATA_KEPT) {
+        if (!Object.hasOwn(body.metadata, mk)) continue;
         const mv = body.metadata[mk] as DataValue;
         if (mk === "annotations" && isDataMap(mv)) {
           const ann: { [key: string]: DataValue } = {};
@@ -123,7 +139,7 @@ function stripSecret(body: DataMap): { body: DataMap; credentialUrl: string | nu
       Object.defineProperty(out, k, { value: meta, enumerable: true });
       continue;
     }
-    Object.defineProperty(out, k, { value: body[k], enumerable: true });
+    Object.defineProperty(out, k, { value: body[k] as DataValue, enumerable: true });
   }
   return { body: out, credentialUrl };
 }
@@ -191,7 +207,8 @@ export function buildObjects(documents: readonly SourceDocument[], options: Buil
     const metadata = value.metadata;
     const ownNamespace = getPath(metadata, ["namespace"]);
     const unset = ownNamespace === undefined || ownNamespace === null || ownNamespace === "";
-    const effective = unset ? options.defaultNamespace : ownNamespace;
+    const override = options.namespaceOverride ?? null;
+    const effective = override !== null ? override : unset ? options.defaultNamespace : ownNamespace;
     const id = objectId(kind, effective, getPath(metadata, ["name"]));
     if (!id.ok) {
       skip(doc, item, value, id.refusal);
@@ -234,7 +251,8 @@ export function buildObjects(documents: readonly SourceDocument[], options: Buil
   for (const doc of documents) {
     const v = doc.value;
     if (v === null) continue; // an empty document
-    if (isDataMap(v) && v.kind === "List" && Array.isArray(v.items)) {
+    // `List` and every `<Kind>List` (SecretList, ConfigMapList, ...): each item is an object (B2 review m1)
+    if (isDataMap(v) && typeof v.kind === "string" && v.kind.endsWith("List") && Array.isArray(v.items)) {
       v.items.forEach((itemValue, i) => {
         take(doc, i, itemValue);
       });

@@ -1,6 +1,6 @@
 # Limits (OD-5): what each protects, what it is derived from, and what is not derived yet
 
-Written in B0 (2026-11-15). Rule (OD-5, FR1.4, NFR5): no limit is picked. Each is derived from what it protects (two derivations rest on a stated choice, named in their rows: the half-stack reserve of `nestingDepth` and the reference machine of `lexemesPerFile`), from a dated lookup (`docs/lookups.md`) or a measurement made with a committed script, and a limit hit is a named, counted refusal, never silence and never a crash. A limit whose basis needs a real render or a measurement not made yet is **not yet derived**: in code (`src/u1-graph-model/limits.ts`) it has no value at all, so no unit can use it as a number (the type forbids it; `test/u1-graph-model/limits.test.ts` proves it). A test keeps this table and the code in step.
+Written in B0 (2026-11-15); the render limits derived in B2 step 0 (2026-11-15). Rule (OD-5, FR1.4, NFR5): no limit is picked. Each is derived from what it protects (two derivations rest on a stated choice, named in their rows: the half-stack reserve of `nestingDepth` and the reference machine of `lexemesPerFile`), from a dated lookup (`docs/lookups.md`) or a measurement made with a committed script, and a limit hit is a named, counted refusal, never silence and never a crash. A limit whose basis needs a real render or a measurement not made yet is **not yet derived**: in code (`src/u1-graph-model/limits.ts`) it has no value at all, so no unit can use it as a number (the type forbids it; `test/u1-graph-model/limits.test.ts` proves it). A test keeps this table and the code in step.
 
 ## The table
 
@@ -22,10 +22,103 @@ Written in B0 (2026-11-15). Rule (OD-5, FR1.4, NFR5): no limit is picked. Each i
 | `declaredEntries` | 1,572,864 | entries | work and output size the scanned repo's `crankpath.yaml` can cause through the number of its entries (B5 review M3) | the same basis as `expandedNodesPerDocument`: `crankpath.yaml` is one document of at most that many nodes, and every entry of every section (an external, a match entry, a repos entry, an edge, a crank, one `creates` or `reroutes` target, a cluster, one label or annotation) is at least one node of it, so no admitted file holds more. Every analysis step over the entries is linear (indexed: no lookup scans a list), so the count bounds the work. | ConfigReader counts the entries after validation and refuses the file by name ("more entries than the limit") |
 | `hostPatternComparisons` | 1,572,864 | steps | the time a run spends comparing hosts with `match:` entries that hold a wildcard (B5 review M3; time bound since pass 2) | the same basis as `expandedNodesPerDocument`: the wildcard work the `match:` entries of one admitted file may cause is held to the nodes one admitted document may hold, counted in steps actually done: one per entry consulted, a literal label's length, a wildcard label's pattern length times label length (the matcher's own table). Entries without a wildcard are looked up by host and cost nothing; wildcard entries are indexed by label count and literal suffix, so a host consults only the entries whose literal suffix it ends in; a host is compared once however often it is queried. | HostMatcher charges each step; a spent budget stops the remaining wildcard work and is a counted `match-limit` item that leaves every node unverified |
 | `filesPerScan` | — | files | total read time of a scan | not yet derived: B3 step 0. No tool or host publishes a file-count ceiling for a repository (GitHub's repository limits recommend at most 3,000 entries per directory and a depth of 50, which bound no total), and OD-7 sets no time budget from which a count could follow; the basis needs discovery's measured per-file cost (review m3: the lead to record the deferral). | discovery (B3) |
-| `renderWallClock` | — | milliseconds | a render subprocess that never ends (a backstop only, OD-30) | not yet derived: B2 step 0. Needs real helm and kustomize renders to measure. | the command runner (B2) |
-| `renderStdoutBytes` | — | bytes | memory held by one render's standard output | not yet derived: B2 step 0. Needs real renders. | the command runner (B2) |
-| `renderStderrBytes` | — | bytes | memory held by one render's standard error | not yet derived: B2 step 0. Needs real renders. | the command runner (B2) |
-| `renderedObjects` | — | objects | graph size from one render | not yet derived: B2 step 0. Needs real renders. | the rendered-set builder (B2) |
+| `renderWallClock` | 90,000 | milliseconds | a render subprocess that never ends (a backstop only, OD-30: a job it stops is opaque `limit`, detail `timeout`, counted, and the status line says the output may differ on a rerun) | Argo CD v3.6.1 repo-server stops a helm or kustomize command after `ARGOCD_EXEC_TIMEOUT`, default `90 * time.Second` (`util/exec/exec.go`; `docs/operator-manual/high_availability.md`: "enforces a 90 second timeout"). A render that takes longer fails in Argo CD itself at its defaults. Need: the slowest first real render took 254 ms (below; 882 ms in a run on a loaded machine). | the command runner (B2): `spawnSync` `timeout`, killed with SIGKILL, never retried |
+| `renderStdoutBytes` | 104,857,600 | bytes | memory held by one render's standard output | Argo CD v3.6.1 `MaxGRPCMessageSize` (`reposerver/apiclient/clientset.go`: `ARGOCD_GRPC_MAX_SIZE_MB` default 100, times 1024 * 1024): the repo-server cannot hand the controller a larger manifest response for one source at its defaults. Argo CD sends the manifests as JSON and crankpath measures helm's YAML; the two differ in size, so this is the controller's bound applied to the nearest thing crankpath sees. Need: 5,312,383 bytes, the largest first real render (kube-prometheus-stack 93.3.0 with CRDs). | the command runner (B2): `maxBuffer`, then a byte check per stream; `over cap` |
+| `renderStderrBytes` | 104,857,600 | bytes | memory held by one render's standard error (read only to classify a failure; never shown) | the same bound as `renderStdoutBytes`: Node's `spawnSync` holds both streams under one `maxBuffer`, so the memory a call can hold for standard error is the standard-output bound whatever smaller number were written here; no tool publishes a size for its error stream. Need: 0 bytes in every successful first real render. | the command runner (B2) |
+| `renderedObjects` | 65,536 | objects | graph size from one render | no GitOps controller can track more objects from one source than its status lists in one etcd object: etcd v3.7.3 `DefaultMaxRequestBytes = 1.5 * 1024 * 1024` (1,572,864 bytes) / 24 bytes, the shortest Flux kustomize-controller v1.10.1 inventory entry (`ResourceRef {id: "<namespace>_<name>_<group>_<kind>", v: version}`; a cluster-scoped core object: `{"id":"_a__X","v":"v1"},`). Argo CD v3.6.1's shortest `ResourceStatus` with its non-empty kind, name and version is 39 bytes (`{"version":"v1","kind":"X","name":"a"},`), a smaller bound (40,329); the larger is kept so nothing either controller can apply is cut. Need: 136 objects, the most in one first real render. | the rendered-output parser (B2), counting `List` items; a hit keeps no object of that render |
+| `renderedDocumentBytes` | 3,145,728 | bytes | parse memory and time of one document of a render's output | kube-apiserver `MaxRequestBodyBytes` 3 MiB (`k8s.io/apiserver` `pkg/server/config.go`): a rendered object larger than this cannot be sent to the API server, so a larger document is a named `limit` outcome. | the rendered-output parser (B2), before the document is parsed |
+| `lexemesPerRender` | 2,282,007 | lexemes | crankpath's own memory and time while it parses one render's output: the yaml package's syntax trees and the converted values of all its documents | `lexemesPerFile`'s derivation with a render's output in place of a file (B2 review M4): (2,500,000,000 bytes, the default old-generation heap V8 12.4 gives Node 22 on `ubuntu-slim`; minus the reader's measured baseline, 45 MiB; minus a reserve for the output text, 3 x `renderStdoutBytes`: the output buffer plus a decoded string of at most 2 bytes per byte) / 937 bytes, the worst resident memory per lexeme measured (`scripts/measure-limits.mjs`, part 1). Every lexeme of every document of the output counts. | the rendered-output parser (B2): counted over the whole output before anything is parsed, and the parse's transient (lexemes x 937 + bytes x 3) then checked against the run's budget; a hit is `limit` (detail "its output is over the parse budget of one render") with no object kept |
+
+## Render limits: first real renders and the cost at the limits (B2 step 0, OD-5, OD-7)
+
+`npm run build && node scripts/measure-renders.mjs <chart>=<releases> ...` on 2026-11-15, with the
+charts fetched read-only by `helm pull` into a cache outside the repository (`docs/lookups.md`; no
+template or rendered output of any of them is committed). Part 1 renders each chart with the
+installed helm through crankpath's own CommandRunner (allowlist, environment, caps), five times;
+part 2 parses synthetic outputs of at most `renderStdoutBytes` with the built rendered-output
+parser and rendered-set builder, each in its own child process. Output of that run:
+
+```
+node v22.23.2, darwin arm64, helm v4.3.2, kustomize v5.8.1
+first real renders (helm template --include-crds, 5 runs each):
+  vault 0.34.1 as vault: ok, 47/48/56 ms, stdout 16590 bytes, stderr 0 bytes, 13 objects
+  vault 0.34.1 as platform-secrets: ok, 46/47/50 ms, stdout 17308 bytes, stderr 0 bytes, 13 objects
+  kube-prometheus-stack 93.3.0 as monitoring: ok, 153/156/202 ms, stdout 5312383 bytes, stderr 0 bytes, 136 objects
+  argo-cd 10.18.0 as argocd: ok, 162/163/186 ms, stdout 2135393 bytes, stderr 0 bytes, 60 objects
+  cert-manager v1.21.3 as cert-manager: ok, 62/62/74 ms, stdout 44659 bytes, stderr 0 bytes, 44 objects
+  external-secrets 2.15.0 as external-secrets: ok, 135/136/149 ms, stdout 2046197 bytes, stderr 0 bytes, 44 objects
+  cilium 1.20.4 as cilium: ok, 201/241/254 ms, stdout 68638 bytes, stderr 0 bytes, 25 objects
+cost at the limits (synthetic outputs of at most renderStdoutBytes = 104857600 bytes):
+  minimal objects (over the object limit): 104857555 bytes, 681 ms, refused (over-parse-budget), peak RSS 361 MB
+  objects of one long string each (3 MiB documents): 103804635 bytes, 2850 ms, 33 objects built, 0 documents refused, peak RSS 553 MB
+  flow sequences of numbers (3 MiB documents, nodes at the limit): 103804470 bytes, 541 ms, refused (over-parse-budget), peak RSS 360 MB
+  small mappings in a block sequence (3 MiB documents): 104747962 bytes, 735 ms, refused (over-parse-budget), peak RSS 362 MB
+  one document of the whole output (over the document limit): 104857600 bytes, 492 ms, 0 objects built, 1 documents refused, peak RSS 447 MB
+```
+
+Run again on 2026-11-15 after B2's merge of `main` (the output above): `lexemesPerRender` is
+re-derived with B0's final figures (937 bytes per lexeme, a 45 MiB baseline: 2,282,007), and an
+output's lexemes are counted before any document is parsed, so output over it is refused without
+building a syntax tree. Before the B2 review's M4 fix the two node-dense shapes were parsed in
+full: 210 s and 3.6 GB peak, and 256 s and 2.8 GB (first run), and 345 s and 3.0 GB, and 248 s and
+3.0 GB (a run while the test suite ran); after M4 and before this merge they stopped in 2.2 s and
+4.5 s (0.7 and 1.5 GB).
+
+What the run shows:
+- **Need against the limits.** The slowest real render took 254 ms against a 90,000 ms backstop;
+  the largest wrote 5,312,383 bytes against 104,857,600; the most objects was 136 against 65,536.
+  No real render wrote to standard error. These are first timings (OD-7), not a budget.
+- **Cost at the limits.** Every synthetic output at `renderStdoutBytes` now ends within about 3 s
+  and 0.56 GB peak resident memory on this machine: past the parse budget (counted without a
+  parse, under 1 s), past the document limit, or built in full (documents of long strings, 2.9 s).
+  The minimal-object shape now meets the parse budget before the object limit. On top of these,
+  each render is charged to the run's budget (`Per-run limits` below): its parse transient must fit
+  in what the run has not yet held before it is parsed, then its bytes are held.
+
+## What the render limits do not cover (OD-29, B2 review passes 2 and 3)
+
+- **Redirects and addresses.** crankpath checks every chart repository URL it reads (https or
+  `oci://`, a host name, never an IP literal, a loopback or link-local name, the name lower-cased,
+  in punycode and without a trailing dot) before helm sees it, and gives helm no credential. helm
+  follows the repository's redirects itself, and a name can resolve to a private or loopback address
+  (DNS rebinding): neither is checked. Both are printed in the report's not-modelled line whenever
+  helm rendered.
+- **The closed proxy.** `helm template` and `kustomize build` run with `HTTP_PROXY`, `HTTPS_PROXY`
+  and `ALL_PROXY` set to `http://127.0.0.1:1` (a loopback port nothing listens on) and `NO_PROXY`
+  empty, so a fetch either tool was not stopped from making fails at the proxy before any name is
+  resolved. Go never sends a request for a loopback address (`localhost`, `127.0.0.0/8`, `::1`)
+  through a proxy, so a loopback URL is covered only by the pre-reads; the live lane's loopback
+  listener is what shows those hold. `helm pull` and `helm dependency build` must fetch and get no
+  proxy.
+- **Conservative kustomize pre-reads (known false opaques, B2 review pass 4).** crankpath judges
+  the values its YAML reader returns, and kustomize decodes the same text with another library. So
+  a kustomization or configuration file holding any YAML tag (`!!binary`, `!!str`, a custom or
+  verbatim tag, a tag on a key) or directive, or a quoted or plain scalar with an escape or a line
+  break, is refused whole (`unsupported-field`). That covers real files using such forms
+  harmlessly. Block scalars are kept. In a configuration file (generator, transformer, validator,
+  transformer configuration, replacements) any string with `://` and any `path`, `paths`, `files`,
+  `envs` or `env` value that is not a plain relative path in the directory is refused too, a literal
+  included (`literals: [HOMEPAGE=https://example.org/docs]`, `labels: {env: ""}`). crankpath does
+  not tell a literal from a path there. Each is a named opaque source, never a silent pass.
+- **Host lookups in templates.** A template may call `getHostByName`; helm may resolve it even under
+  `--no-network`. Stated in the same line, and the chart is named in a floating entry.
+- **Two renders per chart, and what they cannot prove.** Every Helm source is rendered twice and the
+  two are compared: object names that differ make it `render-failed` ("not deterministic"), other
+  content that differs is a floating entry. Two renders cannot prove determinism: output that varies
+  only rarely can agree twice (a name from `randInt 0 2` agrees half the time), so Helm output is not
+  claimed byte-identical across runs. The template scan names the random, time and lookup functions
+  it finds as a floating entry (`chart templates`); it is a flag, never the guard, and does not open
+  archived subcharts. A second render that fails, times out or cannot be read keeps the first
+  render with the note "determinism not checked: second render ...". Each render has its own
+  `renderWallClock`, so one Helm source can take up to twice that; the second render's parse is
+  asked of the run's budget, is not held, and a refusal of it is not a refused job.
+- **Signals.** The run is one synchronous call: SIGINT or SIGTERM ends crankpath at once. A helm or
+  kustomize it is running is not stopped by a signal to crankpath alone (`kill <pid>`, `timeout`):
+  the child is adopted by init and runs on with no time limit (the wall clock ended with crankpath),
+  in its private directory, which the next run using the same cache may remove under it. A
+  terminal's Ctrl-C reaches the child too (one process group). The next run removes a directory
+  left under the cache's `tmp/` only for the same cache, and keeps one whose process id has been
+  reused by a live process.
 
 ## The Mermaid node cap (OD-18)
 
@@ -237,7 +330,7 @@ Files held parsed are charged 33 bytes per file byte (the worse of two measured 
 
 **What is charged, and what is not.** B1 charges, in bytes: each file held parsed (33 per byte), each object taken in (6,678) and each string value in it (4,665), and keeps at most `edgesPerRun` edges. Numbers, booleans and keys in an object's body are not charged per value: in B1 every object comes from a file already charged by its bytes, which covers them. The string-value charge assumes each value is an edge with a stub, the costliest case, so it is pessimistic for objects with many plain values (the 1,500 x 3,000 review tree used 342 MB of the 1.6 GB budget). It bounds the edges extraction can make only through string values; an extractor that made edges from anything else would not be covered.
 
-**Note for B2.** A Helm or Kustomize render is not a file read, so its output is charged by nothing above but the per-object and string-value rates. B2 must charge each render's output bytes the same way: its transient parse cost (its lexemes x 937 + its bytes x 3) checked against what the run has not yet held before it is parsed, then its output bytes charged at `perFileByte` (its parsed documents are held like a file's) before its objects are taken in; and pass `stringLeaves` from `buildObjects` on the RenderedSet (the pipeline counts them itself when absent). The per-render limits stay B2's, from its step 0.
+**Note for B2 (done in B2's merge of `main`).** A Helm or Kustomize render is not a file read, so its output is charged by nothing above but the per-object and string-value rates. B2 must charge each render's output bytes the same way: its transient parse cost (its lexemes x 937 + its bytes x 3) checked against what the run has not yet held before it is parsed, then its output bytes charged at `perFileByte` (its parsed documents are held like a file's) before its objects are taken in; and pass `stringLeaves` from `buildObjects` on the RenderedSet (the pipeline counts them itself when absent). The per-render limits stay B2's, from its step 0.
 
 ### Measurement
 

@@ -1,0 +1,3 @@
+resources:
+  - cm.yaml
+  - https://example.org/remote/base.yaml

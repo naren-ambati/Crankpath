@@ -1,9 +1,9 @@
 // Regression tests for the second B1 review (reviews/bolt-1-review-pass-2.md): each failed first.
 
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { afterAll, describe, expect, it } from "vitest";
 import { NO_DECLARED_FACTS } from "../../src/u1-graph-model/declared-facts.js";
 import { buildObjects } from "../../src/u4-render-engine/rendered-set-builder.js";
@@ -13,7 +13,7 @@ import { renderJson } from "../../src/u8-output/json-renderer.js";
 import { assembleReport } from "../../src/u8-output/report-assembler.js";
 import { renderText } from "../../src/u8-output/text-renderer.js";
 import { workloadRefExtractor } from "../../src/u6-extractors-workload/workload-refs.js";
-import { main } from "../../src/u9-cli-package/cli-shell.js";
+import { INTERNAL_ERROR, main } from "../../src/u9-cli-package/cli-shell.js";
 import { DEFAULT_BUDGET, runPipeline } from "../../src/u9-cli-package/pipeline-runner.js";
 import { LIMITS } from "../../src/u1-graph-model/limits.js";
 import { READER_PARSE_COST, RUN_BASELINE_BYTES, RUN_LIMITS, RUN_RATES } from "../../src/u1-graph-model/run-limits.js";
@@ -124,6 +124,29 @@ describe("m2: a closed output pipe ends quietly", () => {
     const code = await new Promise<number | null>((resolve) => child.on("close", (c) => resolve(c)));
     // one assertion over both, so a failure shows the exit code and what was written to stderr
     expect({ code, err }).toEqual({ code: 1, err: "" });
+  });
+  // The race behind the test above's rare failure (B2's merge, recorded in BUILD-NOTES): on macOS a
+  // write to a pipe whose reader has just closed fails with ENOTCONN instead of EPIPE in a few
+  // percent of runs, depending on how far the close has got. Each error code is handed to the
+  // binary's real handler here, so every code is checked on every run, whatever the timing.
+  it.each([
+    ["EPIPE", ""],
+    ["ENOTCONN", ""],
+    ["EIO", `${INTERNAL_ERROR}\n`],
+  ])("ends with exit 1 on a %s from standard output, quietly only when the reader is gone", (errno, expected) => {
+    const dir = tempDir("pipe-errno");
+    cleanup.push(dir);
+    const preload = path.join(dir, "emit.mjs");
+    fs.writeFileSync(
+      preload,
+      `setImmediate(() => process.stdout.emit("error", Object.assign(new Error("write ${errno}"), { code: "${errno}" })));\n`,
+    );
+    const r = spawnSync(
+      process.execPath,
+      ["--import", pathToFileURL(preload).href, path.join(ROOT, "dist/u9-cli-package/cli.js"), "--version"],
+      { encoding: "utf8", env: { PATH: "" } },
+    );
+    expect({ code: r.status, err: r.stderr }).toEqual({ code: 1, err: expected });
   });
 });
 

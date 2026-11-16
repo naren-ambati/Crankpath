@@ -860,3 +860,370 @@ Tests written first: `test/u8-output/review-b6-pass2.test.ts` and `test/u9-cli-p
   Lines        : 97.54% ( 3582/3672 )
   check-tree: 228 files read, 0 finding(s)
   ```
+
+## B2 (render engine: helm and kustomize behind the allowlisted runner)
+
+### Built
+- **Step 0, the render limits (OD-5, OD-7)** (`src/u1-graph-model/limits.ts`, `docs/limits.md`, `docs/lookups.md`, `scripts/measure-renders.mjs`): `renderWallClock` 90,000 ms (Argo CD v3.6.1 `ARGOCD_EXEC_TIMEOUT` default), `renderStdoutBytes` 104,857,600 (Argo CD v3.6.1 repo-server `MaxGRPCMessageSize` default 100 MiB), `renderStderrBytes` the same (one `spawnSync` buffer bounds both streams), `renderedObjects` 65,536 (etcd v3.7.3 1.5 MiB request / 24 bytes, the shortest Flux kustomize-controller v1.10.1 inventory entry; Argo CD's shortest `ResourceStatus` gives the smaller 40,329), and a new `renderedDocumentBytes` 3,145,728 (kube-apiserver request body). First real renders of hashicorp/vault-helm 0.34.1 (as `vault` and `platform-secrets`) and five large public charts, fetched read-only into the shared cache outside the repository; nothing of them committed. `filesPerScan` is the only limit still not derived (B3).
+- **U4** `command-runner.ts` (closed allowlist keyed by (tool, subcommand), a closed option list per command, `--` before positionals, the `--repo` and OCI references through the URL guard, a refusal is a thrown construction error before any process exists; `spawnSync` with no shell, SIGKILL at the wall clock, byte caps per stream; fixed outcome words `ok`, `exited with an error`, `timed out`, `over cap`, `could not start`; standard error kept only for classification; no retry; the environment built from nothing: PATH, `LANG=C`/`LC_ALL=C`, private HOME, TMPDIR, XDG and HELM homes under the run directory, `HELM_NO_PLUGINS=1`, empty plugin and Docker config directories, registry and repository config files that do not exist, `KUBECONFIG=/dev/null`), `toolchain.ts` (absolute PATH entries only; versions through the runner; tested pair v4.3.2 + v5.8.1), `url-guard.ts` (https or `oci://`, no IP literal, loopback, `.localhost` or `.local` name, no userinfo, no query), `work-dir.ts` (cache root, lazy creation, run directory `tmp/run-<pid>-<hex>` mode 0700, files mode 0600 with `O_EXCL|O_NOFOLLOW`, removal in every outcome), `private-copy.ts` (repo directories copied through the bounded walk and reader; any refusal fails closed), `chart-cache.ts` (`charts/<sha256 of the guarded URL, 32 hex>/<chart>/<version>/`; exact versions read from a trusted cache; one `helm pull`; the pulled chart checked for symlinks, special files, its name and version; 401/403 `private-chart`, 404, 429 and unreachable named as such with "unknown whether the chart exists"), `helm-renderer.ts` (Chart.yaml and Chart.lock pre-read, BR4.20; in-root `file://` dependencies copied; `helm dependency build` only on the copy and only when a dependency is not vendored; values in the controller's order as 0600 files, read and parsed under the reader limits first), `kustomize-renderer.ts` (every kustomization the build would read pre-read, BR4.4/BR4.5; the closure copied; `--load-restrictor LoadRestrictionsRootOnly`, never `--enable-*`), `rendered-output.ts` (split at `---`/`...` lines, one document parsed at a time, document, node and object limits), `flux-substitution.ts`, `render-io.ts`, `renderers.ts` (the dispatch table now `plain`, `helm`, `kustomize`), `rendered-set-builder.ts` (Flux `targetNamespace`; exact test-hook names).
+- **U3** `render-job.ts` (HelmJob, KustomizeJob, ChartLocation, HelmValues, FloatingRef; owner nullable for a Kustomize root), `render-planner.ts` (Argo CD single and multi-source: Helm repo charts, charts from repositories, Kustomize, plain; closed `helm` field list; `$values` only under the repo-identity rule), `flux-planner.ts` (Kustomizations and HelmReleases, lookups among the repo's own objects, reference edges kept), `plan-common.ts`, `source-discovery.ts` (a chart's `templates/` and `charts/` are not read as manifests).
+- **U9** `pipeline-runner.ts` (toolchain detected once per run; the WorkDir created and cleaned up; the repo-object index for Flux; per-job isolation; timeouts counted; reference edges added; Kustomize roots covered by a render or built on their own), `cli-shell.ts` (`--version` with the detected versions; `--no-network` and `--cache-dir` now act; `--verbose` adds job and command counts), `cli.ts`.
+- **U8 (minimal, the B1 extension points)**: toolchain in the report, JSON and text (`testedPair`, `missing`, `unrecognised`), the M5 `tool missing:` line, the untested-version note, `floating` (OD-12), `undeployedKustomizeRoots`, `toolMissing`, and a not-modelled line for helm's cluster-free rendering whenever helm rendered.
+- **Fixtures**: `test/fixtures/fake-tools/` (a fake helm and kustomize run as real processes by the real runner; behaviour driven by the files of the chart or directory they get, since the child environment is the allowlist), `test/fixtures/render/repo/` (an in-repo chart of my own with a recorded real-helm output, a Kustomize overlay, Flux objects), `test/fixtures/render/hostile/` (file:// outside the root, alias bomb, `lookup`, symlink created at run time, URL resource, escaping resource).
+- **Live lane** `scripts/live-render.mjs`, `npm run verify:live`: PASS, FAIL or SKIPPED per check with its reason; exit 1 on a failure, 2 when anything was skipped, 0 only when everything ran.
+
+### Verified
+- `npm run verify` on 2026-11-15 (Node v22.23.2, macOS arm64), exit 0:
+  ```
+  Checked 96 files in 46ms. No fixes applied.
+   Test Files  34 passed (34)
+        Tests  525 passed (525)
+  Statements   : 91.37% ( 3051/3339 )
+  Branches     : 82.28% ( 2285/2777 )
+  Functions    : 96.05% ( 414/431 )
+  Lines        : 93.1% ( 2647/2843 )
+  check-tree: 169 files read, 0 finding(s)
+  ```
+- **The live-render lane ran on this machine** with helm v4.3.2 and kustomize v5.8.1 installed and the network up: `npm run verify:live` on 2026-11-15 (2026-11-16T01:00Z), on the committed code, exit 0:
+  ```
+  crankpath live-render lane, node v22.23.2, darwin arm64
+    crankpath 0.1.0
+    helm: v4.3.2 (tested)
+    kustomize: v5.8.1 (tested)
+  PASS  toolchain detected  (the tested pair)
+    real tools: exit 0, 342 ms, 16 nodes, 19 edges, 1 opaque; recorded: 16 nodes, 19 edges
+  PASS  render fixture: real tools match the recorded output  (v4.3.2 and v5.8.1)
+  PASS  render fixture: chart, overlay and HelmRelease objects in the graph; test hook dropped; no Secret value
+    hostile: exit 0, 298 ms, outside-dep=unsupported-field url-resource=remote-base escape=render-failed linked=unreadable-file bomb=render-failed lookup=none
+  PASS  hostile fixture fails closed  (file:// outside the root, URL resource, escaping resource, symlink, alias bomb; lookup renders empty)
+    network: exit 0, 986 ms, 26 nodes, 36 edges, 0 opaque; from the cache with --no-network: 327 ms, 26 nodes
+  PASS  public chart hashicorp/vault-helm 0.34.1 rendered as vault and platform-secrets
+  PASS  public chart again from the chart cache with --no-network: same graph, nothing fetched
+  live-render lane: 6 passed, 0 failed, 0 skipped
+  ```
+  The same script with only node on PATH (`env PATH=<node dir> node scripts/live-render.mjs`, 2026-11-15) printed four SKIPPED lines with their reasons and "0 passed, 0 failed, 4 skipped (a skipped check is not a pass)", exit 2. (An earlier version exited 0 when everything was skipped; it now exits 2, so a skipped lane can never read as a pass.) The one-object opacity of the render fixture is its HelmRelease whose values Secret is not in the repository, by design.
+- First timings (OD-7), `node scripts/measure-renders.mjs` (output in `docs/limits.md`): real renders 46 to 335 ms on the idle machine (76 to 882 ms in the recorded run, taken while the test suite ran); `npm run build` and the CLI with `--no-network --cache-dir <outside>` over the five census estates (cached read-only, 2026-11-15): 0.44 s (0 render jobs) to 12.88 s (305 render jobs, 289 `kustomize build` runs) per estate.
+- Required tests, all in `npm run verify`: every forbidden subcommand (`install`, `upgrade`, `uninstall`, `rollback`, `dependency update`, `plugin install`, `repo add`, `registry login`, `get`, `kubectl apply|get`, `kustomize edit|create`, `git fetch|clone`, `sh -c`) and forbidden option (`--dry-run=server`, `--kubeconfig`, `--kube-context`, `--kube-apiserver`, `--validate`, `--post-renderer`, `--set`, `--set-file`, `-f`, `--values=`, `--enable-helm`, `--enable-alpha-plugins`, `--enable-exec`, `--network`, `--load-restrictor LoadRestrictionsNone`, `--output`, `--username`, `--pass-credentials`, http and IP repositories) refused before a process exists (`test/u4-render-engine/command-runner.test.ts`); the environment allowlist asserted key by key, and a real child shown to receive none of 13 planted credentials, tokens, a kubeconfig or a proxy; a timeout (SIGKILL, under 15 s for a 1.5 s limit) and both byte caps give `limit`; a hostile chart (`file://` outside the root, http, IP, loopback, credential, `@alias` repositories, Chart.lock checked too, a symlink in the chart) and a hostile kustomization (URL, `host/org/repo//path`, scp, `ssh://`, a missing base, URLs in bases, components, patches, configurations and generators, a symlinked file or kustomization, an escaping entry, `helmCharts`) fail closed with nothing run; a render that emits an alias bomb is `limit` with the document named and the next kept; output over the object limit keeps no object; the cache is not read from inside the scanned tree even when a chart is planted there; `--no-network` fetches nothing; 401/403/404/unreachable are named, never "absent"; values 0600, private, in order, removed; the scanned tree byte-for-byte unchanged and the private directory empty after a run; a failing job changes no other job's edges and its standard error appears nowhere; a timeout is counted and the status line says the output may differ on a rerun; JSON byte-identical across runs and cache locations, with no path of the run; `--verbose` holds no token, Secret value or path.
+- **Hand mutations, run 2026-11-15** (`b2-tmp/mutate.py`, outside the repository; each mutation applied, the named test file run, the file restored): restrictor accepting any value, an AWS key passed to children, `file://` outside the root allowed, URLs not seen as remote, timeouts not counted, chart templates read as manifests, values order reversed, absent Flux values not opaque, standard error in a mark: each turned 1 or 2 tests red. The tenth, the chart cache read from inside the scanned tree, was first missed (the test planted nothing); the test now plants a chart where a committed `.crankpath` would put it, and the mutation turns it red.
+
+### Edits to the expected output (thin slice) after the first real run
+1. The toolchain line is now detected, not fixed text: `toolchain: helm not found on PATH, kustomize not found on PATH` (the tests run the CLI with a PATH that holds node only, so the line is the same on every machine); the JSON `toolchain` gains `testedPair`, `missing`, `unrecognised`.
+2. `targetRevision: main` is a floating revision (OD-12): a `Floating revisions: 1` block after the opacity block, and a top-level JSON `floating` list; also `toolMissing` and `undeployedKustomizeRoots` (empty). Both files were edited by hand to the reviewed diff of the first real run, then compared with the run byte for byte.
+
+### Deviations from the design and why
+1. **Synchronous runner, one buffer bound.** The pipeline is synchronous, so the runner uses `spawnSync`, which has one `maxBuffer` for both streams: `renderStderrBytes` equals `renderStdoutBytes` and each stream is checked against its own cap after the call.
+2. **No git forms on the allowlist yet.** C12's fixed `git` forms are B3's (their option names are confirmed at B3 step 0); `Tool` includes `git`, the allowlist has no git entry, and a test shows `git fetch`/`git clone` refused.
+3. **A closed option list per command**, not only the (tool, subcommand) pair, so `--dry-run=server` and every cluster flag are refused by construction; options only in the separate-value form; `--` always precedes positionals (argument injection through a release name starting with `-` cannot happen); `helm version` takes only `--template {{.Version}}`.
+4. **Environment.** The locale is fixed (`C`), not inherited, for byte-identical output; no proxy variable is passed (a proxy URL can carry a credential): owner item. PATH is inherited (shims need it), but tools are resolved to absolute paths from absolute PATH entries only.
+5. **Cache root and trust.** Default `.crankpath` in the working directory; a cache root inside the scanned tree must be the tree's own `<root>/.crankpath` (discovery never reads it) and is then not trusted: cached charts are neither read nor written there, because the scanned repo could have committed them; `--cache-dir` outside the tree is trusted. A symlinked cache root is refused. Nothing is created until a helm or kustomize job needs it, so plain-only runs write nothing; an empty `.crankpath/tmp` stays after a run.
+6. **Tools read only private copies.** A repo chart (with its in-root `file://` dependencies) and the closure of a kustomization are copied into the run directory first; any entry the walk or reader refuses fails the job closed (chart: `unreadable-file`; kustomize: `render-failed`, BR4.5) with the files named. A kustomization at the repo root copies the whole tree.
+7. **BR4.20's pre-read is in the renderer**, not the planner (which reads no content, B1); the effect is the same: nothing runs.
+8. **Floating chart ranges are always re-resolved** (`helm pull --version <range>`); under `--no-network` a range is `offline` (crankpath does not resolve ranges against its cache).
+9. **Scheme-less chart `repoURL`** (the B0 owner item) is `unsupported-field`: whether Argo CD treats it as OCI depends on repository settings crankpath cannot see.
+10. **Argo CD `helm` fields**: `parameters`, `fileParameters`, `kubeVersion`, `apiVersions` (non-empty) and `version` other than v3 are `unsupported-field`; `passCredentials` is accepted (crankpath sends no credential); `skipTests` has no effect (test hooks are always dropped); value files that are URLs, globs or hold build-environment variables are `unsupported-field`; `valuesObject` replaces `values` (Argo CD's `ValuesYAML`). Non-empty `kustomize` options are `unsupported-field`.
+11. **Multi-source**: one source that cannot be planned makes the whole Application opaque (no partial jobs); a ref-only source renders nothing.
+12. **Kustomize**: a `resources`/`bases`/`components` entry that is not a file or directory of the repo is `remote-base` (kustomize would try to fetch it), whatever it looks like; `helmCharts` is `unsupported-field`. A Kustomize root read by a render takes that render's mark (so a failed render is counted at its owner and at each root it read); a root nothing deploys is built on its own, its objects are not added to the graph (nothing in the repository applies them; a crank `creates: render:<path>` is the way to model a hand-applied root), and it is listed (`undeployedKustomizeRoots`); a `kind: Component` is not built on its own.
+13. **Flux**: the objects a Flux source names are looked up among the YAML documents of the scanned repo only (not among rendered objects), by explicit namespace; an object without one is not found. An absent values or substitution source is `cluster-created-values` even when marked `optional` (the cluster may create it). Kustomization `patches`, `images`, `components`, `namePrefix`, `nameSuffix`, `commonMetadata`, and GitRepository `include`, `ignore`, `sparseCheckout`, `recurseSubmodules` are `unsupported-field`; a path without a kustomization file is read as a recursive plain directory (Flux generates a kustomization of every manifest). Post-build substitution works on parsed values (a substituted number stays a string) and refuses forms other than `${name}` and the four default forms. HelmRelease chart `valuesFiles`, `postRenderers`, `chartRef` other than an OCIRepository tag or semver, and a release name over 53 characters (helm-controller would shorten it) are `unsupported-field`; `targetPath` must be a plain dotted path and its value is set as a string.
+14. **Reference edges of FR4.2** (`needs-config`/`needs-secret` from a Flux source to its values ConfigMap or Secret) come from the planner and are added by the pipeline as one extraction result, not from a U5 extractor: B4's FluxExtractor (dependsOn, sourceRef) does not cover them. If B4 also extracts them, the graph builder's merge must keep one (lead to check at integration).
+15. **Discovery skips a chart's `templates/` and `charts/`** (counted as ignored): templates are not YAML, and B1 counted them as unreadable files.
+16. **Rendered documents** are named `render:<jobId>` with renderedPath `render:<jobId>#<n>`.
+17. **Test hooks** are the exact names `test`, `test-success`, `test-failure` (BR4.6); B1 matched any name starting with `test`.
+18. **Floating revisions** (OD-12) are listed, not a gap: an Argo CD `targetRevision` that is not a 40-hex commit (absent is `HEAD`), a chart version range or `*`, a Flux GitRepository ref other than a commit; for a chart the rendered version is recorded.
+19. **`--verbose`** prints job counts by kind and outcome and command counts by tool, subcommand and outcome, never a command line (NFR15.1's "redacted command line"): arguments hold repo text and private paths.
+20. **A helm job without a destination namespace** passes no `--namespace` (helm's default); objects without their own namespace are then skipped `no-namespace`, as B1 does for plain sources.
+21. **A not-modelled line** for helm's cluster-free rendering (`lookup` empty, default API versions, a controller's bundled helm) is added to the report whenever helm rendered (FR3.8, OD-13).
+22. **`not-in-this-build`** is now produced only for ApplicationSets and `repos:` fetch entries (B3).
+
+### Decisions taken for the owner
+- **The cost at the limits** (`docs/limits.md`): a hostile chart can make one render take about four minutes and about 3 GB with documents each within every limit; nothing crashed on this machine (heap limit 4,144 MiB), but a smaller heap could run out. A per-run budget of parsed nodes would bound it; no published bound gives one, so it waits for the owner, with `filesPerScan` (B3), which has the same shape.
+- No proxy variable reaches helm (deviation 4); the owner may want `HTTPS_PROXY`/`NO_PROXY` passed when they hold no userinfo.
+- A cache inside the scanned tree is not trusted (deviation 5); the owner may prefer a user-level default cache.
+- Scheme-less OCI chart sources stay opaque (deviation 9).
+- Absent `optional` Flux values are opaque (deviation 13).
+- Unreferenced Kustomize roots are built but not graphed (deviation 12).
+
+### Files touched outside U3, U4 and U9
+`src/u1-graph-model/limits.ts` (the render limits; `renderedDocumentBytes`), `src/u2-intake-config/bounded-reader.ts` (`readBytes`, with `readText` on top of it), `src/u2-intake-config/tree-walk.ts` (`entryKind`), `src/u8-output/report-model.ts`, `report-assembler.ts`, `json-renderer.ts`, `text-renderer.ts` (toolchain, tool missing, floating, undeployed roots, the helm not-modelled line), their tests and the thin-slice tests and expected output, `test/helpers/scan.ts` (`run` takes the tool PATH, default none), `docs/limits.md`, `docs/lookups.md`, `package.json` (`verify:live`). Nothing in U5, U6 or U7.
+
+### Unverified
+- Linux, x64 and other Node versions were not run; the fake tools need `#!/usr/bin/env node` on the child PATH.
+- Real helm's wording for 401, 403, 404 and rate limits was not observed (the fake helm's messages stand in); the classifier falls back to "helm pull exited with an error".
+- helm follows redirects itself (OD-29) and a host name may resolve to a private address (DNS rebinding): stated limits, not tested.
+- A run killed with SIGKILL leaves its private directory; no test kills crankpath mid-run.
+- Fidelity: Flux post-build substitution against drone/envsubst, Flux's generated kustomization against the recursive plain read, and Argo CD's kustomize build options from `argocd-cm` (invisible to crankpath) were not compared with a live controller.
+- No test races the file system while a chart or kustomization is copied.
+
+## B2 review fixes (review `reviews/bolt-2-review.md`: 4 Major, 7 Minor, 2 Nit)
+
+`bolt/b0` (B0 with both review passes) was merged into this branch first (`28dcbbb`), because M4 builds on B0's reader budget; B1's per-run budget (`run-limits.ts`, `stringLeaves`) arrives with the merge of `main`, as the lead said. In the merge, two literals of a B1 test (`test/u2-intake-config/config-reader.test.ts`) are built at run time so B0's new home-relative check-tree rule does not flag them.
+
+### Built
+- **M1** `go-keys.ts`: keys fold as Go's encoding/json folds them (per character, to lower then upper case, so `Resources`, `RESOURCES` and `reſources` all match `resources`). A kustomization must hold only the exact field names of kustomize v5.8.1's `Kustomization` (plus `apiVersion`, `kind`): a case variant or an unknown key is `unsupported-field` naming the key, and so is a case variant of `path`, `files`, `envs` or `env` inside `patches`, `patchesJson6902`, `replacements`, `openapi`, `configMapGenerator`, `secretGenerator`. In Chart.yaml, Chart.lock, requirements.yaml and requirements.lock a case variant of a chart, lock or dependency field is `unsupported-field`; `dependencies` that is not a list is refused; every dependency repository is an in-root `file://` directory or passes the URL guard (an absolute `file:///` path is outside the root). YAML anchors and merge keys were already resolved by the reader; the anchor key itself (`x-anchor`) is now an unknown kustomization key.
+- **M2** requirements.yaml and requirements.lock are pre-read with Chart.yaml and Chart.lock's rules; a requirements.yaml dependency that is not vendored needs `helm dependency build` as a Chart.yaml one does.
+- **M3** `--skip-schema-validation` is always passed; the helm not-modelled line now says values are not checked against `values.schema.json`.
+- **M4** a new derived limit `lexemesPerRender` (3,221,822): `lexemesPerFile`'s derivation with the output text's reserve (3 x `renderStdoutBytes`) in place of the file's; every lexeme of every document of one render's output counts (`parseYamlCounted`, an additive export of the reader); a hit is `limit` ("its output is over the parse budget of one render") with no object kept. Measured again: the two node-dense shapes that took 210 to 345 s now stop in 2.2 and 4.5 s (peak 0.7 and 1.5 GB) (`docs/limits.md`).
+- **m1** a Secret keeps only `apiVersion`, `kind`, `metadata` (name, namespace, generateName, labels, annotations without last-applied, ownerReferences, finalizers), `type` and `immutable`, spelled exactly: `Data`, `StringData` and any other key are dropped. Every `<Kind>List` with `items` is expanded like `List` (rendered-set builder, discovery, output counting, substitution, the Flux object index).
+- **m2** `template-scan.ts`: the actions of every file under a chart's `templates/` are scanned for helm's random and time functions and certificate generators, and for `getHostByName`. A chart using a random function is rendered twice: object names that differ make the source opaque `render-failed` ("its output is not deterministic"), names that agree keep the render and add a floating entry naming the functions. `getHostByName` under `--no-network` is `offline` and helm is not run; with the network it is a floating entry. Archived subcharts are not scanned (stated).
+- **m3** the cache root gets a `.gitignore` of `*` when crankpath first uses it; run directories of processes that are gone are removed when a run starts; a child stopped by SIGINT or SIGTERM (a terminal's interrupt reaches the whole process group) ends the run with exit 130 or 143 and "interrupted; no report is written", the private directory removed; a signal to crankpath alone is handled when the running command returns (the pipeline is synchronous), by the same cleanup.
+- **m4** pre-reads read crankpath's private copy: each kustomization file is copied and parsed from the copy, a chart directory is copied before its dependency files are parsed; paths are still judged on the original with lstat only. `PrivateTree` replaces `copyDirs`.
+- **m5** the redundant Chart.lock symlink branch is gone; the copy refuses the link and names it, and a test asserts that mark.
+- **m6** twenty hostile sources in `test/fixtures/render/hostile/` (the reviewer's h1 to h7 and k forms written again without any path of the reviewer's machine), in the fake-tool test and the live lane; the live lane runs them with a loopback listener (a separate process) the hostile URLs point at and a logging `git` first on PATH, and fails if either is reached or the exec function runs.
+- **m7** exact versions compare without helm's leading `v` (and cache under the version without it); an OCI pull accepts the one directory helm made, whatever the chart calls itself.
+- **n1** a test pins that an over-cap result keeps neither stream.
+
+### Verified
+- `npm run verify` on 2026-11-15, exit 0:
+  ```
+  Checked 105 files in 46ms. No fixes applied.
+   Test Files  37 passed (37)
+        Tests  654 passed (654)
+  Statements   : 91.54% ( 3279/3582 )
+  Branches     : 82.7% ( 2434/2943 )
+  Functions    : 95.84% ( 438/457 )
+  Lines        : 93.36% ( 2843/3045 )
+  check-tree: 227 files read, 0 finding(s)
+  ```
+- `npm run verify:live` on 2026-11-15 (helm v4.3.2, kustomize v5.8.1, network up), exit 0: 6 passed, 0 failed, 0 skipped. Hostile line: every one of the 20 sources as expected (`bomb` and `random` `render-failed`, `exec-generator` `render-failed`, `schema-ref` and `lookup` rendered, `lookup-host` `offline`, the rest refused before any tool), "loopback requests: 0; git calls: 0; exec function ran: no". With `--skip-schema-validation` removed from the code for one run, the same lane printed "loopback requests: 1" and FAIL, so the listener can see a fetch.
+- **Seen red before the fix**: M1, M2, M3, m4, m5, m7 (23 tests of `test/u4-render-engine/review-b2-preread.test.ts` failed against the pre-fix code; the anchor cases and n1 passed, as the review found those sound), M4 (3 of `review-b2-parse-budget.test.ts`), m1 (1).
+- **Written with the fix, then shown able to fail by mutation** (`b2-tmp/mutate2.py`, outside the repository, each mutation applied, the test file run, restored): m2 ids not compared (1 red), no template scan (3), m3 no `.gitignore` (1), no stale removal (1), interrupt swallowed (2), m1 `SecretList` not expanded (1), M1 kustomize case variants allowed (first green, because the exact-key allowlist also refuses them; the test now also pins the detail, then 6 red), helm dependency case variants allowed (2), requirements.yaml not read (4), M4 lexemes not counted (1), m4 pre-read of the original (1), m7 `v` not normalised (1).
+
+### Decisions (the lead's, and mine where the lead left the choice)
+- M1: refuse case variants and unknown kustomization keys rather than lower-case lookups (the lead's preferred form); Chart.yaml's unknown keys stay allowed (helm ignores them), only case variants of its fields are refused.
+- m2: render twice only when a template uses one of the functions (cheap), opaque when names differ, a floating entry otherwise; `getHostByName` treated as network.
+- M3: always skip schema validation (the trade-off: a chart whose values break its own schema renders here though helm install would refuse it; stated in the not-modelled line).
+- n2 (a grandchild holding the pipes past the wall clock) is not fixed: `spawnSync` cannot kill a process group; with remote bases refused before kustomize runs and plugins disabled, neither tool is left a reason to start a grandchild. Stated.
+
+### What changes in meaning
+- New outcomes: `unsupported-field` for case-variant or unknown keys in kustomizations and for case variants in chart dependency files; `limit` "over the parse budget of one render"; `render-failed` "not deterministic"; `offline` for `getHostByName` under `--no-network`; exit 130 or 143 on an interrupt.
+- New floating entries (field `chart templates`) for charts using random, time or lookup functions; the claim "byte-identical JSON across runs" now holds because charts whose object names vary are opaque, and the floating list names the charts whose content may vary.
+- A Secret body keeps fewer fields; `<Kind>List` items are objects now (they were skipped or kept whole).
+- The B2 "cost at the limits" owner item is withdrawn: the parse is bounded now (M4).
+- `.crankpath` gains a `.gitignore`; stale run directories of dead processes are removed.
+
+## B2 merge of `main` (B0 `82c9a27`, B1 `df1724c`, B4 `23e6f95`)
+
+### How it was merged
+`main` holds B0, B1 and (by the time of the merge) B4 as squash commits, which share no history with this branch beyond the design commit, so a direct merge conflicted on every file both sides add. `bolt/b1` (whose tree is `main` at `df1724c`) and then `bolt/b4` (whose tree is `main` at `23e6f95`: `git diff bolt/b4 main` is empty) share history with this branch from `9ac9590`, so they were merged in turn (`650b815`, then the B4 merge, its conflicts resolved file by file against `df1724c` as the base, since B4 and this branch both start from B1's content there), and `main` was then recorded as merged with the `ours` strategy (no content of its own to add). Every file this branch had not changed since B0 or B1 takes `main`'s version; the rest were merged by hand: `limits.ts` (B0's final derivations with the render limits), `render-job.ts` (`notes` with B1's `stringLeaves`), `plain-renderer.ts` (through `buildSet`, which now carries `stringLeaves`), `rendered-set-builder.ts` (B1's test-hook option with B2's Secret, list and namespace changes), `report-assembler.ts`, `text-renderer.ts`, `cli-shell.ts` (B1's top-level guard and streamed output with B2's toolchain, cache flags and interrupt), `cli.ts`, `pipeline-runner.ts` (B1's labels, budget, `.json` wording and edge cap with B2's work directory, runtime, Flux index, reference edges, Kustomize roots and diagnostics), and BUILD-NOTES (B0 and B1 sections first, from `main`, then B2's).
+
+### Built
+- **`lexemesPerRender` re-derived** with B0's final figures: (2,500,000,000 - 45 MiB - 3 x `renderStdoutBytes`) / 937 = **2,282,007** (was 3,221,822 with 44 MiB and 664). The output's lexemes are now counted before any document is parsed (B0's `countLexemes`), so output over the budget is refused without a syntax tree.
+- **Renders charged to B1's run budget** (the note for B2 in `docs/limits.md`): before a render's output is parsed its transient (lexemes x 937 + bytes x 3) must fit in what the run has not yet held (`RunBudget.fitsRenderTransient`); after the parse its bytes are held at `perFileByte` (`RunBudget.render`); then its objects and their string values are charged as B1 charges them. A refusal at any of the three is a refused job, counted (`runLimitJobs`, which makes the counts a floor), with the owner opaque `limit` ("the run's memory budget was reached") and nothing of the render in the graph. `buildSet` passes `stringLeaves` from `buildObjects`.
+- **`dropTestHooks`** is true for Helm renders only (Kustomize, plain and Flux directory renders keep an object annotated as a Helm test, as B1 does for plain sources).
+- `assembleReport`'s B2 inputs (toolchain, floating, undeployed roots, helm rendered) are optional with neutral defaults, so a report assembled without a run (B1's tests) needs none.
+- One B1 test (`review-b1.test.ts`, the streamed-JSON test) now passes `toolPath: ""`, so the toolchain in the thin slice's expected output holds on every machine.
+- **B4's FluxExtractor owns the reference edges** of a Flux source to its values ConfigMaps and Secrets (FR4.2), on every source whether it renders or not; the pipeline no longer adds the planner's own copies (the planner's `references` stay data, asserted by its tests). One difference in meaning: B4 makes no edge for an entry marked `optional: true`, while the planner still makes such a source opaque `cluster-created-values` when the object is not in the repository.
+
+### Verified
+- `npm run verify` on 2026-11-15 after both merges, exit 0:
+  ```
+  Checked 133 files in 56ms. No fixes applied.
+   Test Files  50 passed (50)
+        Tests  996 passed (996)
+  Statements   : 93.04% ( 4189/4502 )
+  Branches     : 85.69% ( 3180/3711 )
+  Functions    : 96.88% ( 528/545 )
+  Lines        : 94.75% ( 3633/3834 )
+  check-tree: 292 files read, 0 finding(s)
+  ```
+- `npm run verify:live` on 2026-11-15 after both merges, exit 0: 6 passed, 0 failed, 0 skipped; the render fixture now gives 18 nodes and 23 edges with the real tools and with the recorded output alike (B4's extractors add edges); all 20 hostile sources as expected, "loopback requests: 0; git calls: 0; exec function ran: no"; vault-helm 0.34.1: 27 nodes, 38 edges, 0 opaque, the same from the cache with `--no-network`.
+- `node scripts/measure-renders.mjs ...` rerun (output in `docs/limits.md`): real renders 46 to 254 ms; every synthetic output at the cap ends within about 3 s and 0.56 GB.
+- New tests (`test/u9-cli-package/review-b2-run-budget.test.ts`): the budget is asked with the output's lexemes and bytes before the parse and its bytes held after; either refusal is a `limit` with no object; with a run budget of 800,000 bytes the two Helm renders of the render fixture are refused (counted, 2 jobs) and the Kustomize render is kept, and with the derived budget nothing is refused; a Helm-test-annotated object survives a Kustomize render and is dropped from a Helm one.
+
+### What changes in meaning
+- A render can now be opaque `limit` "the run's memory budget was reached" (counted in `runLimitJobs`, a floor) when the run's budget cannot hold its parse, its bytes or its objects.
+- Output between 2,282,007 and 3,221,822 lexemes, accepted before, is now a `limit`.
+- An object annotated as a Helm test is kept in a Kustomize or directory render (it was dropped in B2 before the merge).
+
+## B2 merge of `main` (B5 `0a2e479`)
+
+`main` already had this branch's earlier `ours` merge as an ancestor, so B5 merged directly (`02db6a9`). Conflicts resolved by hand: `pipeline-runner.ts` (B5's repo-alias resolution and used mappings moved into `runWith`, beside B2's work directory and runtime), `text-renderer.ts` (both sides' sections), the thin slice's `expected.json` (both sides' fields); duplicate imports removed. Every other file takes `main`'s version or merged cleanly.
+
+## B2 review fixes, second pass (review `reviews/bolt-2-review-pass-2.md`: 3 Major, 4 Minor, 3 Nit; lead decisions of 2026-11-15)
+
+### Built
+- **M1** `kustomize-renderer.ts`: every entry of `resources`, `bases`, `components`, `configurations`, `crds`, `generators`, `transformers`, `validators` and `patchesStrategicMerge` is judged, whatever its YAML form. An entry that is not a plain one-line string (a block or folded scalar, a multi-line quoted string, a map, a number, any control character) is `unsupported-field` "an entry that is not a plain relative path", before kustomize runs; only an inline patch in `patchesStrategicMerge` (YAML text, never fetched) is skipped. New hostile source `kustomize/block-generator` (the review's repro written again).
+- **M1, defence in depth** `command-runner.ts`: the child's `PATH` is crankpath's empty private directory (`homes.empty`), not the tool's directory: helm and kustomize are started by absolute path, and neither finds `git` (or anything else) to start. `buildChildEnv` takes the homes only.
+- **M2** no signal handler: SIGINT and SIGTERM end crankpath at once (the default action, no exit 130 or 143, no "interrupted" message; `Interrupted` is gone). The stale-run sweep at the next start removes the private directory left under the cache's `tmp/`. Stated in `--help` ("Signals: ...") and in `docs/limits.md`.
+- **M3** `template-scan.ts` is removed. Every Helm job is rendered twice with the same arguments: a second render that fails, times out or is refused is reported as such (`... (second render)`, or the timeout) (m2); object ids that differ make the source `render-failed` "its output is not deterministic: object names differ between two renders"; the same ids with other content keep the first render with a floating entry `helm template: content differs between two renders`. The second render's parse transient is asked of the run's budget; its output is not held (`finishOutput(..., { hold: false })`). `getHostByName` is no longer `offline`: the helm not-modelled line says a template may resolve host names even under `--no-network`.
+- **m1** `url-guard.ts`: the host is judged as DNS sees it, lower case and punycode (the URL parser's; `oci://` is parsed as `https://`) with trailing dots removed, so `localhost.`, `LOCALHOST.` and `127.0.0.1.` are refused, and helm is given the normalised host. The not-modelled line and `docs/limits.md` (OD-29) state that helm follows a repository's redirects and that a host is checked by name, not by the address it resolves to.
+- **m3** `work-dir.ts`: the cache root's `.gitignore` is written only into a directory crankpath creates; an existing directory is left as it is.
+- **m3b** each listed survivor now has a test: non-string `repository`, scp-style remote, EPERM treated as alive, `ip6-localhost`, `file://` symlink dependency, run-budget refusal counting (transient, render, objects) and hold, plus the M1 newline path and the single-process signal path (`test/u4-render-engine/review-b2-pass2.test.ts`, `test/u9-cli-package/review-b2-cleanup.test.ts`). The template-scan survivors are moot (scan removed).
+- **Fake tools** are generated at run time in a temporary directory (`fakeDir(variant)`, a `#!<node>` wrapper importing `fake-tool.mjs`), so no committed wrapper holds a path of this machine; the committed `test/fixtures/fake-tools/{tested,untested,garbled}/` wrappers are deleted. `fake-tool.mjs` gains modes `spawn-git`, `random`, `random-content`, `second-fails`, `second-sleeps`.
+- **Live lane** check 3b "no git for the tools, even past a pre-read": kustomize run directly through the built runner on `resources: - https://127.0.0.1:1/org/repo.git//base?ref=main` (which real kustomize v5.8.1 fetches with `git init`), crankpath's own `PATH` holding a logging `git`; the check fails if `git` is called. The hostile check now has 21 sources.
+- `scripts/measure-renders.mjs` follows the new `buildChildEnv` signature.
+
+### Verified
+- `npm run verify` on 2026-11-15, exit 0:
+  ```
+  Checked 152 files in 139ms. No fixes applied.
+   Test Files  65 passed (65)
+        Tests  1184 passed (1184)
+  Statements   : 93.96% ( 5000/5321 )
+  Branches     : 86.45% ( 3709/4290 )
+  Functions    : 97.35% ( 698/717 )
+  Lines        : 95.58% ( 4289/4487 )
+  check-tree: 311 files read, 0 finding(s)
+  ```
+- `npm run verify:live` on 2026-11-15 (helm v4.3.2, kustomize v5.8.1, network up), exit 0: 7 passed, 0 failed, 0 skipped. Render fixture 550 ms, 18 nodes, 23 edges, equal to the recorded output; hostile 790 ms, all 21 sources as expected (`block-generator` `unsupported-field`, `random` `render-failed` by the double render, `lookup-host` rendered), "loopback requests: 0; git calls: 0; exec function ran: no"; check 3b "git calls: 0"; vault-helm 0.34.1 1,062 ms, 27 nodes, 38 edges, 0 opaque, from the cache with `--no-network` 599 ms, same graph.
+- **Check 3b shown able to fail**: with the built runner changed to pass the parent's `PATH`, it printed "git calls: 1" and FAIL. (A first version set the parent `PATH` only after the runner's environment was built and stayed green under that mutation; it was fixed before this record.)
+- **Red without the fix**: each fix was taken back in turn (the mutations below revert it), and its tests turned red; the fixes were not first committed separately, so no pre-fix commit was run.
+- **Mutations** (`b2-tmp/mutate.py`, outside the repository; each applied, the test files run, restored), all red: entries' plain check removed (1), non-string entries treated as plain (1), child PATH inherited (2), ids not compared (1), digests not compared (1), second-render failure not named (1), second render held (2), trailing dot kept (4), `.gitignore` into an existing directory (1), signal handlers re-added (2), non-string repository allowed (1), scp form not remote (1), EPERM as dead (1), `ip6-localhost` allowed (1), symlink dependency as `render-failed` (1), refused transient, render and objects not counted (2, 1, 1; objects was green until a test was added), output not held (3). One mutation is equivalent and was resolved by deleting the code: lower-casing the host in the guard is the URL parser's own work (oci is parsed as https), so the redundant `toLowerCase()` was removed.
+
+### Decisions (the lead's, and mine where the lead left the choice)
+- M1: one rule for every list, "plain one-line relative path in the root or refused", rather than reading each line of a multi-line entry; empty child `PATH` as defence in depth (the lead's).
+- M2: no handlers, default termination, next-run sweep (the lead's). The pipeline is synchronous, so a handler could only act after the running child returned, which was the defect.
+- M3: render every Helm job twice and compare canonical ids (the lead's); the second render's output is parsed and charged as a transient only.
+- n1 (an `optional: true` Flux values object in the repo gets no ordering edge): not fixed here; the edge belongs to B4's Flux extractor, which owns those edges since the merge of `main`. Left for that owner; the graph loses no edge `main` had.
+- n2 (a Secret keeps annotation values): not fixed. Annotations are metadata, not data, never printed, and their values are read by extractors (an Argo CD `sync-wave` on a Secret orders it); dropping the values would lose real ordering.
+- n3: nothing to do (the review confirms the cost line).
+- n2 of the first pass (a grandchild holding the pipes) is now further out of reach: neither tool can find `git` on its `PATH`.
+
+### What changes in meaning
+- Every Helm source is rendered twice; a Helm source whose object names vary is `render-failed` "not deterministic" whatever functions its templates use (archived subcharts and `tpl` included); a floating entry `helm template: content differs between two renders` replaces the `chart templates` entries; a failing second render is reported as itself. One Helm source can take up to 2 x `renderWallClock`.
+- `getHostByName` under `--no-network` is no longer `offline`; the not-modelled line says helm may resolve it, follows redirects, and that hosts are checked by name.
+- SIGINT or SIGTERM ends crankpath with the signal (no exit 130 or 143, no message); the next run removes what it left.
+- A kustomization entry that is not a plain one-line path is `unsupported-field`; the child's `PATH` is empty.
+- Hosts are judged without a trailing dot, so `localhost.` and `127.0.0.1.` are refused, and helm gets the normalised URL.
+- `.crankpath` gets a `.gitignore` only when crankpath creates it.
+
+## B2 review fixes, third pass (review `reviews/bolt-2-review-pass-3.md`: 1 Major, 7 Minor, 2 Nit; lead decisions of 2026-11-15)
+
+### Built
+- **M1** `kustomize-renderer.ts`: every file kustomize loads as configuration (an entry of `generators`, `transformers`, `validators` or `configurations` that is a file, and a `replacements` path) is read from the private copy after the copy is made. It is `unsupported-field` when any string value anywhere in it contains `://` or starts with `//` ("a kustomize configuration file names a URL (kustomize would fetch it)"), or when a value under a path key (`path`, `paths`, `files`, `envs`, `env`, matched as Go folds keys) is not a plain relative path in or below the kustomization's directory ("... names a path that is not a plain relative path"). `path` and `env` must be one string and the plural keys a list; a `files` entry is judged after its `key=`. The rule is the lead's: kustomize never receives a configuration document that names a URL, with no per-kind key list. Two new hostile sources, `plugin-transformer` (a PatchTransformer whose `path` is a loopback URL) and `plugin-generator` (a ConfigMapGenerator whose `envs` holds one), both written again from the review's repros.
+- **M1, defence in depth** `command-runner.ts`: `helm template` and `kustomize build` (allowlist entries marked `closedProxy`) run with `HTTP_PROXY`, `HTTPS_PROXY` and `ALL_PROXY` set to `CLOSED_PROXY` = `http://127.0.0.1:1` and `NO_PROXY` empty; `helm pull`, `helm dependency build` and both `version` commands get none. Go does not send a request for a loopback address through a proxy, so loopback URLs are covered only by the pre-reads (stated in `docs/limits.md`; the live lane's listener shows those hold).
+- **m1** `template-scan.ts` is back, as a flag only: the random, time and certificate functions and `getHostByName` found in a chart's templates are floating entries (`chart templates`), and helm renders either way (`getHostByName` is not `offline`). The double render stays the guard. The limit is stated plainly in `docs/limits.md` and the helm not-modelled line: two renders cannot prove the output never varies, so Helm output is not claimed byte-identical.
+- **m2** `--help` and `docs/limits.md`: a helm or kustomize crankpath is running is not stopped by a signal to crankpath alone, runs on with no time limit, and the next run using the same cache may remove its directory; Ctrl-C in a terminal reaches it too.
+- **m3** `work-dir.ts`: an existing cache root named `.crankpath` with no `.gitignore` gets one (`*`); one already there is never overwritten; any other existing directory is still left alone.
+- **m4** `helm-renderer.ts`: a second render that fails, times out, goes over a cap, cannot start, or whose output cannot be read keeps the first render, with the note `helm template: determinism not checked: second render <outcome>` (`exited with an error`, `timed out`, `over cap`, `could not start`, or `not read (<detail>)`). The second parse asks the run's budget as a comparison: `RunBudget.fitsRenderTransient(cost, false)` refuses without counting a refused job (`RenderRuntime.admitOutput` takes a `comparison` flag).
+- **m6** `toolchain.ts`: when a tool's version command does not succeed, `ToolVersion.problem` is `script` (the file starts with `#!`) or `failed`. The text toolchain line and `--version` name it: "a script that did not run: tools run with an empty PATH, so a wrapper that looks a program up on PATH fails; give crankpath the real binary", or "its version command failed; tools run with an empty PATH". The report carries it as `toolchain.problems` (text only; the JSON is unchanged). One README line says the tools must be real binaries.
+- **m7** a file entry of a kustomization outside its directory is `render-failed` "an entry names a file outside its kustomization's directory (kustomize loads files only in or below it)", naming the field, before kustomize runs (real kustomize v5.8.1 refuses that shape with `LoadRestrictionsRootOnly`, so this names the cause and changes no outcome). A base directory outside is still a kustomization of its own and allowed. A symlink that fails the copy of a kustomization directory is named: "a symlink in its directory is never followed (the directory is copied whole), so kustomize was not run", with the symlink's path as the value.
+- **m5** one test per list and key `entries()` judges (`replacements`, `openapi`, `patchesJson6902`, `patches`, `secretGenerator`, `configMapGenerator` `files`, `envs`, `env`), the `openapi` case-variant key, the `key=path` split, a missing patch or strategic-merge file left to kustomize, a strategic-merge directory never queued as a base, an empty entry refused, and the first render's objects returned when content differs (`count-content` fake mode).
+- Live lane: 23 hostile sources, and a new check 3c "the render commands' HTTP goes to a closed proxy": kustomize run through the built runner on a `https://example.org/...` resource must stop at `proxyconnect tcp: dial tcp 127.0.0.1:1` (no network needed). Fake tool modes `proxy-env` and `count-content`.
+
+### Verified
+- **Red first**: the new `test/u4-render-engine/review-b2-pass3.test.ts` ran against the pass-2 tip's code before any fix: 36 of 54 failed (the 18 that passed are the m5 pins of code that was already right, which only a mutation can show able to fail).
+- `npm run verify` on 2026-11-15, exit 0:
+  ```
+  Checked 154 files in 80ms. No fixes applied.
+   Test Files  66 passed (66)
+        Tests  1242 passed (1242)
+  Statements   : 94.15% ( 5110/5427 )
+  Branches     : 86.77% ( 3806/4386 )
+  Functions    : 97.93% ( 710/725 )
+  Lines        : 95.8% ( 4380/4572 )
+  check-tree: 322 files read, 0 finding(s)
+  ```
+- `npm run verify:live` on 2026-11-15 (helm v4.3.2, kustomize v5.8.1, network up), exit 0: 8 passed, 0 failed, 0 skipped. Render fixture 416 ms, 18 nodes, 23 edges, equal to the recorded output. Hostile 651 ms, all 23 as expected (`plugin-transformer` and `plugin-generator` `unsupported-field`), "loopback requests: 0; git calls: 0; exec function ran: no". Check 3b "git calls: 0". Check 3c "stopped at the closed proxy: yes". vault-helm 0.34.1: 1,031 ms, 27 nodes, 38 edges, 0 opaque; from the cache with `--no-network`: 462 ms, same graph.
+- **The live checks can fail**: with the built configuration-file scan switched off, the hostile check printed `plugin-transformer=none plugin-generator=none`, "loopback requests: 2", FAIL (real kustomize fetched both URLs and used the listener's reply). With the built runner's proxy switched off, check 3c printed "stopped at the closed proxy: no", FAIL; that run made one GET to example.org, recorded in `docs/lookups.md` with the manual probe.
+- **Mutations**: the review's harness, pointed at this worktree (`b2-tmp/mut3.py`, outside the repository), plus 52 mutations of the pass-3 code. Every one of the review's 12 survivors is red. Every pass-3 mutation is red, after three changes: a test for a configuration path outside the directory, and two for the comparison flag (the flag's value at the renderer, and a pipeline run at a budget of 1,100,000 bytes where the last comparison parse is refused and no job is counted). The configuration scan's symlink check could never be reached (the directory is copied whole, and a symlink fails the copy first), so it was removed. Mutations that did not compile were rewritten until they did, so none counts as red because the build failed. Still surviving, as the review found: `HEXISH_IPV4` and the zero-width part of `UNSAFE` (the URL parser already rewrites or refuses those forms). A test now pins `localhost..`, so a second trailing dot is red.
+- One run of the full suite (before the verify above) had B1's closed-pipe test (`review-b1-pass2.test.ts`, "exits 1 with nothing on stderr when the reader closes standard output early") fail once. Seven further runs of it passed. It does not touch B2's code paths, and it is left for B1's owner as a possible timing race.
+
+### Decisions (the lead's, and mine where the lead left the choice)
+- M1 scope: "any other in-root file a kustomization points kustomize at" is read here as any file kustomize loads as configuration that can name further files to load (generator, transformer, validator and transformer-configuration files, replacement files). Resources, patches, generator data files (`files`, `envs`), CRDs and OpenAPI schemas are loaded as content, and kustomize never fetches a string in them. A URL there is ordinary data (annotations, CRD descriptions, ConfigMap values), and refusing it would make normal estates opaque. A `configurations` fieldSpec `path` (`metadata/labels`) passes the path rule because it is a plain relative path.
+- The proxy port is 1: a privileged port on loopback that nothing serves. No port is guaranteed closed, so the live check asserts the refusal it saw.
+- m4: the kept first render is not counted as a timeout (the source rendered). The note says what happened.
+- m6: the cause is kept out of the JSON (a schema change during B6's output work would conflict). The text line and `--version` carry it.
+- n1 (a one-line inline strategic-merge patch containing `://` is a false `remote-base`): not fixed. It fails closed, and an inline patch is almost always multi-line (skipped, as before). n2: nothing needed, as the review says.
+
+### What changes in meaning
+- A kustomization whose generator, transformer, validator, transformer-configuration or replacement file names a URL, or has a path key that is not plain and in its directory, is `unsupported-field` before kustomize runs (it was rendered, and kustomize fetched the URL).
+- A file entry outside its kustomization's directory is `render-failed` with its cause named, before kustomize runs (it was the same reason, with kustomize's error unnamed). A symlink in a copied directory is named.
+- `helm template` and `kustomize build` see a closed proxy.
+- A Helm source whose second render does not finish keeps its objects, with a "determinism not checked" note (it was opaque). The `chart templates` floating entries are back as flags.
+- `.crankpath` committed in a repository gets a `.gitignore` when it has none.
+- The toolchain line and `--version` say why a tool's version was not read when its command failed.
+- `--help`, `docs/limits.md` and the not-modelled line no longer suggest a signal stops a running tool, or that two renders prove determinism.
+
+## B2 merge of `main` (B6 `1df4b0a`)
+
+`main`'s earlier tip (B5) was already an ancestor, so B6 merged directly. Conflicts resolved by hand:
+- `BUILD-NOTES.md`: `main`'s sections (B0 to B6) first, then every B2 section unchanged.
+- `report-model.ts` and `report-assembler.ts`: both sides' fields (B2's `floating`, `undeployedKustomizeRoots`, `toolMissing`; B6's `controllerMatches`).
+- `cli-shell.ts`: B2's real `--version` (B6's placeholder `versionText()` dropped), B6's `--explain` text and `--no-color`, B2's `--no-network` and `--cache-dir` texts, and help ending with B6's path-order lines, then B2's signals paragraph. That paragraph is now wrapped at 80 columns.
+- `cli.ts`: B2's `toolPath` with B6's `isTTY` and `NO_COLOR`.
+- `pipeline-runner.ts`: B6's controller-signature import (B2's `assembleReport` import kept).
+- `test/fixtures/thin-slice/expected.txt`: B6's layout.
+
+### Integration with the frozen schema (the B6 hand-over note)
+- `schemas/crankpath-report.schema.json` gains B2's report fields: `toolchain.testedPair` (`helm`, `kustomize`), `toolchain.missing` and `toolchain.unrecognised` (tool words), `floating[]` (`node`, `field`, `value`, `resolved`), `undeployedKustomizeRoots[]`, and `toolMissing` (`helm`, `kustomize`). Every object has `additionalProperties: false` and every field is required, as B6 froze them. They are additive only, so `schemaVersion` stays 1.
+- The field golden (`test/fixtures/schema/report-fields.golden.json`) gains the 18 new paths. It was written by `schemaFields` from the schema, with a check that no existing path changed type. `docs/json-output.md` was regenerated with `node scripts/json-output-doc.mjs`, and its prose names B2's additions. `toolchain.problems` (pass 3, m6) stays out of the JSON, as decided.
+
+### Expected outputs re-checked by hand at 80 columns
+- `test/fixtures/thin-slice/expected.txt`, three edits.
+  - The toolchain line is B2's: `toolchain: helm not found on PATH, kustomize not found on PATH`, 62 columns, no wrap.
+  - The floating section now goes through B6's layout: `Floating revisions: 1 (... a rerun may read or` / `    render other content)`.
+  - The floating entry is now `  floating 1 of 1  node: Application "argocd/gitea"` / `      field: "spec.source.targetRevision"  value: "main"`. Each continuation is the line's indentation plus four, the break falls at a run of spaces outside quotes and not after a label, and the field name is quoted as B6's `fieldText` quotes it.
+  - The one line over 80 columns (line 15, 87 columns) is `main`'s, a quoted hostile value that is never cut.
+- Tests that asserted on whole B2 statements in the text (`render-e2e.test.ts`, the m6 test) now undo the wrap with B6's `unwrapText` or `flat`. The statements asserted are unchanged.
+- `b6-cli.test.ts`'s colour tests call `main` in process and now pass `toolPath: ""`: with B2 the toolchain line reads the real PATH, and the expected text is for no tools found.
+- The Mermaid text fence and `--explain` are B6's and carry no toolchain line. Not changed.
+
+## B1's closed-pipe test: the race and the fix (lead request after the B6 merge)
+
+- **What failed:** `review-b1-pass2.test.ts`, "exits 1 with nothing on stderr when the reader closes standard output early". It failed twice during B2's third pass: once in a full run, and once in the isolated run right after. It passed on every other run.
+- **Reproduction attempts with crankpath itself, none of them failing:**
+  - the test alone in a loop, 50 runs;
+  - 200 copies of it at once, while a full suite ran;
+  - 30 runs with 14 busy processes on 10 cores;
+  - a stress script of the same spawn, 800 runs at 10 to 12 at once;
+  - five full suites.
+
+  None of these failures were captured, so the failing output is not on record.
+- **The race, found one level down:** a plain Node child writing lines in a synchronous loop, with its standard output's reader closed on the first chunk (the test's own pattern). Out of 900 runs at 12 at once on this machine (macOS, Node v22.23.2), the first write error was not always `EPIPE`.
+  - Reader closed on the first chunk: `ENOTCONN` in 9 of 300 runs, `EPIPE` in the rest.
+  - Reader closed one turn later: `ENOTCONN` in 14 of 300.
+  - Reader closed on a timer: `EPIPE` in all 300.
+
+  macOS returns `ENOTCONN` when the write meets the reader's close part-way through. crankpath's handler (`cli.ts`, B1) treated only `EPIPE` as a gone reader and printed its internal-error line for anything else. That is exactly the test's failure mode: exit 1, but stderr not empty. So it was a product defect that a timing-dependent test showed now and then, not a defect in the test.
+- **Fix:** the handler treats `EPIPE` and `ENOTCONN` as a closed reader (exit 1, nothing printed). Every other code still prints the internal-error line. `ECONNRESET` was never seen and is not added.
+- **Deterministic test, written first:** each code (`EPIPE`, `ENOTCONN`, and `EIO` as the other case) is emitted on the built binary's standard output by an `--import` preload, after the run. So the real handler is exercised for every code on every run, whatever the timing. Before the fix, the `ENOTCONN` case failed with the internal-error line on stderr; the other two passed. The original spawned test is kept as it was: what it asserts is unchanged, and with the fix it can no longer meet an unhandled code.
+- **Verified after the B6 merge and this fix (2026-11-16):**
+  - `npm run verify` three times in a row, each exit 0: 78 files, 1382 tests; coverage 94.58% statements, 87.34% branches, 98.15% functions, 96.16% lines; check-tree 359 files read, 0 findings.
+  - `npm run verify:live` once, exit 0: 8 passed, 0 failed, 0 skipped. Hostile set: 23 sources as expected, loopback requests 0, git calls 0. Closed proxy: yes. vault-helm 0.34.1: 27 nodes, 38 edges, 0 opaque, the same from the cache with `--no-network`.
+
+## B2 review fixes, fourth pass (review `reviews/bolt-2-review-pass-4.md`: 1 Major, 2 Minor, 4 Nit; lead decisions of 2026-11-16)
+
+### Built
+- **M1** `yaml-shape.ts` (new, U4) reads a file's YAML tokens with the `yaml` library's lexer. It finds the first tag (`!!binary`, `!!str`, `!!set`, a custom `!tag`, a verbatim `!<...>`, a tag on a key, a tag after an anchor) or directive (`%TAG`, `%YAML`). It also finds the first quoted or plain scalar whose decoding could differ between crankpath's reader and kustomize's go-yaml: a double-quoted scalar with an escape or a line break, a single-quoted or plain scalar over more than one line. Block scalars are kept, top-level ones whose lines start at column 0 included. A `!` or `&` inside a value or a comment is not a tag, because the check reads tokens, not text.
+  - `kustomize-renderer.ts` refuses a kustomization file (every one the pre-read reaches, bases and components included) and every configuration file it judges as a whole, as `unsupported-field`, before kustomize runs. The detail is "a YAML tag (kustomize may decode the value otherwise than crankpath reads it)" or "a quoted or plain scalar with an escape or a line break (...)", with the file as the field and the token as the value.
+  - The check runs on the very text the reader parses (`PrivateTree.read` hands it over: one read of the private copy), and before the reader's own outcome, so a tag the reader refuses (`!!set`) is named too.
+- **m1** a test with the URL in the second document of a transformer file. The review's mutation (`read.documents.slice(0, 1)`) is now red.
+- **m2** one wording for both configuration-file refusals: "a kustomize configuration file names a URL or a non-plain path that kustomize may load; crankpath does not tell a literal from a path here". `docs/limits.md` lists both pre-reads as known false opaques: tags and scalar forms in any judged file, and literals with `://` or path-named keys in configuration files.
+- Hostile set: 26 sources. The three new ones are `tag-binary-patch` and `tag-binary-config` (the review's `h5src` `a-main`, `b-cfg`) and `tag-key` (`h6src`). The live lane re-encodes their base64 values with the listener's port.
+- **Nits:**
+  - n2: `docs/json-output.md` now says byte-identical output holds except for a Helm source whose renders vary, pointing to `docs/limits.md`. The table was regenerated with `node scripts/json-output-doc.mjs`.
+  - n4: the two `noCommaOperator` warnings are gone; `biome check` reports none.
+  - n1 (a `.gitignore` in `tmp/` and in each run directory) and n3 (80 columns counted in code points): recorded, not changed.
+
+### Verified
+- **Red first:** `test/u4-render-engine/review-b2-pass4.test.ts` against a `yamlShapeProblem` stub that finds nothing: 19 of 21 failed. The two that passed are the "keeps block scalars ..." test and the m1 multi-document test, which pins code that was already right; the mutation below shows it can fail.
+- `npm run verify` on 2026-11-16, exit 0:
+  ```
+  Checked 179 files in 98ms. No fixes applied.
+   Test Files  79 passed (79)
+        Tests  1403 passed (1403)
+  Statements   : 94.63% ( 5730/6055 )
+  Branches     : 87.47% ( 4176/4774 )
+  Functions    : 98.16% ( 804/819 )
+  Lines        : 96.2% ( 4893/5086 )
+  check-tree: 372 files read, 0 finding(s)
+  ```
+- `npm run verify:live` on 2026-11-16, exit 0: 8 passed, 0 failed, 0 skipped.
+  - Hostile set: all 26 sources as expected (`tag-binary-patch`, `tag-binary-config` and `tag-key` all `unsupported-field`); "loopback requests: 0; git calls: 0; exec function ran: no".
+  - Closed proxy: yes.
+  - vault-helm 0.34.1: 27 nodes, 38 edges, 0 opaque; the same from the cache with `--no-network`.
+- **The live check can fail:** with the tag test removed from the built `yaml-shape.js`, the hostile check printed `tag-binary-patch=none tag-binary-config=none tag-key=render-failed`, "loopback requests: 2", FAIL. Real kustomize decoded the `!!binary` paths and fetched them.
+- **Mutations** (`b2-tmp/mut4.py`, outside the repository), all red:
+  - the tag test, the directive test, the double-quoted escape and line-break tests, the single-quoted and plain line-break tests;
+  - the shape check off for kustomization files, and off for configuration files;
+  - only the first document of a configuration file judged (the review's m1);
+  - the read not handing its text over;
+  - block scalar lines judged. This one was green until a test with a top-level block scalar whose lines start at column 0 was added.
+
+### Decisions
+- Any tag at all is refused, `!!str` included, and a `%YAML` directive too (it changes how the text decodes), as the lead decided ("fail closed"). The scalar rule refuses only the forms whose decoding could differ: escapes and line folding. Block scalars stay, because inline strategic-merge patches are written as block scalars.
+- The configuration-file scan stays conservative (the lead's m2 decision). Its words now say so, and so does `docs/limits.md`.
+
+### What changes in meaning
+- A kustomization or configuration file with any YAML tag or directive, or with an escaped or multi-line quoted or plain scalar, is `unsupported-field` before kustomize runs. Before, it was judged on the reader's values, and kustomize could decode a tagged value into a URL and fetch it.
+- The configuration-file refusal's detail is new (one sentence for URLs and paths).

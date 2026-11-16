@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: platform-agent
+spec:
+  selector:
+    matchLabels:
+      app: platform-agent
+  template:
+    metadata:
+      labels:
+        app: platform-agent
+    spec:
+      containers:
+        - name: agent
+          image: registry.example.org/agent:1.0.0
+          envFrom:
+            - configMapRef:
+                name: platform-settings

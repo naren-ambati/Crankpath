@@ -16,6 +16,7 @@ import type { GapReason, SourceKind } from "../u1-graph-model/status-model.js";
 import { GAP_REASONS } from "../u1-graph-model/status-model.js";
 import { EDGE_WORDS, PRINTABLE_KINDS } from "../u1-graph-model/vocabulary.js";
 import type { NotComputed, PlanConflict } from "../u7-graph-analysis/analysis.js";
+import { TOOL_PROBLEM_WORDS } from "../u4-render-engine/toolchain.js";
 import type { EdgeRef } from "../u7-graph-analysis/cycle-finder.js";
 import type { NotStartableGroup, NotVerifiedItem, OpaqueEntry, Report } from "./report-model.js";
 import { wrapLines } from "./text-layout.js";
@@ -164,8 +165,48 @@ function header(r: Report, out: string[]): void {
   out.push(`crankpath ${r.toolchain.crankpath}`);
 }
 
-function toolchainLine(): string {
-  return "toolchain: helm not detected, kustomize not detected (this build runs neither tool)";
+function toolText(r: Report, tool: "helm" | "kustomize"): string {
+  if (r.toolchain.missing.includes(tool)) return `${tool} not found on PATH`;
+  const v = r.toolchain[tool];
+  if (v !== null) return `${tool} ${v}`;
+  const problem = r.toolchain.problems?.[tool];
+  return problem === undefined
+    ? `${tool} (version not recognised)`
+    : `${tool} (version not recognised: ${TOOL_PROBLEM_WORDS[problem]})`;
+}
+
+function toolchainLines(r: Report, out: string[]): void {
+  out.push(`toolchain: ${toolText(r, "helm")}, ${toolText(r, "kustomize")}`);
+  const present = (["helm", "kustomize"] as const).filter((t) => !r.toolchain.missing.includes(t));
+  const p = r.toolchain.testedPair;
+  const offPair = present.some((t) => r.toolchain[t] !== p[t]);
+  if (offPair) out.push(`  note: not the tested pair (helm ${p.helm}, kustomize ${p.kustomize}); rendering may differ`);
+}
+
+const TOOL_SOURCES = { helm: "Helm", kustomize: "Kustomize" } as const;
+
+function toolMissingLines(r: Report, out: string[]): void {
+  for (const tool of ["helm", "kustomize"] as const) {
+    const n = r.toolMissing[tool];
+    if (n === 0) continue;
+    out.push(
+      `${quote("tool missing:", tool, T)} (not found on PATH)  affected: ${n} ${TOOL_SOURCES[tool]} ${n === 1 ? "source" : "sources"} opaque, reason tool-missing`,
+    );
+  }
+}
+
+function floatingLines(r: Report, out: string[]): void {
+  if (r.floating.length === 0) return;
+  out.push("");
+  out.push(
+    `Floating revisions: ${r.floating.length} (a branch, tag, HEAD or version range: a rerun may read or render other content)`,
+  );
+  r.floating.forEach((f, i) => {
+    const resolved = f.resolved === null ? "" : `  ${quote("rendered version:", f.resolved, T)}`;
+    out.push(
+      `  floating ${i + 1} of ${r.floating.length}  node: ${nodeRef(f.node)}  ${fieldText(f.field)}  ${quote("value:", f.value, T)}${resolved}`,
+    );
+  });
 }
 
 export function scannedLine(r: Report): string {
@@ -224,6 +265,15 @@ function opacity(r: Report, out: string[]): void {
     `Opacity: ${least}${c.opaque} of ${plural(c.sourcesFound, "source", "sources")} opaque${shareText}; sources are Applications, ApplicationSets, Kustomizations, HelmReleases and Kustomize roots; ${extra.map((e) => `${e}; `).join("")}${plural(c.unreadableFiles, "file", "files")} unreadable.`,
   );
   out.push(`  ${foundLine(r)}`);
+  const u = r.undeployedKustomizeRoots;
+  if (u.length > 0) {
+    out.push(
+      `  ${plural(u.length, "Kustomize root", "Kustomize roots")} no source deploys: ${u.length === 1 ? "its" : "their"} objects are not in the graph (each is built on its own unless it is a component)`,
+    );
+    u.forEach((d, i) => {
+      out.push(`    undeployed ${i + 1} of ${u.length}  ${quote("Kustomize root:", d, T)}`);
+    });
+  }
   for (const m of r.repoMappings) {
     const how =
       m.from === "crankpath.yaml"
@@ -593,11 +643,13 @@ export function textLogicalLines(r: Report): string[] {
     nothingAnalysed(r, out);
     return out;
   }
-  out.push(toolchainLine());
+  toolchainLines(r, out);
   out.push(scannedLine(r));
   statusLines(r, out);
+  toolMissingLines(r, out);
   out.push("");
   opacity(r, out);
+  floatingLines(r, out);
   out.push("");
   cycles(r, out);
   out.push("");

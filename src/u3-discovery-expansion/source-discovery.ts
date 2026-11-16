@@ -2,7 +2,8 @@
 // tree walk and reader, classifies every YAML or JSON document by apiVersion and kind (Argo CD Application
 // and ApplicationSet, Flux Kustomization and HelmRelease) and every `kustomization.yaml` by its
 // name (a Kustomize root), expands `List` items, and counts every other file as ignored. A
-// document is never trusted for what it says about itself beyond those two fields.
+// document is never trusted for what it says about itself beyond those two fields. A Helm chart's
+// templates are not read as manifests.
 
 import type { DataValue } from "../u1-graph-model/extractor.js";
 import type { SourceKind } from "../u1-graph-model/status-model.js";
@@ -49,7 +50,7 @@ function documentHasSource(value: DataValue): boolean {
   const { apiVersion, kind } = value;
   if (typeof apiVersion === "string" && typeof kind === "string") {
     if (sourceKindOf(apiVersion, kind) !== null) return true;
-    if (kind === "List" && Array.isArray(value.items)) return value.items.some(documentHasSource);
+    if (kind.endsWith("List") && Array.isArray(value.items)) return value.items.some(documentHasSource);
   }
   return false;
 }
@@ -91,7 +92,23 @@ export function discover(io: DiscoveryIo): Discovery | { readonly failed: true }
     (r) => ({ path: r.path, outcome: r.outcome, reasonWord: r.reasonWord, detail: r.detail ?? null }),
   );
   let ignoredFiles = 0;
+  // A Helm chart's templates and vendored charts are not manifests (they are rendered, or are
+  // archives): files under `<chart>/templates/` and `<chart>/charts/` of a directory holding a
+  // `Chart.yaml` are counted as ignored, never parsed as YAML.
+  const chartDirs = new Set(walk.files.filter((f) => basename(f) === "Chart.yaml").map(dirname));
+  const inChartInternals = (file: string): boolean => {
+    for (let d = dirname(file); ; d = dirname(d)) {
+      const parent = dirname(d);
+      const name = basename(d);
+      if ((name === "templates" || name === "charts") && chartDirs.has(d === name ? "" : parent)) return true;
+      if (d === "") return false;
+    }
+  };
   for (const file of walk.files) {
+    if (inChartInternals(file)) {
+      ignoredFiles += 1;
+      continue;
+    }
     if (KUSTOMIZATION_FILES.has(basename(file))) {
       roots.add(dirname(file));
       continue;

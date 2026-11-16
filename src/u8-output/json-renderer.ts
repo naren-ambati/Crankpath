@@ -17,7 +17,18 @@ function project(report: Report): Json {
   return {
     schemaVersion: r.schemaVersion,
     repo: { url: r.repo.url, urlFrom: r.repo.urlFrom, commit: r.repo.commit, floating: r.repo.floating },
-    toolchain: { ...r.toolchain },
+    toolchain: {
+      crankpath: r.toolchain.crankpath,
+      helm: r.toolchain.helm,
+      kustomize: r.toolchain.kustomize,
+      tested: r.toolchain.tested,
+      testedPair: { ...r.toolchain.testedPair },
+      missing: [...r.toolchain.missing],
+      unrecognised: [...r.toolchain.unrecognised],
+    },
+    floating: r.floating.map((f) => ({ node: f.node, field: f.field, value: f.value, resolved: f.resolved })),
+    undeployedKustomizeRoots: [...r.undeployedKustomizeRoots],
+    toolMissing: { ...r.toolMissing },
     runStatus: {
       state: r.runStatus.state,
       reasons: [...r.runStatus.reasons],

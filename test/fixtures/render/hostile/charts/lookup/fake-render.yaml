@@ -1,0 +1,8 @@
+---
+# Source: lookup/templates/cm.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: lookup
+data:
+  found: "no"

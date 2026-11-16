@@ -3,6 +3,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { fakePath } from "../helpers/render.js";
 import { afterAll, describe, expect, it } from "vitest";
 import { app, estate, FIXTURE, run, tempDir, THIN_SLICE_URL } from "../helpers/scan.js";
 import { flat, unwrapText } from "../helpers/text.js";
@@ -77,12 +78,17 @@ describe("exit codes (BR9.3 to BR9.5)", () => {
 });
 
 describe("flags (C6, FR9.1)", () => {
-  it("prints the version and says the tools are not detected", () => {
+  it("prints the version and the helm and kustomize versions detected (BR9.2)", () => {
     const r = run(["--version"], process.cwd());
     expect(r.code).toBe(0);
-    expect(r.stdout).toBe(
-      "crankpath 0.1.0\nhelm: not detected (this build runs no helm)\nkustomize: not detected (this build runs no kustomize)\n",
+    expect(r.stdout).toBe("crankpath 0.1.0\nhelm: not found on PATH\nkustomize: not found on PATH\n");
+    expect(run(["--version"], process.cwd(), fakePath("tested")).stdout).toBe(
+      "crankpath 0.1.0\nhelm: v4.3.2 (tested)\nkustomize: v5.8.1 (tested)\n",
     );
+    expect(run(["--version"], process.cwd(), fakePath("untested")).stdout).toBe(
+      "crankpath 0.1.0\nhelm: v4.0.0 (not the tested v4.3.2)\nkustomize: v5.8.1 (tested)\n",
+    );
+    expect(run(["--version"], process.cwd(), fakePath("garbled")).stdout).toContain("helm: version not recognised\n");
   });
   it("refuses a flag whose stage arrives in a later build, instead of running without it", () => {
     for (const args of [["--rev", "abc"], ["https://example.org/x"]]) {

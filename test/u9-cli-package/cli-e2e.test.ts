@@ -24,7 +24,8 @@ function crankpath(args: string[]) {
   return spawnSync(process.execPath, [BIN, ...args], {
     cwd: ROOT,
     encoding: "utf8",
-    env: { PATH: process.env.PATH ?? "" },
+    // node only: helm and kustomize are not found, so the toolchain line is the same on every machine
+    env: { PATH: path.dirname(process.execPath) },
   });
 }
 

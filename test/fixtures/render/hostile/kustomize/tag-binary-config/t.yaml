@@ -1,0 +1,5 @@
+apiVersion: builtin
+kind: PatchTransformer
+metadata: {name: t}
+target: {kind: ConfigMap}
+path: !!binary aHR0cDovLzEyNy4wLjAuMToxODc2OC9jZmc=

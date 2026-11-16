@@ -1,0 +1,3 @@
+resources: [cm.yaml]
+patches:
+- path: !!binary aHR0cDovLzEyNy4wLjAuMToxODc2OC9iaW4=

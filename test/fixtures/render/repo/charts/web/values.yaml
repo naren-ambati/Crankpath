@@ -1,0 +1,3 @@
+image: registry.example.org/web:1.0.0
+replicas: 1
+password: chart-default-not-a-secret

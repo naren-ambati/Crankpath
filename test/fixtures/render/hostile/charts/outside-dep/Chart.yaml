@@ -1,0 +1,7 @@
+apiVersion: v2
+name: outside-dep
+version: 0.1.0
+dependencies:
+  - name: escape
+    version: 0.1.0
+    repository: file://../../../../outside-the-root

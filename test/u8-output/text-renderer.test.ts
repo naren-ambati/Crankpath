@@ -95,13 +95,20 @@ describe("opacity statement (FR4.4, M3)", () => {
       "Not verified: 1 external declared in crankpath.yaml (not verified). Declared edges: 0 (unverified when present).",
     );
   });
-  it("lists a Kustomize root as a source this build does not render", () => {
+  it("builds a Kustomize root nothing deploys on its own, and names a missing kustomize", () => {
     const text = scan({
       "apps/a.yaml": app("a", "cfg"),
       "cfg/cm.yaml": CM,
       "base/kustomization.yaml": "resources: []\n",
     });
-    expect(text).toContain('  opaque 1 of 1  Kustomize root: "base"  reason: not-in-this-build');
+    expect(text).toContain('  opaque 1 of 1  Kustomize root: "base"  reason: tool-missing');
+    expect(text).toContain(
+      "  1 Kustomize root no source deploys: its objects are not in the graph (each is built on its own unless it is a component)",
+    );
+    expect(text).toContain('    undeployed 1 of 1  Kustomize root: "base"');
+    expect(text).toContain(
+      'tool missing: "kustomize" (not found on PATH)  affected: 1 Kustomize source opaque, reason tool-missing',
+    );
   });
   it("prints a suggestion for an unreadable repo as quoted text, marked not applied", () => {
     const text = scan({ "apps/a.yaml": app("a", "cfg", "https://user:pw@github.com/someone/thin-slice") });

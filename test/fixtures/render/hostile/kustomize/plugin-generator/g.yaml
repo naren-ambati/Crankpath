@@ -1,0 +1,4 @@
+apiVersion: builtin
+kind: ConfigMapGenerator
+metadata: {name: g}
+envs: [http://127.0.0.1:18768/p7]

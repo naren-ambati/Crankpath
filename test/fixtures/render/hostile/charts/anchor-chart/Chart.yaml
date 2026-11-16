@@ -1,0 +1,9 @@
+apiVersion: v2
+name: anchor-chart
+version: 0.1.0
+x-anchor: &d
+  repository: file:///outside-the-root/chart
+dependencies:
+  - name: sub
+    version: 0.1.0
+    <<: *d

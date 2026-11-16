@@ -4,7 +4,7 @@ This is the reference for crankpath's JSON report, schema version 1, frozen in B
 
 ## Layout and guarantees
 
-- One JSON object, two-space indentation, one trailing newline. Keys are sorted in code-point order at every level; arrays are in the order each field states (sorted by id or key, or file order for crankpath.yaml entries). The same inputs and the same tool versions give byte-identical output.
+- One JSON object, two-space indentation, one trailing newline. Keys are sorted in code-point order at every level; arrays are in the order each field states (sorted by id or key, or file order for crankpath.yaml entries). The same inputs and the same tool versions give byte-identical output, except for a Helm source whose renders vary: two renders are compared, which cannot prove a chart never varies (`docs/limits.md`, "Two renders per chart").
 - No timestamp, no absolute path, no machine name. Files are relative to the scanned root; other roots are labels (`alias:N` for a `--repo-alias`, the `read_from` path of a `repos:` entry).
 - Every field is always present: a value that does not apply is `null` or an empty array, never a missing key.
 - Text from the scanned repository is a JSON string with control, format and separator characters shown as visible codes (`\x1b`, `‮`) and long text cut with a stated marker (`... (cut at 381 of N characters)`), exactly as the text report shows it. Treat it as data, never as instructions. Every URL has its userinfo removed.
@@ -23,7 +23,7 @@ This is the reference for crankpath's JSON report, schema version 1, frozen in B
 
 ## Changes from the design's C7 sketch
 
-The design's C7 is a sketch written before the build. The frozen schema keeps every field it names and adds what the build needed, each recorded in `BUILD-NOTES.md` by the bolt that added it: `repo.urlFrom`; `runStatus.reasons` and the counts `sourcesByKind`, `skippedSources`, `droppedHooks`, `foreignDestination`, `runLimitFiles`, `runLimitJobs`, `runLimitEdges`, `edgesDeclared`, `nodes`, `declaredFacts`, `declaredAssumptions`; nodes' `origin.document` and `syncWave`; opaque `detail`, `field`, `value`, `kustomizeRoot`, and `suggestion` as `{url, readFrom}`; cycle edges as `{from, to, kind, source}` objects, `labelBeforeCranks`, `residualLabel`, `touchedBy`, `introducedBy`; statuses' `reason` and `via`; `statusCounts`; `cranks`; `unusedMatches`; `matchOverrides`; `repoMappings`; `hiddenCycles`; the plan's `assumes.clusterProvided`, `servedBy`, `matchEntries`, `argocdNamespace`, steps' `crank` and `ref`, structured `conflicts`, and `listedUnordered` with `status` and `blockers`; unresolved items' `field`, `candidates`, `candidatesTruncated`, `owner` and `value`; `skipped`, `unreadable`, `notComputed`, `notModelled` and `notVerified`. C7's `guarantees` and `compatibility` lines are this document, not fields. `notComputed` is empty in every run of this version (every part of the analysis is computed since B5); it stays so a consumer can rely on the field.
+The design's C7 is a sketch written before the build. The frozen schema keeps every field it names and adds what the build needed, each recorded in `BUILD-NOTES.md` by the bolt that added it: `repo.urlFrom`; `runStatus.reasons` and the counts `sourcesByKind`, `skippedSources`, `droppedHooks`, `foreignDestination`, `runLimitFiles`, `runLimitJobs`, `runLimitEdges`, `edgesDeclared`, `nodes`, `declaredFacts`, `declaredAssumptions`; nodes' `origin.document` and `syncWave`; opaque `detail`, `field`, `value`, `kustomizeRoot`, and `suggestion` as `{url, readFrom}`; cycle edges as `{from, to, kind, source}` objects, `labelBeforeCranks`, `residualLabel`, `touchedBy`, `introducedBy`; statuses' `reason` and `via`; `statusCounts`; `cranks`; `unusedMatches`; `matchOverrides`; `repoMappings`; `hiddenCycles`; the plan's `assumes.clusterProvided`, `servedBy`, `matchEntries`, `argocdNamespace`, steps' `crank` and `ref`, structured `conflicts`, and `listedUnordered` with `status` and `blockers`; unresolved items' `field`, `candidates`, `candidatesTruncated`, `owner` and `value`; `skipped`, `unreadable`, `notComputed`, `notModelled` and `notVerified`. C7's `guarantees` and `compatibility` lines are this document, not fields. B2 (the render engine, merged after the freeze) adds `toolchain.testedPair`, `toolchain.missing`, `toolchain.unrecognised`, `floating`, `undeployedKustomizeRoots` and `toolMissing`: additive, so `schemaVersion` stays 1. `notComputed` is empty in every run of this version (every part of the analysis is computed since B5); it stays so a consumer can rely on the field.
 
 ## Fields
 
@@ -89,6 +89,12 @@ Paths use `.` for an object's field and `[]` for each element of an array. "Word
 | `externals[].coldStart` | string | Its declared availability. Words: `available`, `unavailable`, `unspecified`. |
 | `externals[].id` | string | `external:<name>`. |
 | `externals[].servedBy` | null or string | The in-estate node that serves it (declared), or null. |
+| `floating` | array | Floating revisions and chart versions (OD-12), and render notes (a chart's random or lookup functions, a second render whose content differed or did not finish); sorted by (node, field). |
+| `floating[]` | object | one entry |
+| `floating[].field` | string | The field or note kind (`spec.source.targetRevision`, `chart templates`, `helm template`). |
+| `floating[].node` | string | The source it belongs to. |
+| `floating[].resolved` | null or string | The chart version rendered, for a chart from a repository; null otherwise. |
+| `floating[].value` | string | The value as written in the repository, or the note (repo text). |
 | `hiddenCycles` | array | Hidden cycles, sorted by id. |
 | `hiddenCycles[]` | object | A cycle of the graph without the `match:` entries that the report does not hold. |
 | `hiddenCycles[].edges` | integer | Its edge count. |
@@ -262,11 +268,23 @@ Paths use `.` for an object's field and `[]` for each element of an array. "Word
 | `statuses[].reason` | null or string | The class of its named blocker; null only for startable. Words: `cycle`, `external-unavailable`, `external-unspecified`, `opaque`, `undefined-reference`, `unresolved`, `match-override`. |
 | `statuses[].status` | string | Its status. Words: `startable`, `blocked`, `unverified`. |
 | `statuses[].via` | null or string | The dependency the blocker comes through; null when the node is itself the cause, or startable. |
+| `toolMissing` | object | Sources opaque `tool-missing`, by the tool they need. |
+| `toolMissing.helm` | integer | Helm sources opaque because helm is not on PATH. |
+| `toolMissing.kustomize` | integer | Kustomize sources opaque because kustomize is not on PATH. |
 | `toolchain` | object | The tools that produced the report. |
 | `toolchain.crankpath` | string | crankpath's version. |
 | `toolchain.helm` | null or string | helm's version; null when not detected. |
 | `toolchain.kustomize` | null or string | kustomize's version; null when not detected. |
+| `toolchain.missing` | array | Tools not found on PATH, sorted. |
+| `toolchain.missing[]` | string | one entry Words: `helm`, `kustomize`. |
 | `toolchain.tested` | boolean | True only when both versions are the tested pair. |
+| `toolchain.testedPair` | object | The tested pair of versions (OD-13), named in the text note when another version is in use. |
+| `toolchain.testedPair.helm` | string | The tested helm version. |
+| `toolchain.testedPair.kustomize` | string | The tested kustomize version. |
+| `toolchain.unrecognised` | array | Tools found whose version could not be read, sorted. |
+| `toolchain.unrecognised[]` | string | one entry Words: `helm`, `kustomize`. |
+| `undeployedKustomizeRoots` | array | Kustomize roots no Application or Flux Kustomization renders (built on their own; their objects are not in the graph), sorted. |
+| `undeployedKustomizeRoots[]` | string | one entry |
 | `unreadable` | array | Unreadable files, sorted by path. |
 | `unreadable[]` | object | A file that could not be read. |
 | `unreadable[].detail` | null or string | A fixed detail, or null. |

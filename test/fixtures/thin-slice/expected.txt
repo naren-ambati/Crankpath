@@ -1,6 +1,5 @@
 crankpath 0.1.0
-toolchain: helm not detected, kustomize not detected (this build runs neither
-    tool)
+toolchain: helm not found on PATH, kustomize not found on PATH
 scanned: repo "http://gitea-http.gitea:3000/ops/thin-slice" (from --repo-url)
     commit: not read in this build  floating: no
 Run status: ANALYSED WITH GAPS
@@ -21,6 +20,11 @@ Opacity: 1 of 2 sources opaque (50%); sources are Applications, ApplicationSets,
   skipped 2 of 2  reason: invalid-name  kind: "ConfigMap"  namespace: "gitea"
       name: "x/../../Service/gitea/gitea-http"
     file: "platform/gitea/hostile.yaml"  document: 2
+
+Floating revisions: 1 (a branch, tag, HEAD or version range: a rerun may read or
+    render other content)
+  floating 1 of 1  node: Application "argocd/gitea"
+      field: "spec.source.targetRevision"  value: "main"
 
 Cycles: 1 uncranked
   cycle c-d8197e7d  label: extracted  nodes: 5  edges: 8

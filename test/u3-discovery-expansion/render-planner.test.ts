@@ -6,7 +6,10 @@ import { obj } from "../helpers/objects.js";
 
 const SELF = "http://gitea-http.gitea:3000/ops/thin-slice";
 
-function ctx(dirs: Record<string, string[]> = { "platform/gitea": ["service.yaml"] }): PlanContext {
+function ctx(
+  dirs: Record<string, string[]> = { "platform/gitea": ["service.yaml"] },
+  objects: Record<string, DataValue> = {},
+): PlanContext {
   const identity = createRepoIdentity({
     scannedUrl: SELF,
     scannedFrom: "flag",
@@ -24,6 +27,13 @@ function ctx(dirs: Record<string, string[]> = { "platform/gitea": ["service.yaml
     probeDirectory: (root, dir) => {
       const names = dirs[`${root === "." ? "" : `${root}:`}${dir}`];
       return names === undefined ? { ok: false, reasonWord: "not found" } : { ok: true, names };
+    },
+    lookup: (id) => {
+      const v = objects[id];
+      if (v === "conflict") return { state: "conflict" };
+      return v === undefined
+        ? { state: "absent" }
+        : { state: "found", value: v as Record<string, DataValue>, file: "repo.yaml" };
     },
   };
 }
@@ -46,7 +56,7 @@ describe("render planning: plain directories (BR3.18, BR3.19)", () => {
   it("plans a plain job for a self-repo directory, with the destination namespace and recurse", () => {
     const r = planSource({ kind: "Application", object: app({ ...plain, directory: { recurse: true } }) }, ctx());
     expect(r.opaque).toBeNull();
-    expect(r.job).toMatchObject({
+    expect(r.jobs[0]).toMatchObject({
       kind: "plain",
       jobId: "Application/argocd/gitea#0",
       owner: "Application/argocd/gitea",
@@ -80,32 +90,6 @@ describe("render planning: plain directories (BR3.18, BR3.19)", () => {
       field: "spec.source.plugin",
     });
   });
-  it("leaves Helm, Kustomize and multi-source shapes to later builds, named", () => {
-    const cases: [DataValue, Record<string, DataValue>, string][] = [
-      [{ ...plain, chart: "x" }, {}, "spec.source.chart"],
-      [{ ...plain, helm: {} }, {}, "spec.source.helm"],
-      [{ ...plain, kustomize: {} }, {}, "spec.source.kustomize"],
-      [plain, { sources: [] }, "spec.sources"],
-    ];
-    for (const [source, spec, field] of cases) {
-      expect(planSource({ kind: "Application", object: app(source, spec) }, ctx()).opaque).toMatchObject({
-        reason: "not-in-this-build",
-        field,
-      });
-    }
-    expect(
-      planSource({ kind: "Application", object: app(plain) }, ctx({ "platform/gitea": ["Chart.yaml"] })).opaque,
-    ).toMatchObject({
-      reason: "not-in-this-build",
-      detail: "Helm rendering arrives in a later build",
-    });
-    expect(
-      planSource({ kind: "Application", object: app(plain) }, ctx({ "platform/gitea": ["kustomization.yaml"] })).opaque,
-    ).toMatchObject({
-      reason: "not-in-this-build",
-      detail: "Kustomize rendering arrives in a later build",
-    });
-  });
   it("is unreadable-repo for another repo, with a suggestion only when the name matches, userinfo removed", () => {
     const other = planSource(
       { kind: "Application", object: app({ ...plain, repoURL: "https://u:p@github.com/x/thin-slice" }) },
@@ -134,7 +118,7 @@ describe("render planning: plain directories (BR3.18, BR3.19)", () => {
       { kind: "Application", object: app({ ...plain, repoURL: "https://example.org/ops/other.git", path: "apps" }) },
       ctx({ "alias:1:apps": [] }),
     );
-    expect(r.job).toMatchObject({ root: "alias:1", dir: "apps" });
+    expect(r.jobs[0]).toMatchObject({ root: "alias:1", dir: "apps" });
   });
   it("is unreadable-file for a path outside the root or missing, keeping the path as repo text", () => {
     expect(planSource({ kind: "Application", object: app({ ...plain, path: "../x" }) }, ctx()).opaque).toMatchObject({
@@ -147,14 +131,20 @@ describe("render planning: plain directories (BR3.18, BR3.19)", () => {
       detail: "not found",
     });
   });
-  it("marks the other source kinds not-in-this-build with what could not be seen", () => {
-    const o = app(plain);
-    expect(planSource({ kind: "ApplicationSet", object: o }, ctx()).opaque?.lostEdges).toEqual([
-      "Applications generated from its generators",
-    ]);
-    expect(planSource({ kind: "Kustomization", object: o }, ctx()).opaque?.reason).toBe("not-in-this-build");
-    expect(planSource({ kind: "HelmRelease", object: o }, ctx()).opaque?.reason).toBe("not-in-this-build");
-    expect(planSource({ kind: "KustomizeRoot", dir: "base" }, ctx()).opaque?.reason).toBe("not-in-this-build");
+  it("leaves ApplicationSets to a later build, named, with what could not be seen", () => {
+    const r = planSource({ kind: "ApplicationSet", object: app(plain) }, ctx());
+    expect(r.opaque).toMatchObject({
+      reason: "not-in-this-build",
+      lostEdges: ["Applications generated from its generators"],
+    });
+  });
+  it("plans a Kustomize root as a job no source owns", () => {
+    expect(planSource({ kind: "KustomizeRoot", dir: "base" }, ctx()).jobs[0]).toMatchObject({
+      kind: "kustomize",
+      owner: null,
+      jobId: "KustomizeRoot:base",
+      dir: "base",
+    });
   });
   it("calls only the exact in-cluster destination in-cluster", () => {
     expect(destinationKey({ server: "https://kubernetes.default.svc/" })).toBe("in-cluster");

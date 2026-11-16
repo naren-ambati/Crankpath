@@ -1,0 +1,4 @@
+HelmCharts:
+  - name: x
+    repo: https://127.0.0.1:1
+    releaseName: x

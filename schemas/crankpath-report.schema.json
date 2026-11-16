@@ -9,6 +9,7 @@
     "cycles",
     "edges",
     "externals",
+    "floating",
     "hiddenCycles",
     "matchOverrides",
     "nodes",
@@ -24,7 +25,9 @@
     "skipped",
     "statusCounts",
     "statuses",
+    "toolMissing",
     "toolchain",
+    "undeployedKustomizeRoots",
     "unreadable",
     "unresolved",
     "unusedMatches"
@@ -232,7 +235,10 @@
         "crankpath",
         "helm",
         "kustomize",
-        "tested"
+        "missing",
+        "tested",
+        "testedPair",
+        "unrecognised"
       ],
       "properties": {
         "crankpath": {
@@ -256,6 +262,110 @@
         "tested": {
           "type": "boolean",
           "description": "True only when both versions are the tested pair."
+        },
+        "testedPair": {
+          "type": "object",
+          "description": "The tested pair of versions (OD-13), named in the text note when another version is in use.",
+          "additionalProperties": false,
+          "required": [
+            "helm",
+            "kustomize"
+          ],
+          "properties": {
+            "helm": {
+              "type": "string",
+              "description": "The tested helm version."
+            },
+            "kustomize": {
+              "type": "string",
+              "description": "The tested kustomize version."
+            }
+          }
+        },
+        "missing": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "helm",
+              "kustomize"
+            ]
+          },
+          "description": "Tools not found on PATH, sorted."
+        },
+        "unrecognised": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "helm",
+              "kustomize"
+            ]
+          },
+          "description": "Tools found whose version could not be read, sorted."
+        }
+      }
+    },
+    "floating": {
+      "type": "array",
+      "description": "Floating revisions and chart versions (OD-12), and render notes (a chart's random or lookup functions, a second render whose content differed or did not finish); sorted by (node, field).",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "field",
+          "node",
+          "resolved",
+          "value"
+        ],
+        "properties": {
+          "node": {
+            "$ref": "#/$defs/nodeId",
+            "description": "The source it belongs to."
+          },
+          "field": {
+            "type": "string",
+            "description": "The field or note kind (`spec.source.targetRevision`, `chart templates`, `helm template`)."
+          },
+          "value": {
+            "type": "string",
+            "description": "The value as written in the repository, or the note (repo text)."
+          },
+          "resolved": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The chart version rendered, for a chart from a repository; null otherwise."
+          }
+        }
+      }
+    },
+    "undeployedKustomizeRoots": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Kustomize roots no Application or Flux Kustomization renders (built on their own; their objects are not in the graph), sorted."
+    },
+    "toolMissing": {
+      "type": "object",
+      "description": "Sources opaque `tool-missing`, by the tool they need.",
+      "additionalProperties": false,
+      "required": [
+        "helm",
+        "kustomize"
+      ],
+      "properties": {
+        "helm": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Helm sources opaque because helm is not on PATH."
+        },
+        "kustomize": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Kustomize sources opaque because kustomize is not on PATH."
         }
       }
     },

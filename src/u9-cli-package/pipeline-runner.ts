@@ -1,17 +1,27 @@
-// PipelineRunner (U9, the composition root; ADR-006; BR9.3 to BR9.7, BR9.10): discover, plan,
-// render, extract, build, analyse, assemble. It wires every stage, isolates each job and each
+// PipelineRunner (U9, the composition root; ADR-006; BR9.3 to BR9.8, BR9.10, BR9.11): discover,
+// plan, render, extract, build, analyse, assemble. It wires every stage, isolates each job and each
 // extractor (a throw becomes a named, counted item, never a crash of the run), reads only through
-// BoundedReader under the roots RepoIdentity allows, writes nothing, and returns one Report with
-// its exit code, or a usage error in crankpath's voice (exit 1). Stages are dispatched from their
-// own registries: render job kinds from src/u4-render-engine/renderers.ts, extractors from the U5
-// and U6 lists, the analysis behind the C9 `analyse` interface.
+// BoundedReader under the roots RepoIdentity allows, writes only through the WorkDir under the
+// cache root (nothing at all for a run of plain directories), removes its private directory in
+// every outcome, and returns one Report with its exit code, or a usage error in crankpath's voice
+// (exit 1). Stages are dispatched from their own registries: render job kinds from
+// src/u4-render-engine/renderers.ts, extractors from the U5 and U6 lists, the analysis behind the
+// C9 `analyse` interface. No telemetry: nothing is sent anywhere.
 
 import path from "node:path";
 import type { ConfigDocument } from "../u1-graph-model/declared-facts.js";
-import type { ExtractContext, Extractor, ExtractResult, JobInfo, RenderedObject } from "../u1-graph-model/extractor.js";
-import { emptyResult, IN_CLUSTER } from "../u1-graph-model/extractor.js";
+import type {
+  DataMap,
+  DataValue,
+  ExtractContext,
+  Extractor,
+  ExtractResult,
+  JobInfo,
+  RenderedObject,
+} from "../u1-graph-model/extractor.js";
+import { emptyResult, getPath, IN_CLUSTER, isDataMap } from "../u1-graph-model/extractor.js";
 import type { NodeId, OpaqueMark, SkippedObject, UnreadableFile } from "../u1-graph-model/graph-model.js";
-import { makeOpaqueMark } from "../u1-graph-model/graph-model.js";
+import { makeOpaqueMark, objectId } from "../u1-graph-model/graph-model.js";
 import { compareCodePoints } from "../u1-graph-model/order.js";
 import { quote, quoteUrl } from "../u1-graph-model/safe-text.js";
 import { type SourceKind, unresolvedItem } from "../u1-graph-model/status-model.js";
@@ -21,6 +31,8 @@ import {
   READER_LIMITS,
   type ReadRefused,
   type ReadResult,
+  readBytes,
+  readText,
   readYaml,
   type ScanRoot,
   type TextOk,
@@ -36,20 +48,43 @@ import {
   readOriginUrl,
   type ScannedUrlFrom,
 } from "../u2-intake-config/repo-identity.js";
-import { walkFiles } from "../u2-intake-config/tree-walk.js";
+import { entryKind, walkFiles } from "../u2-intake-config/tree-walk.js";
+import { stringData } from "../u3-discovery-expansion/flux-planner.js";
 import type { RenderedSet, RenderJob } from "../u3-discovery-expansion/render-job.js";
-import { type PlanContext, type PlanSource, planSource } from "../u3-discovery-expansion/render-planner.js";
+import {
+  type PlanContext,
+  type PlanSource,
+  planSource,
+  type RepoObject,
+} from "../u3-discovery-expansion/render-planner.js";
 import { discover, SKIP_AT_ROOT, SKIP_DIRS, sourceKindOf } from "../u3-discovery-expansion/source-discovery.js";
-import { buildObjects, byLocation, countStringLeaves } from "../u4-render-engine/rendered-set-builder.js";
-import { type RenderIo, render } from "../u4-render-engine/renderers.js";
+import {
+  buildChildEnv,
+  type CommandResult,
+  createCommandRunner,
+  OUTCOME_WORDS,
+  type RunnerLimits,
+  type Spawn,
+} from "../u4-render-engine/command-runner.js";
+import { isKustomizeComponent } from "../u4-render-engine/kustomize-renderer.js";
+import { OUTPUT_LIMITS, type OutputLimits } from "../u4-render-engine/rendered-output.js";
+import {
+  buildObjects,
+  byLocation,
+  canonicalJson,
+  countStringLeaves,
+} from "../u4-render-engine/rendered-set-builder.js";
+import { type RenderIo, type RenderRuntime, render, type ValuesData } from "../u4-render-engine/renderers.js";
+import { detectToolchain, findTool } from "../u4-render-engine/toolchain.js";
+import { createWorkDir, resolveCacheRoot } from "../u4-render-engine/work-dir.js";
 import { GITOPS_EXTRACTORS } from "../u5-extractors-gitops/index.js";
 import { createHostMatching, hostResolution, type ServiceEntry } from "../u6-extractors-workload/host-matcher.js";
 import { WORKLOAD_EXTRACTORS } from "../u6-extractors-workload/index.js";
 import { analyse, type HiddenCycle } from "../u7-graph-analysis/analysis.js";
 import { findCycles } from "../u7-graph-analysis/cycle-finder.js";
 import { buildGraph, compareEdges } from "../u7-graph-analysis/graph-builder.js";
+import { assembleReport, type FloatingEntry, type SourceOutcome } from "../u8-output/report-assembler.js";
 import { cyclesHiddenByOverrides } from "../u7-graph-analysis/match-overrides.js";
-import { assembleReport, type SourceOutcome } from "../u8-output/report-assembler.js";
 import { matchControllerSignatures } from "../u5-extractors-gitops/controller-signatures.js";
 import { type BudgetSpec, RunBudget } from "./run-budget.js";
 import { READER_PARSE_COST, RUN_LIMITS, RUN_RATES } from "../u1-graph-model/run-limits.js";
@@ -79,8 +114,18 @@ export interface RunOptions {
   readonly repoUrl?: string;
   readonly repoAliases?: readonly string[];
   readonly config?: string;
+  /** `--no-network`: nothing is fetched; a chart not in the cache is opaque `offline`. */
+  readonly noNetwork?: boolean;
+  /** `--cache-dir` (default `.crankpath` in `cwd`). */
+  readonly cacheDir?: string;
+  /** The PATH crankpath searches for helm and kustomize and gives its children (default: this process's). */
+  readonly toolPath?: string;
   /** Extractors to run; the default is EXTRACTORS (tests inject failing ones). */
   readonly extractors?: readonly Extractor[];
+  /** The process port and limits (tests only). */
+  readonly spawn?: Spawn;
+  readonly runnerLimits?: RunnerLimits;
+  readonly outputLimits?: OutputLimits;
   /** The run's memory budget; the default is the derived one (tests use small ones, the measurement none). */
   readonly budget?: BudgetSpec;
 }
@@ -111,6 +156,42 @@ function configMessage(error: { keyPath: string | null; problem: string; reasonW
     return `${quote("error: invalid crankpath.yaml at key path", error.keyPath, "terminal")} (${error.problem})`;
   const word = error.reasonWord === undefined ? "" : `: ${error.reasonWord}`;
   return `error: invalid crankpath.yaml (${error.problem}${word})`;
+}
+
+const CACHE_PROBLEMS = {
+  "inside-tree": "is inside the scanned tree; there only <path>/.crankpath is allowed, which discovery never reads",
+  "not-a-directory": "is not a directory (a symlink is never followed)",
+  "parent-missing": "has no parent directory",
+} as const;
+
+/** Kinds the Flux planner looks up among the repo's own objects. */
+const LOOKUP_KINDS = new Set(["GitRepository", "HelmRepository", "OCIRepository", "ConfigMap", "Secret"]);
+
+/** The repo's own objects a Flux source can name, from every YAML document discovery read. */
+function repoObjectIndex(reads: readonly ReadResult[]): Map<NodeId, RepoObject> {
+  const index = new Map<NodeId, RepoObject>();
+  const digests = new Map<NodeId, string>();
+  const sorted = [...reads].sort((a, b) => compareCodePoints(a.path, b.path));
+  for (const read of sorted) {
+    if (read.outcome !== "ok") continue;
+    const add = (v: DataValue) => {
+      if (!isDataMap(v) || typeof v.kind !== "string" || !LOOKUP_KINDS.has(v.kind)) return;
+      const id = objectId(v.kind, getPath(v, ["metadata", "namespace"]), getPath(v, ["metadata", "name"]));
+      if (!id.ok) return;
+      const digest = canonicalJson(v);
+      const seen = digests.get(id.id);
+      if (seen === undefined) {
+        digests.set(id.id, digest);
+        index.set(id.id, { state: "found", value: v as DataMap, file: read.path });
+      } else if (seen !== digest) index.set(id.id, { state: "conflict" });
+    };
+    for (const doc of read.documents) {
+      if (isDataMap(doc) && typeof doc.kind === "string" && doc.kind.endsWith("List") && Array.isArray(doc.items))
+        doc.items.forEach(add);
+      else add(doc);
+    }
+  }
+  return index;
 }
 
 /** Runs the whole pipeline once. Never throws on hostile input; a bug still throws. */
@@ -178,6 +259,30 @@ export function runPipeline(options: RunOptions): RunOutcome {
     if (!roots.has(`${REPOS_LABEL}${m.readFrom}`)) setRoot(`${REPOS_LABEL}${m.readFrom}`, sub.root);
   }
   const identity = createRepoIdentity({ scannedUrl, scannedFrom, aliases, mappings: config.repos });
+  const cacheRoot = resolveCacheRoot(options.cwd, options.cacheDir, root.real);
+  if (!cacheRoot.ok) {
+    const shown = options.cacheDir ?? ".crankpath";
+    return usage(`${quote("error: the cache directory", shown, "terminal")} ${CACHE_PROBLEMS[cacheRoot.problem]}`);
+  }
+  const work = createWorkDir(cacheRoot.cacheRoot, cacheRoot.trusted);
+  try {
+    return runWith(options, { root, roots, identity, config, work, aliases });
+  } finally {
+    work.cleanup();
+  }
+}
+
+interface Prepared {
+  readonly root: ScanRoot;
+  readonly roots: ReadonlyMap<string, ScanRoot>;
+  readonly identity: ReturnType<typeof createRepoIdentity>;
+  readonly config: ConfigDocument;
+  readonly work: ReturnType<typeof createWorkDir>;
+  readonly aliases: readonly RepoAlias[];
+}
+
+function runWith(options: RunOptions, prepared: Prepared): RunOutcome {
+  const { root, roots, identity, config, work, aliases } = prepared;
   // Which mappings a resolution went through (B5 review pass 2, M2): a `repos:` entry of the
   // scanned repo's crankpath.yaml changes what is read (a declared fact, a gap); a --repo-alias is
   // the user's own input (listed as an assumption).
@@ -190,6 +295,16 @@ export function runPipeline(options: RunOptions): RunOutcome {
     }
     return r;
   };
+
+  const toolPath = options.toolPath ?? process.env.PATH ?? "";
+  const runner = createCommandRunner({
+    binaries: { helm: findTool("helm", toolPath), kustomize: findTool("kustomize", toolPath) },
+    env: buildChildEnv(work.homes),
+    ...(options.spawn === undefined ? {} : { spawn: options.spawn }),
+    ...(options.runnerLimits === undefined ? {} : { limits: options.runnerLimits }),
+  });
+  const commands: CommandResult[] = [];
+  const toolchain = detectToolchain(runner, path.dirname(work.cacheRoot));
 
   // Every file held parsed is charged to the run's budget; over it, the file is a counted
   // `too-large` refusal (detail `run budget`) and its parsed documents are let go.
@@ -212,6 +327,7 @@ export function runPipeline(options: RunOptions): RunOutcome {
 
   // One read per file per root in a run: discovery and rendering see the same bytes.
   const cache = new Map<string, ReadResult>();
+  const scannedReads: ReadResult[] = [];
   const readUnder = (label: string, rel: string): ReadResult => {
     const key = `${label.length}:${label}${rel}`;
     const hit = cache.get(key);
@@ -222,6 +338,7 @@ export function runPipeline(options: RunOptions): RunOutcome {
         ? { outcome: "not-found", path: rel, reasonWord: "not found" }
         : charged(readYaml(r, rel, READER_LIMITS, transientFits));
     cache.set(key, result);
+    if (label === ".") scannedReads.push(result);
     return result;
   };
   const display = (label: string, rel: string): string => {
@@ -230,6 +347,39 @@ export function runPipeline(options: RunOptions): RunOutcome {
     // a repo directory spelled like an alias label is shown as `./alias:1/...`, never as an alias
     return ALIAS_LABEL.test(full.split("/")[0] ?? "") ? `./${full}` : full;
   };
+  const discovery = discover({
+    walk: () => walkFiles(root, "", { recurse: true, skipNames: SKIP_DIRS, skipAtStart: SKIP_AT_ROOT }),
+    read: (p) => readUnder(".", p),
+  });
+  if ("failed" in discovery) return usage(quote("error: cannot read path", options.path, "terminal"));
+
+  const index = repoObjectIndex(scannedReads);
+  // A render's output is charged like a file read (docs/limits.md, the note for B2): its parse
+  // transient checked against what the run has not yet held before it is parsed, then its bytes
+  // held at the per-file-byte rate; its objects are charged by the job loop below.
+  const runtime: RenderRuntime = {
+    runner,
+    toolchain,
+    work,
+    network: options.noNetwork !== true,
+    output: options.outputLimits ?? OUTPUT_LIMITS,
+    valuesData: (id): ValuesData | null => {
+      const found = index.get(id);
+      if (found === undefined || found.state !== "found") return null;
+      const kind = found.value.kind === "Secret" ? "Secret" : "ConfigMap";
+      return stringData(kind, found.value);
+    },
+    record: (r) => {
+      commands.push(r);
+    },
+    admitOutput: (lexemes, bytes, comparison) =>
+      budget.fitsRenderTransient(
+        lexemes * budget.spec.parse.bytesPerLexeme + bytes * budget.spec.parse.textBytesPerByte,
+        comparison !== true,
+      ),
+    holdOutput: (bytes) => budget.render(bytes),
+  };
+  const nf = (rel: string) => ({ outcome: "not-found" as const, path: rel, reasonWord: "not found" });
   const io: RenderIo = {
     walk: (label, dir, walkOptions) => {
       const r = roots.get(label);
@@ -237,14 +387,21 @@ export function runPipeline(options: RunOptions): RunOutcome {
       return walkFiles(r, dir, walkOptions);
     },
     read: readUnder,
+    readText: (label, rel) => {
+      const r = roots.get(label);
+      return r === undefined ? nf(rel) : readText(r, rel);
+    },
+    readBytes: (label, rel) => {
+      const r = roots.get(label);
+      return r === undefined ? nf(rel) : readBytes(r, rel);
+    },
+    kind: (label, rel) => {
+      const r = roots.get(label);
+      return r === undefined ? "missing" : entryKind(r, rel);
+    },
     display,
+    runtime,
   };
-
-  const discovery = discover({
-    walk: () => walkFiles(root, "", { recurse: true, skipNames: SKIP_DIRS, skipAtStart: SKIP_AT_ROOT }),
-    read: (p) => readUnder(".", p),
-  });
-  if ("failed" in discovery) return usage(quote("error: cannot read path", options.path, "terminal"));
 
   // A `.json` file is read as YAML (as Argo CD reads it): its parse failure is worded for both.
   const worded = (u: UnreadableFile): UnreadableFile =>
@@ -291,63 +448,120 @@ export function runPipeline(options: RunOptions): RunOutcome {
       if (!listed.ok) return { ok: false, reasonWord: listed.refusal.reasonWord };
       return { ok: true, names: listed.files.map((f) => f.slice(f.lastIndexOf("/") + 1)) };
     },
+    lookup: (id) => index.get(id) ?? { state: "absent" },
   };
 
   const marks: { node: NodeId; mark: OpaqueMark }[] = [];
+  const markedNodes = new Set<NodeId>();
+  const markOwner = (node: NodeId, mark: OpaqueMark) => {
+    if (markedNodes.has(node)) return;
+    markedNodes.add(node);
+    marks.push({ node, mark });
+  };
   const jobs = new Map<string, JobInfo>();
   const rendered: RenderedObject[] = [];
-  let jobsRun = 0;
+  const floating: FloatingEntry[] = [];
+  // Kustomize directories of the scanned root a render read, and the mark of the first job that read each.
+  const covered = new Map<string, OpaqueMark | null>();
+  const jobCounts = new Map<string, number>();
+  let timeouts = 0;
   let droppedHooks = 0;
-  for (let head = 0; head < queue.length; head++) {
-    const entry = queue[head] as SourceEntry;
-    const planned = planSource({ kind: entry.kind, object: entry.object } as PlanSource, planContext);
-    if (planned.job === null) {
-      marks.push({ node: entry.object.id, mark: planned.opaque });
-      continue;
-    }
-    const job: RenderJob = planned.job;
-    jobs.set(job.jobId, {
-      jobId: job.jobId,
-      owner: job.owner,
-      ownerFile: job.ownerFile,
-      ownerField: job.ownerField,
-      ownerRenderedPath: job.ownerRenderedPath,
-      destination: job.destination,
-    });
+
+  const failedSet = (job: RenderJob): RenderedSet => ({
+    jobId: job.jobId,
+    objects: [],
+    droppedHooks: 0,
+    outcome: "render-failed",
+    skipped: [],
+    unreadable: [],
+    opaque: makeOpaqueMark({
+      reason: "render-failed",
+      lostEdges: ["objects it renders"],
+      detail: "the render stopped with an error",
+    }),
+    timedOut: false,
+    resolvedVersion: null,
+    kustomizeDirs: [],
+    notes: [],
+  });
+  /** Renders one job; its objects are taken in only when the run's budget holds them (B1 N2). */
+  const runJob = (job: RenderJob): RenderedSet => {
     let set: RenderedSet;
     try {
       set = render(job, io);
     } catch {
-      set = {
-        jobId: job.jobId,
-        objects: [],
-        droppedHooks: 0,
-        outcome: "render-failed",
-        skipped: [],
-        unreadable: [],
-        opaque: makeOpaqueMark({
-          reason: "render-failed",
-          lostEdges: ["objects it renders"],
-          detail: "the render stopped with an error",
-        }),
-        timedOut: false,
-      };
+      // a bug or an unexpected I/O error in one job never stops the others (US9.3)
+      set = failedSet(job);
     }
-    jobsRun += 1;
-    droppedHooks += set.droppedHooks;
-    // The run's budget (N2) takes the objects in or refuses the whole job: its owner is then opaque
-    // `limit` and nothing of it enters the graph. B2 adds the per-render object bound (step 0) in
-    // its renderers, before a set reaches here.
+    if (set.timedOut) timeouts += 1;
+    unreadable.push(...set.unreadable.map(worded));
+    if (job.kind === "kustomize" && job.root === ".") {
+      for (const d of set.kustomizeDirs) if (!covered.has(d)) covered.set(d, set.opaque);
+    }
     const leaves = set.stringLeaves ?? set.objects.reduce((n, o) => n + countStringLeaves(o.body), 0);
-    if (!budget.objects(set.objects.length, leaves)) {
-      marks.push({ node: job.owner, mark: RUN_LIMIT_MARK });
+    if (set.objects.length > 0 && !budget.objects(set.objects.length, leaves))
+      set = { ...failedSet(job), opaque: RUN_LIMIT_MARK, outcome: "limit" };
+    const key = `${job.kind} ${set.outcome}`;
+    jobCounts.set(key, (jobCounts.get(key) ?? 0) + 1);
+    droppedHooks += set.droppedHooks;
+    return set;
+  };
+
+  for (let head = 0; head < queue.length; head++) {
+    const entry = queue[head] as SourceEntry;
+    const planned = planSource({ kind: entry.kind, object: entry.object } as PlanSource, planContext);
+    // The reference edges of a Flux source to its values ConfigMaps and Secrets (FR4.2) are the
+    // FluxExtractor's (B4), on every source whether or not it renders; the planner's list is data only.
+    if (planned.opaque !== null) {
+      markOwner(entry.object.id, planned.opaque);
       continue;
     }
-    rendered.push(...set.objects);
-    skipped.push(...set.skipped);
-    unreadable.push(...set.unreadable.map(worded));
-    if (set.opaque !== null) marks.push({ node: job.owner, mark: set.opaque });
-    for (const o of set.objects) enqueue(o);
+    for (const job of planned.jobs) {
+      if (job.owner === null) continue;
+      jobs.set(job.jobId, {
+        jobId: job.jobId,
+        owner: job.owner,
+        ownerFile: job.ownerFile,
+        ownerField: job.ownerField,
+        ownerRenderedPath: job.ownerRenderedPath,
+        destination: job.destination,
+      });
+      const set = runJob(job);
+      for (const f of job.floating) {
+        floating.push({ node: job.owner, field: f.field, value: f.value, resolved: set.resolvedVersion });
+      }
+      for (const f of set.notes) floating.push({ node: job.owner, field: f.field, value: f.value, resolved: null });
+      rendered.push(...set.objects);
+      skipped.push(...set.skipped);
+      if (set.opaque !== null) markOwner(job.owner, set.opaque);
+      for (const o of set.objects) enqueue(o);
+    }
+  }
+
+  // Kustomize roots: one a render already read takes that render's outcome; one nothing deploys
+  // is built on its own (its outcome is its own; a component cannot be and is only read) and its
+  // objects are not added to the graph: nothing in the repository applies them.
+  const rootOutcomes: SourceOutcome[] = [];
+  const undeployed: string[] = [];
+  for (const dir of discovery.kustomizeRoots) {
+    const shown = dir === "" ? "." : dir;
+    if (covered.has(dir)) {
+      rootOutcomes.push({ kind: "KustomizeRoot", node: null, kustomizeRoot: shown, mark: covered.get(dir) ?? null });
+      continue;
+    }
+    undeployed.push(shown);
+    // a Kustomize component is only built inside the kustomization that includes it
+    if (isKustomizeComponent(io, ".", dir)) {
+      rootOutcomes.push({ kind: "KustomizeRoot", node: null, kustomizeRoot: shown, mark: null });
+      continue;
+    }
+    const planned = planSource({ kind: "KustomizeRoot", dir }, planContext);
+    let mark: OpaqueMark | null = planned.opaque;
+    for (const job of planned.jobs) {
+      const set = runJob(job);
+      mark ??= set.opaque;
+    }
+    rootOutcomes.push({ kind: "KustomizeRoot", node: null, kustomizeRoot: shown, mark });
   }
 
   // A source document with no namespace of its own is skipped only if no render gave it one.
@@ -445,10 +659,7 @@ export function runPipeline(options: RunOptions): RunOutcome {
     kustomizeRoot: null,
     mark: nodeById.get(s.object.id)?.opaque ?? null,
   }));
-  for (const dir of discovery.kustomizeRoots) {
-    const planned = planSource({ kind: "KustomizeRoot", dir }, planContext);
-    outcomes.push({ kind: "KustomizeRoot", node: null, kustomizeRoot: dir === "" ? "." : dir, mark: planned.opaque });
-  }
+  outcomes.push(...rootOutcomes);
   const report = assembleReport({
     scanned: identity.scanned,
     scannedPath: options.path,
@@ -460,8 +671,12 @@ export function runPipeline(options: RunOptions): RunOutcome {
     unreadable,
     ignoredFiles: discovery.ignoredFiles,
     droppedHooks,
-    timeouts: 0,
+    timeouts,
     limits: budget.use(),
+    toolchain,
+    floating,
+    undeployedKustomizeRoots: undeployed,
+    helmRendered: commands.some((c) => c.tool === "helm" && c.subcommand[0] === "template"),
     unusedMatches: hosts.unusedRules(),
     matchOverrides: overrides,
     hiddenCycles: hidden,
@@ -482,9 +697,17 @@ export function runPipeline(options: RunOptions): RunOutcome {
       })),
     ],
   });
+  const commandCounts = new Map<string, number>();
+  for (const c of commands) {
+    const key = `${c.tool} ${c.subcommand.join(" ")}: ${OUTCOME_WORDS[c.outcome]}`;
+    commandCounts.set(key, (commandCounts.get(key) ?? 0) + 1);
+  }
   const diagnostics = [
     `sources found: ${outcomes.length}`,
-    `render jobs run: ${jobsRun}`,
+    `render jobs run: ${[...jobCounts.values()].reduce((a, b) => a + b, 0)}`,
+    ...[...jobCounts.entries()].sort(([a], [b]) => compareCodePoints(a, b)).map(([k, n]) => `  jobs ${k}: ${n}`),
+    ...[...commandCounts.entries()].sort(([a], [b]) => compareCodePoints(a, b)).map(([k, n]) => `  ran ${k}: ${n}`),
+    `helm test hooks dropped: ${droppedHooks}`,
     `objects read: ${objects.length}`,
     `extractors run: ${extracted.length}`,
     `nodes: ${graph.nodes.length}  edges: ${graph.edges.length}  cycles: ${analysis.cycles.length}`,

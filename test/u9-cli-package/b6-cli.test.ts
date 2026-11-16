@@ -28,6 +28,8 @@ function tty(argv: readonly string[], noColor?: string) {
       stderr += t;
     },
     cwd: process.cwd(),
+    // no helm or kustomize on the tool path, so the toolchain line is the expected output's (B2 merge)
+    toolPath: "",
     isTTY: true,
     ...(noColor === undefined ? {} : { noColor }),
   });

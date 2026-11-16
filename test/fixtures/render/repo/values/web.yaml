@@ -1,0 +1,2 @@
+image: registry.example.org/web:1.1.0
+password: fixture-render-secret-not-printed

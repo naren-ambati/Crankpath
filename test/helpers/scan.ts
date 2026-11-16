@@ -15,7 +15,8 @@ export interface Run {
   readonly stderr: string;
 }
 
-export function run(argv: readonly string[], cwd: string): Run {
+/** Runs the command line in-process; helm and kustomize are not on its PATH unless `toolPath` says so. */
+export function run(argv: readonly string[], cwd: string, toolPath = ""): Run {
   let stdout = "";
   let stderr = "";
   const code = main(argv, {
@@ -26,6 +27,7 @@ export function run(argv: readonly string[], cwd: string): Run {
       stderr += t;
     },
     cwd,
+    toolPath,
   });
   return { code, stdout, stderr };
 }

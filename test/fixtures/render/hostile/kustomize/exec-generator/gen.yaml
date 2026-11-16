@@ -1,0 +1,8 @@
+apiVersion: example.org/v1
+kind: Gen
+metadata:
+  name: g
+  annotations:
+    config.kubernetes.io/function: |
+      exec:
+        path: ./run.sh

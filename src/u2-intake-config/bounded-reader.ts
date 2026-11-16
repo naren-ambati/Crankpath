@@ -192,7 +192,37 @@ export function readTextWithHooks(root: ScanRoot, request: string, limits: Reade
   }
 }
 
+export interface BytesOk {
+  readonly outcome: "ok";
+  readonly path: string;
+  readonly size: number;
+  readonly bytes: Buffer;
+}
+
+export type BytesResult = BytesOk | ReadRefused;
+
+/** Reads a regular file under the root, at most `fileBytes`, as bytes (any content: a chart may hold binary files). */
+export function readBytes(root: ScanRoot, request: string, limits: ReaderLimits = READER_LIMITS): BytesResult {
+  try {
+    return readBytesChecked(root, request, limits, {});
+  } catch {
+    return { outcome: "io-error", path: request, reasonWord: "could not be read", detail: "unexpected failure" };
+  }
+}
+
 function readTextChecked(root: ScanRoot, request: string, limits: ReaderLimits, hooks: RaceHooks): TextResult {
+  const read = readBytesChecked(root, request, limits, hooks);
+  if (read.outcome !== "ok") return read;
+  let text: string;
+  try {
+    text = new TextDecoder("utf-8", { fatal: true }).decode(read.bytes);
+  } catch {
+    return refused("parse-error", read.path, "not UTF-8");
+  }
+  return { outcome: "ok", path: read.path, size: read.size, text };
+}
+
+function readBytesChecked(root: ScanRoot, request: string, limits: ReaderLimits, hooks: RaceHooks): BytesResult {
   const located = locate(root, request);
   if (!located.ok) return located.refusal;
   const { rel, full, stat } = located;
@@ -237,13 +267,7 @@ function readTextChecked(root: ScanRoot, request: string, limits: ReaderLimits, 
     // Not the size fstat reported: the file grew or shrank while it was read, so this read is not
     // the file (a shorter read would look complete and valid).
     if (total !== st.size) return refused("changed", rel, total > st.size ? "grew" : "shrank");
-    let text: string;
-    try {
-      text = new TextDecoder("utf-8", { fatal: true }).decode(buf.subarray(0, total));
-    } catch {
-      return refused("parse-error", rel, "not UTF-8");
-    }
-    return { outcome: "ok", path: rel, size: total, text };
+    return { outcome: "ok", path: rel, size: total, bytes: buf.subarray(0, total) };
   } catch {
     return refused("io-error", rel);
   } finally {
@@ -304,7 +328,9 @@ export type ParseResult =
   | { readonly ok: true; readonly documents: readonly YamlValue[] }
   | { readonly ok: false; readonly refusal: Refusal; readonly detail?: string };
 
-function parseFailure(refusal: Refusal, detail?: string): ParseResult {
+type ParseFailure = Extract<ParseResult, { ok: false }>;
+
+function parseFailure(refusal: Refusal, detail?: string): ParseFailure {
   return detail === undefined ? { ok: false, refusal } : { ok: false, refusal, detail };
 }
 
@@ -313,6 +339,21 @@ function parseFailure(refusal: Refusal, detail?: string): ParseResult {
  * `<<` merge keys) under the limits. Pure apart from CPU and memory, which the limits bound.
  */
 export function parseYamlBounded(text: string, limits: ReaderLimits = READER_LIMITS): ParseResult {
+  const r = parseYamlCounted(text, limits);
+  return r.ok ? { ok: true, documents: r.documents } : r;
+}
+
+export type CountedParseResult =
+  | {
+      readonly ok: true;
+      readonly documents: readonly YamlValue[];
+      /** Lexemes counted against lexemesPerFile: a caller with one budget over several texts adds them up. */
+      readonly lexemes: number;
+    }
+  | { readonly ok: false; readonly refusal: Refusal; readonly detail?: string };
+
+/** parseYamlBounded, also returning how many lexemes the text cost (the render parse budget, B2). */
+export function parseYamlCounted(text: string, limits: ReaderLimits = READER_LIMITS): CountedParseResult {
   try {
     readerProbe.entries += 1;
     const maxDocs = limits.documentsPerFile.value;
@@ -328,7 +369,7 @@ export function parseYamlBounded(text: string, limits: ReaderLimits = READER_LIM
     let afterBlockHeader = false;
     let aliasLexeme = false;
     let lexemes = 0;
-    const take = (doc: Document.Parsed): ParseResult | undefined => {
+    const take = (doc: Document.Parsed): ParseFailure | undefined => {
       const converted = convertDocument(doc, maxNodes);
       if (!converted.ok) return converted;
       documents.push(converted.value);
@@ -374,15 +415,15 @@ export function parseYamlBounded(text: string, limits: ReaderLimits = READER_LIM
       const failed = take(doc);
       if (failed) return failed;
     }
-    return { ok: true, documents };
+    return { ok: true, documents, lexemes };
   } catch (e) {
     // Preallocated results: near the end of the stack the handler itself must not call anything.
     return e instanceof RangeError ? STACK_EXHAUSTED : PARSE_ERROR;
   }
 }
 
-const STACK_EXHAUSTED: ParseResult = Object.freeze({ ok: false, refusal: "too-deep", detail: "parser stack" });
-const PARSE_ERROR: ParseResult = Object.freeze({ ok: false, refusal: "parse-error" });
+const STACK_EXHAUSTED: ParseFailure = Object.freeze({ ok: false, refusal: "too-deep", detail: "parser stack" });
+const PARSE_ERROR: ParseFailure = Object.freeze({ ok: false, refusal: "parse-error" });
 
 /**
  * Does this lexeme start a value node? Plain scalars arrive after the SCALAR marker; quoted
