@@ -105,6 +105,9 @@ function copyLayer(/** @type {string} */ from, /** @type {string} */ to) {
   }
 }
 
+/** Options every fixture git call carries, so a fixture repository starts no background work. */
+export const INERT_GIT = Object.freeze(["-c", "maintenance.auto=false", "-c", "gc.auto=0"]);
+
 /** @param {string} dir */
 function clearTree(dir) {
   for (const e of fs.readdirSync(dir)) if (e !== ".git") fs.rmSync(path.join(dir, e), { recursive: true, force: true });
@@ -116,7 +119,9 @@ function clearTree(dir) {
  * @param {Record<string, string>} env
  */
 function git(cwd, args, env) {
-  const r = spawnSync("git", args, { cwd, env, encoding: "utf8" });
+  // inert: no automatic maintenance or gc, which a commit would start detached and which would write into
+  // .git/objects while a test compares snapshots of the checkout (release review, files m1)
+  const r = spawnSync("git", [...INERT_GIT, ...args], { cwd, env, encoding: "utf8" });
   if (r.status !== 0) throw new Error(`action-local: git ${args[0]} failed: ${r.stderr}`);
   return r.stdout.trim();
 }

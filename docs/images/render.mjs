@@ -18,6 +18,8 @@
 // block drawn by Mermaid itself in the page; a block Mermaid cannot parse stops the script, so the
 // image also shows that crankpath's diagram parses. Each card is screenshotted with Playwright's
 // headless Chromium and reduced with `magick in.png -colors 48 -dither None -strip PNG8:out.png`.
+// After each image it records, in <dir>/manifest.json, the SHA-256 of the PNG it wrote and of the
+// transcript it rendered (keys sorted), which scripts/check-images.mjs compares (release review m2).
 
 import { execFileSync } from "node:child_process";
 import fs from "node:fs";
@@ -25,6 +27,7 @@ import { createRequire } from "node:module";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { manifestEntry } from "../../scripts/check-images.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const TRIAL = process.env.CRANKPATH_IMAGES_TRIAL;
@@ -142,6 +145,8 @@ async function main() {
   const md = (/** @type {string} */ s) => /** @type {string} */ (marked.parse(s, { async: false }));
   const only = process.argv.slice(2);
   const raw = fs.mkdtempSync(path.join(os.tmpdir(), "crankpath-shots-raw-"));
+  /** @type {string[]} */
+  const rendered = [];
   const browser = await chromium.launch();
   try {
     const page = await browser.newPage({ viewport: { width: 1100, height: 800 }, deviceScaleFactor: 1.5 });
@@ -171,12 +176,23 @@ async function main() {
       await page.locator("#c").screenshot({ path: shot });
       const out = path.join(OUT, `${t.id}.png`);
       execFileSync("magick", [shot, "-colors", "48", "-dither", "None", "-strip", `PNG8:${out}`]);
+      rendered.push(t.id);
       console.log(`rendered ${t.id} (${fs.statSync(out).size} bytes)`);
     }
   } finally {
     await browser.close();
     fs.rmSync(raw, { recursive: true, force: true });
   }
+  const manifestFile = path.join(OUT, "manifest.json");
+  /** @type {Record<string, { png: string, transcript: string }>} */
+  const manifest = fs.existsSync(manifestFile) ? JSON.parse(fs.readFileSync(manifestFile, "utf8")) : {};
+  for (const id of rendered) manifest[id] = manifestEntry(OUT, id);
+  const sorted = Object.fromEntries(
+    Object.keys(manifest)
+      .sort()
+      .map((k) => [k, manifest[k]]),
+  );
+  fs.writeFileSync(manifestFile, `${JSON.stringify(sorted, null, 2)}\n`);
   const total = fs
     .readdirSync(OUT)
     .filter((x) => x.endsWith(".png"))

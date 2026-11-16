@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import type { DataValue } from "../../src/u1-graph-model/extractor.js";
 import { type ExpanderIo, expandApplicationSet } from "../../src/u3-discovery-expansion/generator-expander.js";
 import { meta, obj } from "../helpers/objects.js";
+import { cpuSince, cpuStart } from "../helpers/cpu-time.js";
 
 const io: ExpanderIo = {
   resolveRepo: () => ({ outcome: "unreadable", root: null, via: "none", suggestion: null }),
@@ -51,7 +52,7 @@ describe("M1: generated Applications are charged before they are built", () => {
     });
   });
   it("bounds the set's rendering work (generatorRenderSteps), elements times template size", () => {
-    const t0 = performance.now();
+    const t0 = cpuStart();
     const e = expandApplicationSet(fat(90_000, 1000), io, null, {
       applications: 96_638,
       patternSteps: 1_000_000,
@@ -62,12 +63,12 @@ describe("M1: generated Applications are charged before they are built", () => {
       detail: "template rendering work over the limit (generatorRenderSteps)",
     });
     expect(e.documents.length).toBeLessThan(2000);
-    expect(performance.now() - t0).toBeLessThan(10_000);
+    expect(cpuSince(t0)).toBeLessThan(10_000);
   });
   it("stops one huge substitution while it is being built, not after", () => {
     const big = "x".repeat(1_000_000);
     const tags = "{{v}}".repeat(1000);
-    const t0 = performance.now();
+    const t0 = cpuStart();
     const e = expandApplicationSet(
       appSet({
         generators: [{ list: { elements: [{ v: big }] } }],
@@ -79,7 +80,7 @@ describe("M1: generated Applications are charged before they are built", () => {
     );
     expect(e.documents).toEqual([]);
     expect(e.mark?.reason).toBe("limit");
-    expect(performance.now() - t0).toBeLessThan(5000);
+    expect(cpuSince(t0)).toBeLessThan(5000);
   });
 });
 

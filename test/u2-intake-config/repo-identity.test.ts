@@ -12,6 +12,7 @@ import {
   readOriginUrl,
   repoUrlHost,
 } from "../../src/u2-intake-config/repo-identity.js";
+import { cpuSince, cpuStart } from "../helpers/cpu-time.js";
 
 const SCANNED = "http://gitea-http.gitea:3000/ops/thin-slice";
 
@@ -281,9 +282,9 @@ describe("hostile .git/config (B3, BR2.15)", () => {
     );
   });
   it("handles a huge line in linear time", () => {
-    const t0 = performance.now();
+    const t0 = cpuStart();
     expect(originFromGitConfig(`[remote "${"a".repeat(2_000_000)}`)).toBeNull();
     expect(originFromGitConfig(`[remote "origin"]\n\turl = ${"\\".repeat(1_000_000)}`)).not.toBeUndefined();
-    expect(performance.now() - t0).toBeLessThan(3000);
+    expect(cpuSince(t0)).toBeLessThan(3000);
   });
 });

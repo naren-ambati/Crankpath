@@ -74,7 +74,8 @@ describe("a signal ends crankpath at once; the next run removes what it left (B2
     process.kill(group ? -(child.pid as number) : (child.pid as number), signal);
     const ended = await exited;
     expect(ended).toEqual({ code: null, signal });
-    expect(Date.now() - sentAt).toBeLessThan(5000);
+    // derived, not picked: a crankpath that waited for the render would end only after the fake's 30 s sleep
+    expect(Date.now() - sentAt).toBeLessThan(30_000);
     expect(stdout).toBe("");
     // the killed run's private directory is left, and the next run removes it (its process is gone)
     if (!group) {

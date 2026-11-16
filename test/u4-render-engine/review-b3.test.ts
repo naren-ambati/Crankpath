@@ -440,7 +440,7 @@ describe.skipIf(realGit === null)("the installed git under the fixed options, ag
       home: path.join(cwd, "home"),
       empty: path.join(cwd, "home"),
       guard: () => true,
-      wallClock: 5000,
+      wallClock: 30_000, // the call is refused before any request; the clock only has to outlast a busy start
     });
     const r = runner.run({
       subcommand: ["clone"],

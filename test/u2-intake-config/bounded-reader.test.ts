@@ -17,6 +17,7 @@ import {
   type ScanRoot,
 } from "../../src/u2-intake-config/bounded-reader.js";
 import { Lexer } from "yaml";
+import { cpuSince, cpuStart } from "../helpers/cpu-time.js";
 
 let base: string;
 let rootDir: string;
@@ -109,9 +110,9 @@ describe("BoundedReader confinement (BR2.1)", () => {
   });
 
   it("does not block on a FIFO where a file is expected", () => {
-    const t0 = performance.now();
+    const t0 = cpuStart();
     expect(readYaml(root, "fifo.yaml").outcome).toBe("not-regular-file");
-    expect(performance.now() - t0).toBeLessThan(2000);
+    expect(cpuSince(t0)).toBeLessThan(2000);
   });
 
   it("refuses bytes that are not UTF-8 as a parse error with fixed wording", () => {
@@ -174,7 +175,7 @@ describe("BoundedReader when the file changes under it (races)", () => {
 
   it("a FIFO swapped in after the checks does not block the open and is refused", () => {
     const rel = file("fifo-later.yaml", "a: 1\n");
-    const t0 = performance.now();
+    const t0 = cpuStart();
     const r = readTextWithHooks(root, rel, READER_LIMITS, {
       afterLocate: () => {
         fs.rmSync(path.join(rootDir, rel));
@@ -182,7 +183,7 @@ describe("BoundedReader when the file changes under it (races)", () => {
       },
     });
     expect(r.outcome).toBe("not-regular-file");
-    expect(performance.now() - t0).toBeLessThan(2000);
+    expect(cpuSince(t0)).toBeLessThan(2000);
   });
 
   it("a file that grows past the limit between lstat and open is refused by its fstat size", () => {
@@ -260,9 +261,9 @@ describe("BoundedReader YAML limits (BR2.2, BR2.3)", () => {
       const prev = names[i - 1];
       bomb += `${names[i]}: &${names[i]} [${Array(10).fill(`*${prev}`).join(",")}]\n`;
     }
-    const t0 = performance.now();
+    const t0 = cpuStart();
     expect(parseYamlBounded(bomb)).toEqual({ ok: false, refusal: "alias-limit" });
-    expect(performance.now() - t0).toBeLessThan(2000);
+    expect(cpuSince(t0)).toBeLessThan(2000);
   });
 
   it("admits aliases under the limit and shares their value", () => {
@@ -284,7 +285,7 @@ describe("BoundedReader YAML limits (BR2.2, BR2.3)", () => {
 
   it("refuses a document with more nodes than the limit while lexing, before composing it", () => {
     const n = READER_LIMITS.expandedNodesPerDocument.value;
-    const t0 = performance.now();
+    const t0 = cpuStart();
     expect(parseYamlBounded(`[${"1,".repeat(n)}1]`)).toMatchObject({ ok: false, refusal: "too-large" });
     // aliases: with the default limits the lexeme budget binds first, so the node limit is lowered
     const nodes: ReaderLimits = {
@@ -295,8 +296,8 @@ describe("BoundedReader YAML limits (BR2.2, BR2.3)", () => {
       ok: false,
       refusal: "alias-limit",
     });
-    expect(performance.now() - t0).toBeLessThan(60_000);
-  }, 60_000);
+    expect(cpuSince(t0)).toBeLessThan(60_000);
+  });
 
   it("the lexing-time node count refuses before composing: a truncated document over the limit is too-large, not a parse error", () => {
     // regression for the heap crash fixed in c043698: without the early count this input reaches
@@ -358,7 +359,7 @@ describe("BoundedReader YAML limits (BR2.2, BR2.3)", () => {
       refusal: "too-large",
       detail: "file memory",
     });
-  }, 120_000);
+  });
 
   it("refuses a flow-style document at the API object ceiling by its lexemes first (a stated trade-off)", () => {
     // 1,572,864 one-character values are within expandedNodesPerDocument but cost three lexemes
@@ -370,7 +371,7 @@ describe("BoundedReader YAML limits (BR2.2, BR2.3)", () => {
       refusal: "too-large",
       detail: "file memory",
     });
-  }, 60_000);
+  });
 
   it("maps a RangeError raised inside the parser to the too-deep refusal (the parse handler)", () => {
     const throwing: ReaderLimits = {
@@ -460,7 +461,7 @@ describe("BoundedReader YAML limits (BR2.2, BR2.3)", () => {
       // the same answer every time
       expect(parseYamlBounded(gen(last)).ok, name).toBe(true);
     }
-  }, 60_000);
+  });
 
   it("never throws when called from deep in the stack (a child node, main thread, default stack)", () => {
     const here = path.dirname(fileURLToPath(import.meta.url));
@@ -478,7 +479,7 @@ describe("BoundedReader YAML limits (BR2.2, BR2.3)", () => {
     expect(r.escaped).toEqual([]);
     expect(r.escapedCount).toBe(0);
     expect(r.reached).toBeGreaterThan(5000);
-  }, 120_000);
+  });
 
   it("refuses depth over a smaller limit at the pre-scan, admits it at the limit", () => {
     const lim = (n: number): ReaderLimits => ({
@@ -502,13 +503,13 @@ describe("BoundedReader YAML limits (BR2.2, BR2.3)", () => {
   });
 
   it("refuses a stream of empty documents over the derived limit, quickly", () => {
-    const t0 = performance.now();
+    const t0 = cpuStart();
     expect(parseYamlBounded("---\n".repeat(READER_LIMITS.documentsPerFile.value + 1))).toEqual({
       ok: false,
       refusal: "too-many-documents",
     });
-    expect(performance.now() - t0).toBeLessThan(30_000);
-  }, 30_000);
+    expect(cpuSince(t0)).toBeLessThan(30_000);
+  });
 
   it("names malformed and truncated YAML with fixed wording, never the parser's message", () => {
     for (const text of ["a: [1, 2\n", 'a: "unterminated\n', "a: b: c\n", "\tx: 1\n", "a:\n  - x\n - y\n"]) {
@@ -527,10 +528,10 @@ describe("BoundedReader YAML limits (BR2.2, BR2.3)", () => {
     expect(parseYamlBounded("a: 1\na: 2\n")).toEqual({ ok: false, refusal: "parse-error", detail: "duplicate key" });
     expect(parseYamlBounded("? [a]\n: 1\n")).toEqual({ ok: false, refusal: "parse-error", detail: "collection key" });
     expect(parseYamlBounded("x: &k [a]\n*k : 1\n")).toMatchObject({ ok: false, refusal: "parse-error" });
-    const t0 = performance.now();
+    const t0 = cpuStart();
     const nested = `${"{? ".repeat(250)}x${"}".repeat(250)}`;
     expect(parseYamlBounded(nested)).toMatchObject({ ok: false, refusal: "parse-error" });
-    expect(performance.now() - t0).toBeLessThan(2000);
+    expect(cpuSince(t0)).toBeLessThan(2000);
   });
 
   it("reads YAML 1.1 as the Kubernetes decoders do: yes/no/on/off/y/n booleans and merge keys", () => {

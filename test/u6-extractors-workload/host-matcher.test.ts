@@ -5,6 +5,7 @@ import {
   hostMatchesPattern,
   labelMatches,
 } from "../../src/u6-extractors-workload/host-matcher.js";
+import { cpuSince, cpuStart } from "../helpers/cpu-time.js";
 
 const match = createHostMatcher([
   { id: "Service/gitea/gitea-http", name: "gitea-http", namespace: "gitea" },
@@ -114,8 +115,8 @@ describe("match: entries (US2.3, AC2.3.4, AC6.5.3, BR2.11)", () => {
   });
   it("matches a long hostile label in linear time per pattern character", () => {
     const label = "a".repeat(63);
-    const t0 = Date.now();
+    const t0 = cpuStart();
     expect(labelMatches(`${"*".repeat(30)}b`, label)).toBe(false);
-    expect(Date.now() - t0).toBeLessThan(1000);
+    expect(cpuSince(t0)).toBeLessThan(1000);
   });
 });

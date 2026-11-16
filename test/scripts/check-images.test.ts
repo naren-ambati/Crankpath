@@ -2,6 +2,7 @@
 // failing on a small tree of its own; the repository's own images; and the transcripts against what
 // docs/images/capture.mjs checked when it captured them (claim CL-43).
 
+import { createHash } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -37,9 +38,13 @@ function tree(files: Record<string, string | Buffer>) {
   return { root, files: Object.keys(files).sort() };
 }
 
+const sha = (b: string | Buffer) => createHash("sha256").update(b).digest("hex");
+const SHOT_PNG = Buffer.from([1, 2, 3]);
+const SHOT_JSON = JSON.stringify(transcript("shot"));
 const good = (): Record<string, string | Buffer> => ({
-  "docs/images/shot.png": Buffer.from([1, 2, 3]),
-  "docs/images/transcripts/shot.json": JSON.stringify(transcript("shot")),
+  "docs/images/shot.png": SHOT_PNG,
+  "docs/images/transcripts/shot.json": SHOT_JSON,
+  "docs/images/manifest.json": `${JSON.stringify({ shot: { png: sha(SHOT_PNG), transcript: sha(SHOT_JSON) } }, null, 2)}\n`,
   "docs/images/README.md": "- `shot`: how it was made\n",
   "docs/tour.md": "![A terminal showing a run](images/shot.png)\n\n*`crankpath x`, run 2026-11-16: what it shows.*\n",
 });
@@ -92,9 +97,39 @@ describe("check-images", () => {
     ]);
   });
 
+  it("ties each image to its transcript by the render manifest (release review m2)", () => {
+    // an image edited after it was rendered
+    expect(problems({ ...good(), "docs/images/shot.png": Buffer.from([1, 2, 4]) })).toEqual([
+      "docs/images/shot.png:0 image-differs it is not the image render.mjs made from its transcript (docs/images/manifest.json)",
+    ]);
+    // a transcript re-captured without rendering its image again
+    const recaptured = JSON.stringify({ ...transcript("shot"), capturedAt: "2026-11-17T00:00:00.000Z" });
+    expect(problems({ ...good(), "docs/images/transcripts/shot.json": recaptured })).toEqual([
+      "docs/images/shot.png:0 transcript-differs its transcript changed after it was rendered (docs/images/manifest.json)",
+    ]);
+    // no entry, an entry of no image, and no manifest at all
+    expect(problems({ ...good(), "docs/images/manifest.json": "{}\n" })).toEqual([
+      "docs/images/shot.png:0 unrecorded docs/images/manifest.json has no entry for it",
+    ]);
+    const extra = JSON.stringify({
+      shot: { png: sha(SHOT_PNG), transcript: sha(SHOT_JSON) },
+      gone: { png: "0".repeat(64), transcript: "0".repeat(64) },
+    });
+    expect(problems({ ...good(), "docs/images/manifest.json": extra })).toEqual([
+      "docs/images/manifest.json:0 orphan-entry gone has no image",
+    ]);
+    const none = good();
+    delete none["docs/images/manifest.json"];
+    expect(problems(none)).toEqual([
+      "docs/images/manifest.json:0 no-manifest missing or not valid JSON (render.mjs writes it)",
+    ]);
+  });
+
   it("fails a set at or over the byte budget", () => {
     const files = good();
-    files["docs/images/shot.png"] = Buffer.alloc(BUDGET_BYTES);
+    const big = Buffer.alloc(BUDGET_BYTES);
+    files["docs/images/shot.png"] = big;
+    files["docs/images/manifest.json"] = JSON.stringify({ shot: { png: sha(big), transcript: sha(SHOT_JSON) } });
     expect(problems(files)).toEqual([`docs/images:0 too-large ${BUDGET_BYTES} bytes of PNG, budget ${BUDGET_BYTES}`]);
   });
 

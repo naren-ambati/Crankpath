@@ -16,6 +16,7 @@ import { workloadRefExtractor } from "../../src/u6-extractors-workload/workload-
 import { analyseFixture } from "../helpers/fixture-kit.js";
 import { externalDecl, facts } from "../helpers/graphs.js";
 import { context, obj } from "../helpers/objects.js";
+import { cpuSince, cpuStart } from "../helpers/cpu-time.js";
 
 const LABEL = "argocd.argoproj.io/secret-type";
 const app = (name: string, repoURL: string, ns = "argocd") =>
@@ -141,14 +142,14 @@ describe("M3: the wildcard match work is bounded by the steps actually done", ()
     }));
     const m = createHostMatching([], rules);
     const lab = "a".repeat(63);
-    const t0 = Date.now();
+    const t0 = cpuStart();
     for (let i = 0; i < 800; i++)
       m.match({
         host: [`${"a".repeat(58)}${String(i).padStart(5, "0")}`, lab, lab, `${lab.slice(0, 50)}x${i}`].join("."),
         field: "f",
         bareNamespace: null,
       });
-    expect(Date.now() - t0).toBeLessThan(2000);
+    expect(cpuSince(t0)).toBeLessThan(2000);
     expect(m.limitHit()).toBe(true);
   });
   it("an entry with a literal suffix is consulted only by hosts that end in it", () => {

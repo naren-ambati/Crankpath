@@ -11,6 +11,7 @@ import {
   substitute,
 } from "../../scripts/census-lib.mjs";
 import { parseYamlBounded } from "../../src/u2-intake-config/bounded-reader.js";
+import { cpuSince, cpuStart } from "../helpers/cpu-time.js";
 
 const OWN = "https://github.com/acme/estate";
 
@@ -608,9 +609,10 @@ describe("census: findings of the second review", () => {
     const files: Files = { "x.yaml": app(`  source: {repoURL: ${OWN}, path: k0}`) };
     for (let i = 0; i < 1500; i++)
       files[`k${i}/kustomization.yaml`] = i < 1499 ? `resources: [../k${i + 1}]\n` : "resources: []\n";
-    const t0 = performance.now();
+    const t0 = cpuStart();
     expect(only(files)).toBeNull();
-    expect(performance.now() - t0).toBeLessThan(10_000);
+    // CPU ms: a hang guard, about 1.3 s on an idle run (the pre-fix code also stayed under 10 s, so it never caught m3); 15 s is over ten times that
+    expect(cpuSince(t0)).toBeLessThan(15_000);
   });
 
   it("n3: scp and https forms of one repository normalise alike, percent escapes included", () => {

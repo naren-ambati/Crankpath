@@ -260,7 +260,8 @@ describe("m4: a second render that does not finish keeps the first", () => {
   });
   it("keeps the first render when the second times out", () => {
     const h = setup(chart({ "c/fake.json": '{"mode":"second-sleeps","ms":20000}' }), {
-      limits: { ...RUNNER_LIMITS, wallClock: withValue(LIMITS.renderWallClock, 1500, "test") },
+      // 8 s: the jobs that do not sleep (a fake tool each) must end inside it on a busy host too, and the 20 s sleep must outlast it
+      limits: { ...RUNNER_LIMITS, wallClock: withValue(LIMITS.renderWallClock, 8000, "test") },
     });
     const set = renderHelm(helm(), h.io);
     expect(set).toMatchObject({ outcome: "ok", opaque: null });

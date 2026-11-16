@@ -5,6 +5,7 @@ import { withValue } from "../support/limits.js";
 import { READER_LIMITS } from "../../src/u2-intake-config/bounded-reader.js";
 import { substituteDocument } from "../../src/u4-render-engine/flux-substitution.js";
 import { OUTPUT_LIMITS, parseRenderedOutput, splitDocuments } from "../../src/u4-render-engine/rendered-output.js";
+import { cpuSince, cpuStart } from "../helpers/cpu-time.js";
 
 const cm = (name: string) => `apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: ${name}\n`;
 
@@ -42,9 +43,9 @@ describe("rendered output parsing under the limits", () => {
   });
   it("refuses an alias bomb in one document, keeps the next", () => {
     const bomb = `a: &a [x,x,x,x,x,x,x,x,x,x]\nb: &b [*a,*a,*a,*a,*a,*a,*a,*a,*a,*a]\nc: &c [*b,*b,*b,*b,*b,*b,*b,*b,*b,*b]\nd: &d [*c,*c,*c,*c,*c,*c,*c,*c,*c,*c]\ne: &e [*d,*d,*d,*d,*d,*d,*d,*d,*d,*d]\nf: &f [*e,*e,*e,*e,*e,*e,*e,*e,*e,*e]\ng: &g [*f,*f,*f,*f,*f,*f,*f,*f,*f,*f]\nh: [*g,*g,*g,*g,*g,*g,*g,*g,*g,*g]\n`;
-    const t0 = Date.now();
+    const t0 = cpuStart();
     const r = parseRenderedOutput(Buffer.from(`${bomb}---\n${cm("after")}`), "render:j");
-    expect(Date.now() - t0).toBeLessThan(5000);
+    expect(cpuSince(t0)).toBeLessThan(5000);
     expect(r).toMatchObject({ ok: true, refused: [{ document: 1, outcome: "alias-limit" }] });
     if (r.ok) expect(r.documents).toHaveLength(1);
   });

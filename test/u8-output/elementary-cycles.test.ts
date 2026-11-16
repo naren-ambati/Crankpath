@@ -5,6 +5,7 @@
 import { describe, expect, it } from "vitest";
 import { LIMITS } from "../../src/u1-graph-model/limits.js";
 import { elementaryCycles } from "../../src/u8-output/elementary-cycles.js";
+import { cpuSince, cpuStart } from "../helpers/cpu-time.js";
 
 const id = (i: number) => `ConfigMap/ns/n${String(i).padStart(6, "0")}`;
 const ring = (n: number) => Array.from({ length: n }, (_, i) => ({ from: id(i), to: id((i + 1) % n) }));
@@ -107,20 +108,20 @@ describe("elementaryCycles (bounded Johnson)", () => {
     expect(r.cycles).toEqual([[0]]);
   });
   it("walks a 100,000-node ring without recursion, quickly", () => {
-    const t0 = performance.now();
+    const t0 = cpuStart();
     const r = elementaryCycles(nodesOf(100_000), ring(100_000), LIMITS.explainElementaryCycles.value);
     expect(r.cycles).toHaveLength(1);
     expect(r.cycles[0]).toHaveLength(100_000);
-    expect(performance.now() - t0).toBeLessThan(10_000);
+    expect(cpuSince(t0)).toBeLessThan(10_000);
   });
   it("stops early on a component with very many cycles (a chain of 2,000 two-node cycles)", () => {
     const edges: { from: string; to: string }[] = [];
     for (let i = 0; i < 2000; i++) edges.push({ from: id(i), to: id(i + 1) }, { from: id(i + 1), to: id(i) });
-    const t0 = performance.now();
+    const t0 = cpuStart();
     const r = elementaryCycles(nodesOf(2001), edges, 21);
     expect(r.cycles).toHaveLength(21);
     expect(r.stopped).toBe(true);
-    expect(performance.now() - t0).toBeLessThan(5_000);
+    expect(cpuSince(t0)).toBeLessThan(5_000);
   });
   it("refuses a bound that is not a positive integer (a bug)", () => {
     expect(() => elementaryCycles([], [], 0)).toThrow(/bound/);

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { jsonText, quote, quoteUrl, redactUrl, UNPARSEABLE_URL } from "../../src/u1-graph-model/safe-text.js";
+import { cpuSince, cpuStart } from "../helpers/cpu-time.js";
 
 // A seeded, hand-written hostile-string generator (no dependency): mixes quotes, backslashes,
 // newlines, carriage returns, ANSI escapes, bidi overrides, zero-width characters, Mermaid and
@@ -114,10 +115,10 @@ describe("SafeText quote, terminal destination (BR1.4, BR1.5)", () => {
 
   it("handles a 10 MB string in one pass and cuts it", () => {
     const big = "a".repeat(10 * 1024 * 1024);
-    const t0 = performance.now();
+    const t0 = cpuStart();
     const out = quote("name", big, "terminal");
     expect(out.endsWith(`... (cut at 381 of ${big.length} characters)`)).toBe(true);
-    expect(performance.now() - t0).toBeLessThan(5000);
+    expect(cpuSince(t0)).toBeLessThan(5000);
   });
 });
 

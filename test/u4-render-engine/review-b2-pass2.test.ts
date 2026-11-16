@@ -169,7 +169,8 @@ describe("M3, m2: every Helm render is compared with a second one", () => {
       { field: "helm template", value: "determinism not checked: second render exited with an error" },
     ]);
     const timed = setup(chart({ "c/fake.json": '{"mode":"second-sleeps","ms":20000}' }), {
-      limits: { ...RUNNER_LIMITS, wallClock: withValue(LIMITS.renderWallClock, 1500, "test") },
+      // 8 s: the jobs that do not sleep (a fake tool each) must end inside it on a busy host too, and the 20 s sleep must outlast it
+      limits: { ...RUNNER_LIMITS, wallClock: withValue(LIMITS.renderWallClock, 8000, "test") },
     });
     expect(renderHelm(helm(), timed.io)).toMatchObject({
       timedOut: false,

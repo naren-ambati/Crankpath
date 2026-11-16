@@ -69,6 +69,10 @@ describe("claims the documents make (docs/claims.md)", () => {
     const first = readme.split(/^## /m)[1] ?? "";
     expect(first.startsWith("Opacity")).toBe(true);
     expect(first).toContain(sentence);
+    // with the record's own qualifier (docs/census.md section 3; release review m5)
+    expect(first).toContain(
+      `${sentence} of D12 among the counted units only, not established for the estates as a whole`,
+    );
   });
 
   it("the README states the real-discovery census totals as the committed record has them", () => {
@@ -91,7 +95,9 @@ describe("claims the documents make (docs/claims.md)", () => {
   // `npm run release:check`) re-runs them with helm and the network and fails when they differ.
   const homelabSection = (): string => {
     const r = read("README.md");
-    return r.slice(r.indexOf("## The two homelab cycles"), r.indexOf("## Why it should exist"));
+    const from = r.indexOf("## Why it should exist: the two homelab cycles");
+    expect(from).toBeGreaterThanOrEqual(0);
+    return r.slice(from, r.indexOf("## How it differs"));
   };
 
   it("the README states the uncranked homelab golden as it is pinned", () => {
@@ -126,6 +132,23 @@ describe("claims the documents make (docs/claims.md)", () => {
     expect(has("Application/argocd/gitea", "generated-by", "ApplicationSet/argocd/root")).toBe(true);
     expect(has("ApplicationSet/argocd/root", "deployed-by", "Application/argocd/argocd")).toBe(true);
     expect(has("Application/argocd/argocd", "generated-by", "ApplicationSet/argocd/root")).toBe(true);
+  });
+
+  it("the README quick start quotes a real run of the documentation example", () => {
+    const r = example(["repo", ...URL_FLAG, ...ALIAS, "--no-network"]);
+    expect(r.code).toBe(0);
+    // `...` marks the lines left out, at the two ends only: what is between is one contiguous run
+    const marked = quoted("README.md", "CL-13");
+    expect([marked[0], marked.at(-1)]).toEqual(["...", "..."]);
+    const q = marked.slice(1, -1);
+    expect(q).not.toContain("...");
+    expect(isExcerpt(q, r.out)).toBe(true);
+    expect(q[0]).toBe("Run status: ANALYSED");
+    expect(q).toContain("  cycle c-0b9310f2  label: extracted  nodes: 3  edges: 4");
+    // the caption names the command the test runs, and the exit code it gave
+    expect(read("README.md")).toContain(
+      "Excerpt of `crankpath repo --repo-url https://github.com/example-org/estate --repo-alias http://gitea-http.gitea:3000/ops/estate=repo --no-network`, run 2026-11-16 in `test/fixtures/docs-example` (`crankpath` is `node ../../../dist/u9-cli-package/cli.js` there; exit 0; `...` marks the lines left out before and after)",
+    );
   });
 
   it("without the alias, both Applications of the example are opaque unreadable-repo with a suggested repos entry", () => {

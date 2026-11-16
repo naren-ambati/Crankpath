@@ -54,7 +54,7 @@ A crank is the manual step a person takes to break a cycle at bootstrap, written
 
 ## 6. Read the plan
 
-![Terminal output of crankpath on examples/plan from the Not startable line to the plan: 0 of 16 nodes not startable, github.com available (declared, not verified), and an 11-step plan whose step 1 is the manual crank; exit 0](images/plan.png) <!-- claim CL-43 -->
+![Terminal output of crankpath on examples/plan from the Not startable line to the Not verified statement: 0 of 16 nodes not startable, github.com available (declared, not verified), an 11-step plan whose step 1 is the manual crank, and the external and the crank listed as not verified; exit 0](images/plan.png) <!-- claim CL-43 -->
 
 *`crankpath examples/plan/repo --repo-url http://gitea-http.gitea:3000/ops/plan --config examples/plan/crankpath.yaml`, cut with `sed`, run 2026-11-16: Every node is startable relative to the listed assumptions, and the plan orders all 16 in 11 steps, the first the one manual crank.*
 
@@ -70,7 +70,7 @@ Some dependencies are visible only at runtime (here, a Secret mounted through a 
 
 ## 8. What crankpath cannot read
 
-![Terminal output of crankpath on examples/opaque from Run status to the unreadable file: ANALYSED WITH GAPS, at least 3 of 4 sources opaque, unreadable-repo with a suggested repos entry, limit, encrypted-values, and the file refused for alias expansion over the limit; exit 0](images/opaque.png) <!-- claim CL-43 -->
+![Terminal output of crankpath on examples/opaque from Run status to the whole Cycles statement: ANALYSED WITH GAPS, at least 3 of 4 sources opaque, unreadable-repo with a suggested repos entry, limit, encrypted-values, the file refused for alias expansion over the limit, and no cycle found among what was read, with the opaque nodes, unresolved items and unreadable file it cannot see into; exit 0](images/opaque.png) <!-- claim CL-43 -->
 
 *`crankpath examples/opaque/repo --repo-url https://github.com/example-org/opaque`, cut with `sed`, run 2026-11-16: An unreadable repository with its suggested entry (never applied), encrypted values, and an alias bomb refused by the limit: each named and counted, and the opacity line a floor.*
 
@@ -78,7 +78,7 @@ Each source crankpath cannot see into is opaque, with a fixed reason: a reposito
 
 ## 9. Hostile input
 
-![Terminal output of crankpath on a copy of examples/refusals from Run status to the Cycles line: three opaque Applications, big.yaml refused as too large, escape.yaml as a symlink not followed, and three ConfigMaps skipped invalid-name with their names quoted and escapes shown as backslash x1b; exit 0](images/refusals.png) <!-- claim CL-43 -->
+![Terminal output of crankpath on a copy of examples/refusals from Run status to the whole Cycles statement: three opaque Applications, big.yaml refused as too large, escape.yaml as a symlink not followed, and three ConfigMaps skipped invalid-name with their names quoted and escapes shown as backslash x1b; exit 0](images/refusals.png) <!-- claim CL-43 -->
 
 *`node examples/refusals/make-copy.mjs "$TMPDIR/crankpath-shots/refusals"`, then `crankpath "$TMPDIR/crankpath-shots/refusals" --repo-url https://github.com/example-org/refusals`, cut with `sed`, run 2026-11-16: A symlink, a path out of the root, a file over the size limit and names that imitate crankpath's output: each refused or skipped by name, every hostile string quoted with its control characters written out.*
 

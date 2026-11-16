@@ -13,6 +13,7 @@ import {
   matchPath,
   StepBudget,
 } from "../../src/u3-discovery-expansion/generator-paths.js";
+import { cpuSince, cpuStart } from "../helpers/cpu-time.js";
 
 const flat: ParamSet = {
   values: { path: "apps/web", "path.basename": "web", "path[0]": "apps", "values.env": "prod" },
@@ -163,9 +164,9 @@ describe("path patterns (path.Match for directories, git pathspec for files)", (
   });
   it("never backtracks: a hostile pattern costs pattern x path steps", () => {
     const b = new StepBudget(10_000_000);
-    const t0 = performance.now();
+    const t0 = cpuStart();
     expect(matchPath("file", `${"*a".repeat(500)}b`, "a".repeat(2000), b)).toBe(false);
-    expect(performance.now() - t0).toBeLessThan(2000);
+    expect(cpuSince(t0)).toBeLessThan(2000);
   });
   it("indexes directories by depth and first segment", () => {
     const idx = new DirectoryIndex(["apps", "apps/a", "apps/b", "system/x", "a/b/c"]);

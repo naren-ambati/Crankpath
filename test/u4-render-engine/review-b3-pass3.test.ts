@@ -499,8 +499,11 @@ function alive(marker: string): string[] {
   const ps = spawnSync("ps", ["-A", "-o", "command"], { encoding: "utf8" }).stdout;
   return ps.split("\n").filter((l) => l.includes(marker) && !l.includes("ps -A"));
 }
+// The stand-in's descendant lives 120 s unless it is killed, so waiting up to 30 s for it to go tells a
+// kill from none on a busy host too (derived from the 120 s, not picked).
 async function gone(marker: string): Promise<string[]> {
-  for (let i = 0; i < 50 && alive(marker).length > 0; i++) await new Promise((r) => setTimeout(r, 100));
+  const until = Date.now() + 30_000;
+  while (alive(marker).length > 0 && Date.now() < until) await new Promise((r) => setTimeout(r, 100));
   return alive(marker);
 }
 
@@ -511,12 +514,13 @@ describe("m3: the helper kills the group when git exits, and when its caller is 
     const r = realGitSpawn(s.file, [], { cwd: dir("run"), env: { PATH: "" }, timeout: 20_000, maxBuffer: 1 << 20 });
     expect(r.status).toBe(0);
     expect(r.error).toBeUndefined();
-    expect(Date.now() - started).toBeLessThan(10_000);
+    // derived: a call that waited for the descendant's pipes would end only at its 20 s timeout (ETIMEDOUT)
+    expect(Date.now() - started).toBeLessThan(20_000);
     expect(await gone(s.marker)).toEqual([]);
   });
   it("the helper's standard output closes (its caller is gone): it kills the group and exits", async () => {
     const s = standIn("chatty");
-    const helper = spawn(process.execPath, helperArgv(s.file, [], 60_000, 1 << 30), {
+    const helper = spawn(process.execPath, helperArgv(s.file, [], 45_000, 1 << 30), {
       stdio: ["ignore", "pipe", "pipe"],
       env: { PATH: "" },
     });
@@ -525,7 +529,8 @@ describe("m3: the helper kills the group when git exits, and when its caller is 
     helper.stdout?.destroy();
     const started = Date.now();
     await exited;
-    expect(Date.now() - started).toBeLessThan(20_000);
+    // derived: a helper that did not notice its caller was gone would run to its 45 s wall clock
+    expect(Date.now() - started).toBeLessThan(45_000);
     expect(await gone(s.marker)).toEqual([]);
   });
 });

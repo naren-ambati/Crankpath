@@ -6,7 +6,12 @@ export default defineConfig({
     setupFiles: ["test/setup/no-network.ts"],
     // builds dist once when it is older than src, for the tests that run the built binary
     globalSetup: ["test/setup/build-dist.ts"],
-    testTimeout: 60_000,
+    // A hang guard only, never a cost bound (those are CPU time, test/helpers/cpu-time.ts): 15 minutes, the
+    // guard the adversarial suite already had, about 27 times the slowest test under the suite's own parallel
+    // load (33.4 s, 2026-11-16). A 180 s guard was hit by that test with 30 CPU-bound processes running beside
+    // the suite on 10 cores (load average 123); BUILD-NOTES, release round part B.
+    testTimeout: 900_000,
+    hookTimeout: 900_000,
     coverage: {
       provider: "v8",
       reporter: ["text-summary", "text"],

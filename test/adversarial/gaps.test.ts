@@ -11,6 +11,7 @@ import type { CommandResult } from "../../src/u4-render-engine/command-runner.js
 import { fetchFailureMark } from "../../src/u4-render-engine/chart-cache.js";
 import { app, copyThinSlice, estate, run, THIN_SLICE_URL } from "../helpers/scan.js";
 import { unwrapText } from "../helpers/text.js";
+import { cpuSince, cpuStart } from "../helpers/cpu-time.js";
 
 const cleanup: string[] = [];
 afterAll(() => {
@@ -141,9 +142,9 @@ describe("a YAML bomb and deep nesting in a scanned file, through the whole comm
         "a/cm.yaml": "kind: ConfigMap\n",
         "apps/hostile.yaml": content,
       });
-      const t0 = Date.now();
+      const t0 = cpuStart();
       const r = json(root, ["--repo-url", ESTATE_URL]);
-      expect(Date.now() - t0).toBeLessThan(20_000);
+      expect(cpuSince(t0)).toBeLessThan(20_000);
       expect(r.code).toBe(0);
       expect(r.report.unreadable.map((u: { path: string; outcome: string }) => u.path)).toEqual(["apps/hostile.yaml"]);
       expect(r.report.runStatus).toMatchObject({ state: "ANALYSED WITH GAPS", floor: true });

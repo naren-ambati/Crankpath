@@ -9,6 +9,7 @@ import { vaultSealExtractor } from "../../src/u6-extractors-workload/vault-seal-
 import { context, job, meta, obj } from "../helpers/objects.js";
 import { app, estate, run, THIN_SLICE_URL } from "../helpers/scan.js";
 import { flat, unwrapText } from "../helpers/text.js";
+import { cpuSince, cpuStart } from "../helpers/cpu-time.js";
 
 const AWS = 'seal "awskms" {\n  region = "us-east-1"\n  kms_key_id = "k"\n}\n';
 
@@ -283,10 +284,11 @@ describe("review fixes: disabled, in-cluster transit, many objects (m5, m6, m7)"
         }),
       );
     }
-    const start = performance.now();
+    const start = cpuStart();
     const r = vaultSealExtractor.extract(objects, context([]));
     expect(r.edges).toHaveLength(40_000);
-    expect(performance.now() - start).toBeLessThan(3000);
+    // CPU ms: about 0.5 s on an idle run; 5 s is ten times that (a scan of every pair is 1.6 billion comparisons)
+    expect(cpuSince(start)).toBeLessThan(5000);
   });
 });
 

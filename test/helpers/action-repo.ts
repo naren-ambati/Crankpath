@@ -8,6 +8,7 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { type ActionIo, type ActionRun, runAction } from "../../action/action-entry.mjs";
+import { INERT_GIT } from "../../scripts/action-local.mjs";
 
 const FIXTURES = fileURLToPath(new URL("../fixtures/action/", import.meta.url));
 
@@ -51,7 +52,8 @@ export function makeRepo(layers: string[], mutateBase?: (dir: string) => void): 
     GIT_COMMITTER_DATE: "2026-11-16T00:00:00+0000",
   };
   const git = (args: string[], input?: string | Buffer) => {
-    const r = spawnSync("git", args, { cwd: dir, env, input, maxBuffer: 1 << 30 });
+    // inert, as the local harness's fixtures are: no automatic maintenance or gc (release review, files m1)
+    const r = spawnSync("git", [...INERT_GIT, ...args], { cwd: dir, env, input, maxBuffer: 1 << 30 });
     if (r.status !== 0) throw new Error(`git ${args.join(" ")}: ${r.stderr.toString()}`);
     return r.stdout.toString().trim();
   };

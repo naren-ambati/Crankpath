@@ -232,6 +232,15 @@ All read-only clones into the golden cache outside the repository (`CRANKPATH_GO
 | 2026-11-16 | acelinkio/argocd-homelab at 2f9aab023f92b6d73051bd86ec163a48a56dbe1e, from the census cache (fetched 2026-11-15) | LICENSE read in full: the MIT licence, "Copyright (c) 2023 acelinkio"; no NOTICE file |
 | 2026-11-16 | the real-discovery census (`node scripts/census-real.mjs`): crankpath's own read-only chart pulls (`helm pull`) and `repos:` fetches for the five OD-26 estates, into a cache outside the repository | every estate ran (exit 0, `ANALYSED WITH GAPS`); counts in `docs/census-2026-11-16-real.json` |
 
+## Release round (2026-11-16): the release workflow and the name
+
+| Date | Lookup | Result |
+|---|---|---|
+| 2026-11-16 | GitHub API (read-only GET): `repos/actions/checkout/releases/latest` and `git/ref/tags/v7.0.1` | latest release `v7.0.1`, published 2026-07-20T15:10:05Z; the tag points at commit `3d3c42e5aac5ba805825da76410c181273ba90b1`, the commit `docs/action.md` already names. Pinned in `.github/workflows/release.yml` by that full commit id. |
+| 2026-11-16 | GitHub API (read-only GET): `repos/actions/setup-node/releases/latest` and `git/ref/tags/v7.1.0` | latest release `v7.1.0`, published 2026-10-08T02:52:34Z; the tag points at commit `949feb2413d6458794dcd2491c4babbbce0c15c1`, the commit `action/action.yml` already pins. Pinned in `.github/workflows/release.yml` by that full commit id. |
+| 2026-11-16 | `npm view npm@11 version`, `npm view npm dist-tags.latest`, `npm view npm@11.21.2 engines`, `npm view npm@12.2.2 engines` | the highest 11.x is 11.21.2 (node `^20.17.0 \|\| >=22.9.0`); the latest is 12.2.2 (node `^22.22.2 \|\| ^24.15.0 \|\| >=26.0.0`). The workflow installs npm 11.21.2, which runs on every Node 22 from 22.9, as the sibling project's workflow does. |
+| 2026-11-16 | `npm view crankpath` | `E404 Not Found`: the name is not taken on the npm registry today. A name is only held by publishing it, so the release checklist repeats this on the day of the tag. |
+| 2026-11-16 | GitHub API (read-only GET): `repos/naren-ambati/crankpath` | `404 Not Found`: the repository does not exist yet (the owner creates it, release checklist). |
 ## Release round, part A (2026-11-16): the render tools
 
 Read-only registry reads and downloads into a folder outside the repository; nothing of them is committed.

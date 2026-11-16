@@ -159,16 +159,29 @@ describe("the measured prose of census.md section 5 and the README (review m5)",
       "unsupported-field | Kustomization | spec.sourceRef.kind":
         "Flux Kustomizations whose source is not a GitRepository",
       "unreadable-repo | Kustomization | spec.sourceRef.name":
-        "Flux Kustomizations whose GitRepository only the bootstrap creates",
+        "Flux Kustomizations whose GitRepository the repository does not define",
       "unsupported-field | Application | helmCharts": "Applications that use Helm inflation inside kustomize",
     };
     const readme = read("README.md");
-    const at = top.map((k) => readme.indexOf(`${words[k]} (${json.total.d12.byReasonKindField[k]})`));
+    // the count is followed by `)` or by its split (`: ...`)
+    const at = top.map((k) => readme.indexOf(`${words[k]} (${json.total.d12.byReasonKindField[k]}`));
     expect(
       at.every((i) => i > 0),
       JSON.stringify(at),
     ).toBe(true);
     expect([...at].sort((a, b) => a - b)).toEqual(at);
+  });
+
+  it("splits the second reason by estate in the README as the record has it (release review m4)", () => {
+    const key = "unreadable-repo | Kustomization | spec.sourceRef.name";
+    const per = (url: string): number =>
+      json.estates.find((e: { url: string }) => e.url === url)?.d12?.byReasonKindField?.[key] ?? 0;
+    const pi = per("https://github.com/ricsanfre/pi-cluster");
+    const nixos = per("https://github.com/niki-on-github/nixos-k3s");
+    expect(pi + nixos).toBe(json.total.d12.byReasonKindField[key]);
+    expect(read("README.md")).toContain(
+      `(${pi + nixos}: ${pi} in ricsanfre/pi-cluster, all naming the \`flux-system\` GitRepository its Flux bootstrap creates, and ${nixos} in niki-on-github/nixos-k3s, which name a \`flux-system\` it does not define either)`,
+    );
   });
 });
 

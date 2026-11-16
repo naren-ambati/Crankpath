@@ -1,26 +1,40 @@
 # Contributing
 
-crankpath is a small personal project in development; nothing is published yet. These are the rules its own build follows, and any change is held to them.
+crankpath is a personal open-source project; its repository, github.com/naren-ambati/crankpath, is created by the owner at release, and no npm package is published yet ([release checklist](docs/release-checklist.md)). Licence: Apache-2.0 ([LICENSE](LICENSE), [NOTICE](NOTICE)): contributions are accepted under the same licence (its section 5). These are the rules crankpath's own build followed, and any change is held to them.
 
-## Set-up
+## Build and verify
 
-- Node 22.13 or later. Install with `npm ci --ignore-scripts` (`.npmrc` sets `ignore-scripts=true`; no dependency's install script runs).
-- helm and kustomize on `PATH` are needed only for the live render lane (`npm run verify:live`) and the corpus lane that uses them; without them those report SKIPPED, never a pass. The tested pair is helm v4.3.2 with kustomize v5.8.1.
+Node 22.13 or later (`engines.node`). From a clean checkout:
 
-## The one local gate
+```sh
+npm ci --ignore-scripts
+npm run verify
+```
 
-`npm run verify` runs the typecheck (tests included), Biome, the build, the tests with the coverage floor and the release checks (`scripts/release-checks.mjs`: check-tree, check-docs, secret-grep, check-pack). It must pass before a change is proposed. `npm run release:check` adds the network and helm checks (npm audit, the golden lane) and fails on anything not run; it is for the owner before a release.
+- `npm ci --ignore-scripts` is the only install: `.npmrc` sets `ignore-scripts=true`, so no dependency's install script runs, and crankpath has none of its own. Runtime dependencies are `commander` and `yaml` only, pinned exactly.
+- **`npm run verify`** is the one local gate and needs no helm, kustomize or network: the typecheck (tests included), Biome, the build, the tests with the coverage floor (80% of lines over the core units and the Action), then the offline release checks (`scripts/release-checks.mjs`: check-tree, check-docs, secret-grep, check-pack, interim-reason). Tests that need helm or the network report skipped, never passed. It must be green before a change is handed over.
+- **`npm run verify:live`** needs helm and kustomize on `PATH` (the tested pair is helm v4.3.2 with kustomize v5.8.1), git and the network. It renders crankpath's own fixtures with the real tools and compares them with the fake tools the unit tests use, checks that the hostile fixture fails closed, renders one pinned public chart read-only, and fetches one pinned public repository read-only. Each check prints PASS, FAIL or SKIPPED with its reason; it exits 2 when anything was skipped, and a skip is never a pass. Run it when a change touches the render engine, the runner or the fetcher.
+- **`npm run verify:golden`** needs the same tools and the network. It runs every case under `test/golden/` with the built crankpath against its reviewed expected output, then every declared mutation of it, which must change the result. Fetched sources and every output go to the golden cache (`CRANKPATH_GOLDEN_CACHE`, by default a cache folder in your home directory), never into the repository. A helm or kustomize version other than the reviewed one makes a case SKIPPED. Run it on an idle machine with a steady network: a render that times out under load is a FAIL, not a retry. Run it when a change could move a golden; a golden is re-pinned only with `node scripts/golden.mjs --pin <id>` after its `reviewed.md` says why.
+- **`npm run release:check`** is the owner's step before a release: the build, then every release check in release mode, which adds `npm audit` (a registry read), the golden lane and the owner's deny-list (`CRANKPATH_DENYLIST_FILE`, a file kept outside the repository). Every check that was not run, skipped or pending fails it, and the last line names what blocks.
 
-## Rules for a change
+## Rules for changes
 
-- **Tests first.** Write the test or expected output, see it fail, then change the code. Every rule about honesty (no pass that was not earned, no repository text in crankpath's voice, a limit is a named outcome) has a test that fails when the rule is broken; check that yours can fail.
-- **Deterministic output.** The same input and the same tool versions give byte-identical JSON: sorted keys and arrays, no timestamps, absolute paths or machine names.
-- **Dependencies**: `commander` and `yaml` only at run time, exact versions, a lockfile resolved from the npm registry.
-- **Documentation**: every fence is a code language, quoted output (no info string or `text`: from a real run, with its command and date in the caption and a row in [the claim map](docs/claims.md) naming the test that reproduces it), a `measurement` (with its command and date) or an `illustration` (no output lines); diagrams are Mermaid with a `Text fallback:` line. `npm run docs:check` checks all of this.
-- **Third-party files**: only under MIT, Apache-2.0 or BSD licences, with the upstream licence beside the copy, a NOTICE, and a line in the root [NOTICE](NOTICE). Never GPL or MPL material.
-- **Nothing personal or secret in the repository**: no home paths, machine names, tokens or e-mail addresses (`npm run secret-grep`).
-- A change to the JSON output, `crankpath.yaml` or the Action's inputs and outputs that breaks a consumer goes in the [CHANGELOG](CHANGELOG.md), and a breaking JSON change raises `schemaVersion` ([JSON output](docs/json-output.md)).
+- **Read-only, and never a cluster.** crankpath reads files and renders them; nothing in it, its tests or its scripts may run `helm install`, `helm upgrade`, `kubectl` or anything that applies to a cluster. The runner's allowlist is closed: a new tool, subcommand or option is a design change with its own test that the old allowlist refused it.
+- **The scanned repository is hostile input.** Hunt these failure classes in your own change: a check that trusts a field the scanned repository controls (names, labels, annotations, aliases, its own `crankpath.yaml`); a 401, 403, 404, timeout or rate limit read as "gone" or as a failure of the estate; any surface that reads as clean over something unverified, opaque, skipped or empty; repository text shown in crankpath's own voice, unescaped or at the start of a line; a hostile input (a YAML bomb, deep nesting, a huge file, a symlink, `../`, odd names, a hostile chart) that crashes or freezes the tool; a credential going wherever the input says; a test that cannot fail.
+- **Honesty is a rule of the code.** Nothing says `ANALYSED`, OK, clean or passed unless every input was read, rendered and analysed; opaque, skipped, limited and timed-out items are named and counted and make the run `ANALYSED WITH GAPS`; declared edges and cranks are always labelled `declared (unverified)` or `documented, not verified`. Every such rule has a test that fails when the rule is broken: break the input, and see the output change.
+- **Tests first; every review finding becomes a regression test.** Write the test or expected output, see it fail, then change the code. A reproduced finding from a review is turned into a test that fails before the fix. Never loosen an expected output or a test to make something pass.
+- **No test fails only because the host is busy.** A test that bounds the cost of crankpath's own work bounds the CPU time it spends (`test/helpers/cpu-time.ts`), never the wall clock, with a ceiling derived from what it guards (the broken behaviour's cost where it is known, else about ten times the measured cost) and recorded; a test about a child process bounds it by the time the broken behaviour would take (the child's own sleep, the call's wall clock). The vitest timeouts are hang guards, not bounds.
+- **No network in unit tests.** `test/setup/no-network.ts` makes a socket to any non-loopback host throw. Write paths are tested with fixtures and fakes (`test/fixtures/fake-tools/`); no test starts a cluster or creates a scratch repository.
+- **Deterministic output.** The same input and the same helm and kustomize versions give byte-identical JSON: sorted keys and arrays, no timestamps, absolute paths or machine names. A chart that renders differently from run to run is a stated limit ([limits](docs/limits.md)), not a reason to loosen this.
+- **Fixtures say where they came from.** A copied third-party file is MIT, Apache-2.0 or BSD only, kept unmodified with its upstream LICENSE and a NOTICE beside it (source, commit, date, what was left out), listed in the root [NOTICE](NOTICE), and held by its hash in the corpus manifest (`test/corpus/<copy>/corpus.json`). Never GPL or MPL material: for such a repository (khuedoan/homelab is GPL-3.0, hashicorp/vault-helm is MPL-2.0) commit only commits, node ids and counts, or a hand-written fixture of the same shape. A synthetic fixture says it is synthetic.
+- **The stable surface does not move silently.** A change to the JSON output, `crankpath.yaml` or the Action's inputs and outputs that breaks a consumer goes in the [CHANGELOG](CHANGELOG.md), with `schemas/` and the [JSON output](docs/json-output.md) table updated in the same change; a breaking JSON change raises `schemaVersion`.
+- **Nothing personal or secret in the repository**: no home paths, machine names, tokens or e-mail addresses (`npm run secret-grep`, part of `npm run verify`), and no employer, company or organisation name in any file, commit message or git configuration.
+- **Surgical diffs.** Touch only what the change needs; state your assumptions in the commit message.
 
-## Licence
+## Docs
 
-Contributions are made under the Apache License 2.0 ([LICENSE](LICENSE)).
+- Every fence has a kind: a code language, output (no info string or `text`), a `measurement` or an `illustration`. Output is from a real run, never written by hand: its caption names the command in a code span and says `run YYYY-MM-DD`, and it carries a claim marker with a row in [the claim map](docs/claims.md) naming the test that reproduces it. A `measurement` names its command and date; an `illustration` holds no line crankpath prints.
+- A sentence that states a cycle id or a count of the form `N of M <word>` carries a claim marker (or, for a count, a dated `measured` marker).
+- Diagrams are Mermaid, each followed by a `Text fallback:` line; relative links and anchors must resolve, and every document is reachable from the README.
+- `npm run docs:check` (part of `npm run verify`) enforces all of this; its header in `scripts/check-docs.mjs` lists every rule.
+- Write what the code does now, and say what was not verified.

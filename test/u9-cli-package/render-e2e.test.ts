@@ -219,7 +219,8 @@ describe("tools, failures and limits", () => {
       repoUrl: URL_,
       toolPath: fakePath(),
       cacheDir: path.join(path.dirname(repo), "cache"),
-      runnerLimits: { ...RUNNER_LIMITS, wallClock: withValue(LIMITS.renderWallClock, 1500, "test") },
+      // 8 s: the jobs that do not sleep (a fake tool each) must end inside it on a busy host too, and the 20 s sleep must outlast it
+      runnerLimits: { ...RUNNER_LIMITS, wallClock: withValue(LIMITS.renderWallClock, 8000, "test") },
     });
     if (outcome.kind !== "report") throw new Error("expected a report");
     const json = JSON.parse(renderJson(outcome.report)) as Json;

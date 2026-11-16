@@ -1,0 +1,48 @@
+# Publishes crankpath to npm, and only when the owner pushes a version tag v<version>
+# (docs/release-checklist.md, step 15). Publishing is manual: nothing in this repository runs it from a
+# checkout, and it never runs on a push to a branch, a pull request or a schedule.
+# The job runs the offline gate first (`npm ci --ignore-scripts && npm run verify`: typecheck, Biome, build,
+# tests with the coverage floor, and the offline release checks). The lanes that need helm, kustomize, git,
+# the network or the owner's deny-list (`npm run verify:golden`, `npm run verify:live`, `npm run release:check`)
+# are the owner's local step on a machine that has them (checklist, steps 6 and 7), not something this
+# workflow runs. It then checks that the tag names package.json's version and publishes with npm provenance.
+# No npm-shrinkwrap.json is added: the package ships dist/, README.md, CHANGELOG.md, LICENSE, NOTICE and
+# package.json only (scripts/check-pack.mjs). Authentication is npm trusted publishing (OIDC, no stored
+# token) once it is configured for the package on npmjs.com; until then an NPM_TOKEN repository secret, if
+# set, is used instead. The action commits were read from the GitHub API on 2026-11-16 (docs/lookups.md).
+name: release
+on:
+  push:
+    tags: ["v[0-9]+.[0-9]+.[0-9]+"] # v<major>.<minor>.<patch> only; the tag-equals-version step checks the rest
+permissions:
+  contents: read
+concurrency:
+  group: release
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # npm trusted publishing and provenance
+    env:
+      NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+          package-manager-cache: false
+      - name: npm with trusted publishing
+        run: npm install -g npm@11.21.2 # exact (npm view npm@11 version, 2026-11-16); trusted publishing needs npm 11
+      - name: Verify (the offline gate)
+        run: npm ci --ignore-scripts && npm run verify
+      - name: Check the tag names the version
+        run: |
+          version="v$(node -p "require('./package.json').version")"
+          [ "$version" = "$GITHUB_REF_NAME" ] || { echo "::error::tag $GITHUB_REF_NAME does not name package.json's version ($version)"; exit 1; }
+      - name: Publish
+        run: npm publish --provenance --access public

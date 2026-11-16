@@ -106,6 +106,37 @@ function isCut(/** @type {string} */ shown, /** @type {string} */ full) {
   return null;
 }
 
+const indent = (/** @type {string} */ l) => l.length - l.trimStart().length;
+
+/**
+ * The first shown line after which the cut leaves a statement unfinished, or null (release review m1).
+ * crankpath wraps a long line with its continuation indented four more than the line it continues, so a
+ * cut whose next line of the full output is such a continuation, not shown, ends mid-sentence.
+ */
+function endsMidStatement(/** @type {string} */ shown, /** @type {string} */ full) {
+  const lines = full.split("\n");
+  const kept = shown.split("\n").filter((x) => x !== "");
+  let at = 0;
+  /** @type {number[]} */
+  const where = [];
+  for (const l of kept) {
+    while (at < lines.length && lines[at] !== l) at += 1;
+    if (at === lines.length) return null; // not a cut: isCut reports it
+    where.push(at);
+    at += 1;
+  }
+  for (let i = 0; i < where.length; i++) {
+    const p = /** @type {number} */ (where[i]);
+    const next = lines[p + 1];
+    if (next === undefined || next.trim() === "" || where[i + 1] === p + 1) continue;
+    let head = p;
+    while (head > 0 && indent(lines[head] ?? "") >= indent(lines[head - 1] ?? "") + 4 && (lines[head - 1] ?? "") !== "")
+      head -= 1;
+    if (indent(next) >= indent(lines[head] ?? "") + 4) return lines[p] ?? "";
+  }
+  return null;
+}
+
 function exampleRun(/** @type {string} */ id) {
   const [example, run] = id.split("/");
   const r = expected.examples[example ?? ""]?.runs.find((x) => x.name === run);
@@ -126,6 +157,8 @@ const fromExample =
     if (o.cut === true) {
       const missing = isCut(shown, want.full);
       if (missing !== null) out.push(`a line not in the pinned output of ${id}: ${JSON.stringify(missing)}`);
+      const mid = missing === null ? endsMidStatement(shown, want.full) : null;
+      if (mid !== null) out.push(`the cut of ${id} ends inside a wrapped statement, after ${JSON.stringify(mid)}`);
     } else if (shown !== want.full) out.push(`the output is not the pinned output of ${id}`);
     return out;
   };
@@ -249,10 +282,10 @@ const SCENARIOS = [
     title: "Reachability and the restoration plan",
     caption:
       "Every node is startable relative to the listed assumptions, and the plan orders all 16 in 11 steps, the first the one manual crank.",
-    alt: "Terminal output of crankpath on examples/plan from the Not startable line to the plan: 0 of 16 nodes not startable, github.com available (declared, not verified), and an 11-step plan whose step 1 is the manual crank; exit 0",
+    alt: "Terminal output of crankpath on examples/plan from the Not startable line to the Not verified statement: 0 of 16 nodes not startable, github.com available (declared, not verified), an 11-step plan whose step 1 is the manual crank, and the external and the crank listed as not verified; exit 0",
     commands: [
       {
-        cmd: "crankpath examples/plan/repo --repo-url http://gitea-http.gitea:3000/ops/plan --config examples/plan/crankpath.yaml | sed -n '/^Not startable/,/^Not verified/p'",
+        cmd: "crankpath examples/plan/repo --repo-url http://gitea-http.gitea:3000/ops/plan --config examples/plan/crankpath.yaml | sed -n '/^Not startable/,/^Not modelled/{/^Not modelled/!p;}'",
         check: fromExample("plan/text", { cut: true }),
       },
     ],
@@ -262,10 +295,10 @@ const SCENARIOS = [
     title: "Opaque and limit outcomes",
     caption:
       "An unreadable repository with its suggested entry (never applied), encrypted values, and an alias bomb refused by the limit: each named and counted, and the opacity line a floor.",
-    alt: "Terminal output of crankpath on examples/opaque from Run status to the unreadable file: ANALYSED WITH GAPS, at least 3 of 4 sources opaque, unreadable-repo with a suggested repos entry, limit, encrypted-values, and the file refused for alias expansion over the limit; exit 0",
+    alt: "Terminal output of crankpath on examples/opaque from Run status to the whole Cycles statement: ANALYSED WITH GAPS, at least 3 of 4 sources opaque, unreadable-repo with a suggested repos entry, limit, encrypted-values, the file refused for alias expansion over the limit, and no cycle found among what was read, with the opaque nodes, unresolved items and unreadable file it cannot see into; exit 0",
     commands: [
       {
-        cmd: "crankpath examples/opaque/repo --repo-url https://github.com/example-org/opaque | sed -n '/^Run status:/,/^Cycles:/p'",
+        cmd: "crankpath examples/opaque/repo --repo-url https://github.com/example-org/opaque | sed -n -e '/^Run status:/,/^Cycles:/{/^Cycles:/!p;}' -e '/^Cycles:/,/^$/p'",
         check: fromExample("opaque/text", { cut: true }),
       },
     ],
@@ -291,14 +324,14 @@ const SCENARIOS = [
     title: "Refusals and hostile names",
     caption:
       "A symlink, a path out of the root, a file over the size limit and names that imitate crankpath's output: each refused or skipped by name, every hostile string quoted with its control characters written out.",
-    alt: "Terminal output of crankpath on a copy of examples/refusals from Run status to the Cycles line: three opaque Applications, big.yaml refused as too large, escape.yaml as a symlink not followed, and three ConfigMaps skipped invalid-name with their names quoted and escapes shown as backslash x1b; exit 0",
+    alt: "Terminal output of crankpath on a copy of examples/refusals from Run status to the whole Cycles statement: three opaque Applications, big.yaml refused as too large, escape.yaml as a symlink not followed, and three ConfigMaps skipped invalid-name with their names quoted and escapes shown as backslash x1b; exit 0",
     commands: [
       {
         cmd: "node examples/refusals/make-copy.mjs $S/refusals",
         check: (c) => (c.exit === 0 ? [] : ["make-copy failed"]),
       },
       {
-        cmd: "crankpath $S/refusals --repo-url https://github.com/example-org/refusals | sed -n '/^Run status:/,/^Cycles:/p'",
+        cmd: "crankpath $S/refusals --repo-url https://github.com/example-org/refusals | sed -n -e '/^Run status:/,/^Cycles:/{/^Cycles:/!p;}' -e '/^Cycles:/,/^$/p'",
         check: fromExample("refusals/text", { cut: true }),
       },
     ],

@@ -1,0 +1,62 @@
+{
+  "action-summary-fail": {
+    "png": "cde42c5fb457c8665cd3bf69f409db23ac5b12fa12a4df0545a69c73228434cb",
+    "transcript": "34c3cc2e2e719bb6cd71bb3d21baf78ebe89ad6e163dedd9b0c365d81c85f376"
+  },
+  "action-summary-pass": {
+    "png": "10d936020cecb7bd8b2da1f2ab01ef492003c09ddc9dd4d3ab638535391c485d",
+    "transcript": "03415833e1b30b67c363f902a11f8d4ab00797171094980700e5dc27925ddc4a"
+  },
+  "cranked-uncranked": {
+    "png": "da40d30ace53b1f2cc3b4feef0ab0e8dfaad605fabd53ef6676c9ec3438cd731",
+    "transcript": "564002844af2e119b2404ca7ed43968d0073c72de50689b868607d0de393a60d"
+  },
+  "declared": {
+    "png": "1c0bbdbcced7b97bf54e6a66bf22ebd98ee0427295aa50bb461dea353a1ec745",
+    "transcript": "400f35ef4e3079039a81e83c74fd156b6ab2f42d24af55fa83719f1d239d4303"
+  },
+  "exit-codes": {
+    "png": "54b2981617feda041419e9916052448a0a3e22cc376a3914b7b9ded84685470d",
+    "transcript": "234742842b0a8defd73cbd9d8d4dd242e429108f57d8e5bf0cfa18b4ec5bffc8"
+  },
+  "explain": {
+    "png": "0b7a2d46ffc3a2a2e1ef83902ee0d8145b6d1ce90a4484fd899e661eb9fdc239",
+    "transcript": "5edf52346940e62732dd90f5d27e40bc66c6687b456a2682928c91b0112ca690"
+  },
+  "hero": {
+    "png": "d5d95d781c680868dbcca67118ff22fe0a5bf1c67c6f555f78a77d2f19e3745e",
+    "transcript": "c4643dd63b5f273d3cff2360ba90c2f9304728a6014e0d1d806c05f520fa4ff7"
+  },
+  "homelab-golden": {
+    "png": "ecd0432319dca004a45afd51bad1d127b12723574066499ba470e2d4868a621d",
+    "transcript": "52be3e5e3ad088043307b459666cf7fafce6b31359ff6be08fa2b16828a202c5"
+  },
+  "mermaid": {
+    "png": "1cd44596b0f89eff5b87fd46c715bf6d9635f7286e5411578d7eab41b6adf36a",
+    "transcript": "8841c15299fe4396694fd60d2183cb8b9bf80e046070b4d60366a1ea9eba331a"
+  },
+  "no-color": {
+    "png": "69f5084268ef043500f5b668cd382b51576f18b330485c8eea600996b166564b",
+    "transcript": "ddadfab289c17ce37abd2f9404d24410076b15923e95499b137d728c9a216c68"
+  },
+  "opaque": {
+    "png": "8f12d39a0d147ef39c987b0aa4c58d0a612531e0a9c0f1248f9e762a31e7166e",
+    "transcript": "274dd8d8e4a6e24e868183eccb1d6a30be024bb292f00c3cfed63fffdb472f38"
+  },
+  "plan": {
+    "png": "b3e2258e5a75508803d67a1195737101d4b2039a7081ba1950276179bfa26a18",
+    "transcript": "0de73b6b3c0cf11bfb434a8461f10b91983ecffd819a7e4603396335dd59a9ce"
+  },
+  "refusals": {
+    "png": "e511a4cbfb8abd82dc234416a0f927ddc5933944ad700ce9ceb8d8a89dba114b",
+    "transcript": "310c8fe6a655f0c6d82b523d82771fd6636d53c793189038a925b49dd36ec1f4"
+  },
+  "thin-slice-json": {
+    "png": "5cb2d02a443f69c9878d4dd8d787bb2a909cf51dbc2cc0418a4da2f7c462f761",
+    "transcript": "5b7c82b9d9da6793cca92c79d2fc21c0d2d1c29d61b2064e5b356bb5d811771c"
+  },
+  "thin-slice-text": {
+    "png": "b08fde5f1ec13acce0b4401a859bbfbf47a716e0ca5753962a87b3e679f3566e",
+    "transcript": "7ad3627ef22a88fc38b6e25e7b6ed9ec6b3a1709bd335834610af2fe52bedef1"
+  }
+}

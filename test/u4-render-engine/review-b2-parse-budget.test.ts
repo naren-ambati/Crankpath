@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 import { LIMITS } from "../../src/u1-graph-model/limits.js";
 import { OUTPUT_LIMITS, parseRenderedOutput } from "../../src/u4-render-engine/rendered-output.js";
 import { withValue } from "../support/limits.js";
+import { cpuSince, cpuStart } from "../helpers/cpu-time.js";
 
 const cm = (name: string) => `apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: ${name}\ndata: {a: "1", b: "2"}\n`;
 
@@ -30,8 +31,8 @@ describe("the parse budget of one render (M4)", () => {
   it("stops in seconds on output that once took minutes (node-dense documents within every per-document limit)", () => {
     const doc = `apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: a\nx: [${"1,".repeat(1_400_000)}1]\n`;
     const out = Buffer.from(Array.from({ length: 4 }, () => doc).join("---\n"));
-    const t0 = Date.now();
+    const t0 = cpuStart();
     expect(parseRenderedOutput(out, "r")).toEqual({ ok: false, problem: "over-parse-budget" });
-    expect(Date.now() - t0).toBeLessThan(60_000);
+    expect(cpuSince(t0)).toBeLessThan(60_000);
   });
 });

@@ -10,6 +10,7 @@ import { walkFiles } from "../../src/u2-intake-config/tree-walk.js";
 import { type ExpanderIo, expandApplicationSet } from "../../src/u3-discovery-expansion/generator-expander.js";
 import { meta, obj } from "../helpers/objects.js";
 import { estate } from "../helpers/scan.js";
+import { cpuSince, cpuStart } from "../helpers/cpu-time.js";
 
 const URL = "https://git.example.org/ops/estate";
 const cleanup: string[] = [];
@@ -331,7 +332,7 @@ describe("clusters, matrix and merge (BR3.13)", () => {
   it("never builds a matrix product past the limit", () => {
     const big = Array.from({ length: 3000 }, (_, i) => ({ k: `v${i}` }));
     const big2 = Array.from({ length: 3000 }, (_, i) => ({ j: `w${i}` }));
-    const t0 = performance.now();
+    const t0 = cpuStart();
     const e = expandApplicationSet(
       appSet({
         generators: [{ matrix: { generators: [{ list: { elements: big } }, { list: { elements: big2 } }] } }],
@@ -343,7 +344,7 @@ describe("clusters, matrix and merge (BR3.13)", () => {
     );
     expect(e.documents).toHaveLength(100);
     expect(e.mark?.reason).toBe("limit");
-    expect(performance.now() - t0).toBeLessThan(3000);
+    expect(cpuSince(t0)).toBeLessThan(3000);
   });
 });
 

@@ -11,6 +11,7 @@ import { createHostMatching } from "../../src/u6-extractors-workload/host-matche
 import { analyse } from "../../src/u7-graph-analysis/analysis.js";
 import { buildGraph } from "../../src/u7-graph-analysis/graph-builder.js";
 import { crank, edge, external, externalDecl, facts, graph, n, node } from "../helpers/graphs.js";
+import { cpuSince, cpuStart } from "../helpers/cpu-time.js";
 
 const APP = "Application/argocd/app";
 
@@ -120,7 +121,7 @@ describe("M3: hostile declared-fact counts at 100,000 nodes finish", () => {
   const ring = nodes.map((x, i) => edge(x.id, (nodes[(i + 1) % N] as (typeof nodes)[number]).id));
   const g = graph({ nodes, edges: ring });
   it("1,000 render cranks, and one crank with 10,000 render targets", () => {
-    const t0 = Date.now();
+    const t0 = cpuStart();
     const many = Array.from({ length: 1000 }, (_, k) => crank(k + 1, [{ render: `d${k}` }]));
     const r = analyse(g, facts({ cranks: many }));
     expect(r.cycles[0]?.label).toBe("cranked");
@@ -130,17 +131,18 @@ describe("M3: hostile declared-fact counts at 100,000 nodes finish", () => {
     );
     const r2 = analyse(g, facts({ cranks: [wide] }));
     expect(r2.crankEffects[0]?.createdNodes).toHaveLength(N);
-    expect(Date.now() - t0).toBeLessThan(20_000);
+    // CPU ms: about 2.7 s on an idle run, 305 s before the M3 fix (the review's 25 s + 280 s); 30 s sits about ten times from each
+    expect(cpuSince(t0)).toBeLessThan(30_000);
   });
   it("50,000 declared externals and 100,000 declared edges", () => {
-    const t0 = Date.now();
+    const t0 = cpuStart();
     const externals = Array.from({ length: 50_000 }, (_, i) => externalDecl(`h${i}.example.org`, "available"));
     const edges = nodes
       .slice(1)
       .map((x, i) => ({ from: x.id, to: (nodes[i] as (typeof nodes)[number]).id, why: "w", keyPath: `edges[${i}]` }));
     const built = buildGraph({ objects: [], extracted: [], config: facts({ externals, edges }), opaque: [] });
     expect(built.externals).toHaveLength(50_000);
-    expect(Date.now() - t0).toBeLessThan(20_000);
+    expect(cpuSince(t0)).toBeLessThan(20_000);
   });
   it("20,000 wildcard match entries against 2,000 hosts: a spent comparison budget is a counted limit, never a hang", () => {
     const rules = Array.from({ length: 20_000 }, (_, i) => ({
@@ -150,9 +152,9 @@ describe("M3: hostile declared-fact counts at 100,000 nodes finish", () => {
       keyPath: `match[${i}]`,
     }));
     const m = createHostMatching([], rules);
-    const t0 = Date.now();
+    const t0 = cpuStart();
     for (let i = 0; i < 2000; i++) m.match({ host: `svc${i}.ns.example.org`, field: "f", bareNamespace: null });
-    expect(Date.now() - t0).toBeLessThan(10_000);
+    expect(cpuSince(t0)).toBeLessThan(10_000);
     expect(m.limitHit()).toBe(true);
     // 20,000 literal entries cost one lookup each and never spend the budget
     const literal = createHostMatching(
@@ -191,9 +193,9 @@ describe("M3: one render job with 50,000 sync waves", () => {
   it("orders them in linear work", () => {
     const job = "Application/argocd/big#0";
     const nodes = Array.from({ length: 50_000 }, (_, i) => node(n(String(i).padStart(6, "0")), { job, wave: i }));
-    const t0 = Date.now();
+    const t0 = cpuStart();
     const r = analyse(graph({ nodes }), facts());
     expect(r.plan.steps).toHaveLength(50_000);
-    expect(Date.now() - t0).toBeLessThan(20_000);
+    expect(cpuSince(t0)).toBeLessThan(20_000);
   });
 });

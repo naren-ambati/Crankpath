@@ -232,7 +232,8 @@ describe("caps and the wall clock (BR4.19, BR4.2, OD-30)", () => {
     expect(r.outcome).toBe("timed-out");
     expect(r.timedOut).toBe(true);
     expect(OUTCOME_WORDS[r.outcome]).toBe("timed out");
-    expect(Date.now() - t0).toBeLessThan(15000);
+    // derived, not picked: a runner that did not stop the child would return only after its 20 s sleep
+    expect(Date.now() - t0).toBeLessThan(20_000);
     expect(r.stdout.length).toBe(0);
   });
   it("stops a child over the standard-output cap: over cap, nothing kept", () => {

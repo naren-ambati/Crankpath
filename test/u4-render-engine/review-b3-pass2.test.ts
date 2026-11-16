@@ -463,8 +463,11 @@ function alive(marker: string): string[] {
   const ps = spawnSync("ps", ["-A", "-o", "command"], { encoding: "utf8" }).stdout;
   return ps.split("\n").filter((l) => l.includes(marker) && !l.includes("ps -A"));
 }
+// The stand-in's descendant lives 120 s unless it is killed, so waiting up to 30 s for it to go tells a
+// kill from none on a busy host too (derived from the 120 s, not picked).
 async function gone(marker: string): Promise<string[]> {
-  for (let i = 0; i < 50 && alive(marker).length > 0; i++) await new Promise((r) => setTimeout(r, 100));
+  const until = Date.now() + 30_000;
+  while (alive(marker).length > 0 && Date.now() < until) await new Promise((r) => setTimeout(r, 100));
   return alive(marker);
 }
 
@@ -473,7 +476,7 @@ describe("m1: git's whole group is killed on every way the helper ends", () => {
     const s = standIn("flood");
     const d = dir("run");
     const started = Date.now();
-    const r = createGitRunner({ git: s.file, home: d, empty: d, guard: () => true, wallClock: 60_000 }).run({
+    const r = createGitRunner({ git: s.file, home: d, empty: d, guard: () => true, wallClock: 45_000 }).run({
       subcommand: ["fsck", "--strict", "--no-dangling", "--no-progress"],
       args: [],
       cwd: d,
@@ -481,7 +484,8 @@ describe("m1: git's whole group is killed on every way the helper ends", () => {
       repo: { gitDir: d, workTree: null, objectFormat: "sha1" },
     });
     expect(r.outcome).toBe("over-cap");
-    expect(Date.now() - started).toBeLessThan(30_000);
+    // derived: a call the cap did not end would run to its 45 s wall clock
+    expect(Date.now() - started).toBeLessThan(45_000);
     expect(await gone(s.marker)).toEqual([]);
   });
   it("over the cap through the spawn port itself (the first pass's ENOBUFS path)", async () => {

@@ -4,6 +4,7 @@
 
 import { describe, expect, it } from "vitest";
 import { HCL_VALUE_BYTES, readSealStanzas } from "../../src/u6-extractors-workload/hcl-seal-reader.js";
+import { cpuSince, cpuStart } from "../helpers/cpu-time.js";
 
 function seals(text: string) {
   const r = readSealStanzas(text);
@@ -118,9 +119,9 @@ describe("what the reader refuses, rather than guesses (NFR1.1)", () => {
 
 describe("hostile input ends in a named refusal, quickly, and never throws", () => {
   const timed = (text: string) => {
-    const start = performance.now();
+    const start = cpuStart();
     const p = problem(text);
-    return { p, ms: performance.now() - start };
+    return { p, ms: cpuSince(start) };
   };
   it("a megabyte of open braces", () => {
     const { p, ms } = timed(`x = ${"{".repeat(HCL_VALUE_BYTES - 8)}`);

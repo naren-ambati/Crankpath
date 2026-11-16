@@ -7,6 +7,7 @@ import { afterAll, describe, expect, it } from "vitest";
 import { writeJson } from "../../src/u8-output/json-renderer.js";
 import { DEFAULT_BUDGET, runPipeline } from "../../src/u9-cli-package/pipeline-runner.js";
 import { estate } from "../helpers/scan.js";
+import { cpuSince, cpuStart } from "../helpers/cpu-time.js";
 
 const cleanup: string[] = [];
 afterAll(() => {
@@ -44,10 +45,10 @@ describe("M1 and m7: a hostile ApplicationSet within the file limits", () => {
   it("stops generating when the run budget is reached, keeps what was built, and names its own limit", () => {
     const d = estate({ "set.yaml": amplifier(2_000, 200) });
     cleanup.push(d);
-    const t0 = performance.now();
+    const t0 = cpuStart();
     // room for the file and its parse, then for about 140 of these Applications (each about 960 KB as charged)
     const r = report(d, 150_000_000);
-    expect(performance.now() - t0).toBeLessThan(20_000);
+    expect(cpuSince(t0)).toBeLessThan(20_000);
     const apps = r.nodes.filter((n: { kind: string }) => n.kind === "Application");
     expect(apps.length).toBeGreaterThan(0);
     expect(apps.length).toBeLessThan(200);
