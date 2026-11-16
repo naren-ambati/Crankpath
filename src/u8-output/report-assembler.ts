@@ -76,6 +76,10 @@ export interface AssemblyInput {
   readonly hiddenCycles?: readonly HiddenCycle[];
   /** Repository mappings and whether a source was read through each. */
   readonly repoMappings?: readonly RepoMappingEntry[];
+  /** The commit of a repository crankpath fetched to scan (FR1.2), and whether its revision floats. */
+  readonly scannedCommit?: { readonly commit: string; readonly floating: boolean } | null;
+  /** `clusters:` entries a clusters generator used. */
+  readonly clustersUsed?: readonly string[];
   /** Rendered objects matching a controller signature (for --explain only). */
   readonly controllerMatches?: readonly ControllerMatch[];
 }
@@ -123,8 +127,10 @@ export function assembleReport(given: AssemblyInput): Report {
     .map((m) => Object.freeze({ ...m, url: redactUrl(m.url) ?? "unparseable URL" }))
     .sort((a, b) => compareCodePoints(a.from, b.from) || compareCodePoints(a.url, b.url));
   const mappingsRelied = repoMappings.filter((m) => m.from === "crankpath.yaml" && m.used).length;
+  const clustersUsed = [...new Set(input.clustersUsed ?? [])].sort(compareCodePoints);
   const declaredFacts =
     mappingsRelied +
+    clustersUsed.length +
     new Set(overrides.map((o) => o.keyPath)).size +
     config.edges.filter((e) => nodeIds.has(e.from) && nodeIds.has(e.to)).length;
   const declaredAssumptions =
@@ -230,8 +236,8 @@ export function assembleReport(given: AssemblyInput): Report {
       url,
       urlFrom: input.scanned.from,
       comparable: input.scanned.normalised !== null,
-      commit: null,
-      floating: false,
+      commit: input.scannedCommit?.commit ?? null,
+      floating: input.scannedCommit?.floating ?? false,
     }),
     toolchain: Object.freeze({
       crankpath: CRANKPATH_VERSION,
@@ -269,6 +275,7 @@ export function assembleReport(given: AssemblyInput): Report {
     matchOverrides: Object.freeze([...overrides]),
     hiddenCycles: Object.freeze([...(input.hiddenCycles ?? [])]),
     repoMappings: Object.freeze(repoMappings),
+    clustersUsed: Object.freeze(clustersUsed),
     unresolved: Object.freeze(unresolved),
     skipped: Object.freeze(skipped),
     unreadable: Object.freeze(unreadable),

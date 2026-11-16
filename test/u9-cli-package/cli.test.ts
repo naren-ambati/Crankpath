@@ -91,8 +91,10 @@ describe("flags (C6, FR9.1)", () => {
     expect(run(["--version"], process.cwd(), fakePath("garbled")).stdout).toContain("helm: version not recognised\n");
   });
   it("refuses a flag whose stage arrives in a later build, instead of running without it", () => {
-    for (const args of [["--rev", "abc"], ["https://example.org/x"]]) {
-      const r = run(args[0]?.startsWith("http") ? args : [REPO, ...args], process.cwd());
+    // B3: a URL and --rev are no longer later work (test/u9-cli-package/repo-fetch.test.ts); B6 made
+    // --format mermaid and --explain real: no flag of C6 is left to refuse as later work
+    for (const args of [] as string[][]) {
+      const r = run([REPO, ...args], process.cwd());
       expect(r.code, args.join(" ")).toBe(1);
       expect(r.stderr).toMatch(/^error: .*arrives in a later build/);
     }

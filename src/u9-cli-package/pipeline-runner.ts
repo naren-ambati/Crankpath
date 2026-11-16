@@ -18,12 +18,14 @@ import type {
   ExtractResult,
   JobInfo,
   RenderedObject,
+  RepoResolution,
 } from "../u1-graph-model/extractor.js";
+import { LIMITS } from "../u1-graph-model/limits.js";
 import { emptyResult, getPath, IN_CLUSTER, isDataMap } from "../u1-graph-model/extractor.js";
 import type { NodeId, OpaqueMark, SkippedObject, UnreadableFile } from "../u1-graph-model/graph-model.js";
 import { makeOpaqueMark, objectId } from "../u1-graph-model/graph-model.js";
 import { compareCodePoints } from "../u1-graph-model/order.js";
-import { quote, quoteUrl } from "../u1-graph-model/safe-text.js";
+import { quote, quoteUrl, redactUrl } from "../u1-graph-model/safe-text.js";
 import { type SourceKind, unresolvedItem } from "../u1-graph-model/status-model.js";
 import {
   countLexemes,
@@ -48,8 +50,9 @@ import {
   readOriginUrl,
   type ScannedUrlFrom,
 } from "../u2-intake-config/repo-identity.js";
-import { entryKind, walkFiles } from "../u2-intake-config/tree-walk.js";
+import { entryKind, type WalkOptions, walkFiles } from "../u2-intake-config/tree-walk.js";
 import { stringData } from "../u3-discovery-expansion/flux-planner.js";
+import { expandApplicationSet } from "../u3-discovery-expansion/generator-expander.js";
 import type { RenderedSet, RenderJob } from "../u3-discovery-expansion/render-job.js";
 import {
   type PlanContext,
@@ -66,6 +69,7 @@ import {
   type RunnerLimits,
   type Spawn,
 } from "../u4-render-engine/command-runner.js";
+import type { GitSpawn } from "../u4-render-engine/git-runner.js";
 import { isKustomizeComponent } from "../u4-render-engine/kustomize-renderer.js";
 import { OUTPUT_LIMITS, type OutputLimits } from "../u4-render-engine/rendered-output.js";
 import {
@@ -76,18 +80,27 @@ import {
 } from "../u4-render-engine/rendered-set-builder.js";
 import { type RenderIo, type RenderRuntime, render, type ValuesData } from "../u4-render-engine/renderers.js";
 import { detectToolchain, findTool } from "../u4-render-engine/toolchain.js";
-import { createWorkDir, resolveCacheRoot } from "../u4-render-engine/work-dir.js";
+import {
+  createFetchAllowance,
+  createRepoFetcher,
+  type FetchAllowance,
+  type FetchResult,
+  findGit,
+  type RepoFetcher,
+} from "../u4-render-engine/repo-fetcher.js";
+import { createWorkDir, resolveCacheRoot, type WorkDir } from "../u4-render-engine/work-dir.js";
 import { GITOPS_EXTRACTORS } from "../u5-extractors-gitops/index.js";
 import { createHostMatching, hostResolution, type ServiceEntry } from "../u6-extractors-workload/host-matcher.js";
 import { WORKLOAD_EXTRACTORS } from "../u6-extractors-workload/index.js";
 import { analyse, type HiddenCycle } from "../u7-graph-analysis/analysis.js";
 import { findCycles } from "../u7-graph-analysis/cycle-finder.js";
+import { GENERATOR_JOB_PREFIX } from "../u7-graph-analysis/crank-applier.js";
 import { buildGraph, compareEdges } from "../u7-graph-analysis/graph-builder.js";
 import { assembleReport, type FloatingEntry, type SourceOutcome } from "../u8-output/report-assembler.js";
 import { cyclesHiddenByOverrides } from "../u7-graph-analysis/match-overrides.js";
 import { matchControllerSignatures } from "../u5-extractors-gitops/controller-signatures.js";
 import { type BudgetSpec, RunBudget } from "./run-budget.js";
-import { READER_PARSE_COST, RUN_LIMITS, RUN_RATES } from "../u1-graph-model/run-limits.js";
+import { READER_PARSE_COST, RUN_LIMITS, RUN_RATES, WALK_COST } from "../u1-graph-model/run-limits.js";
 
 /** The derived per-run budget (src/u1-graph-model/run-limits.ts, docs/limits.md). */
 export const DEFAULT_BUDGET: BudgetSpec = Object.freeze({
@@ -95,6 +108,8 @@ export const DEFAULT_BUDGET: BudgetSpec = Object.freeze({
   rates: RUN_RATES,
   parse: READER_PARSE_COST,
   maxEdges: RUN_LIMITS.edgesPerRun.value,
+  maxFiles: LIMITS.filesPerScan.value,
+  walk: WALK_COST,
 });
 
 const RUN_LIMIT_MARK = makeOpaqueMark({
@@ -128,6 +143,20 @@ export interface RunOptions {
   readonly outputLimits?: OutputLimits;
   /** The run's memory budget; the default is the derived one (tests use small ones, the measurement none). */
   readonly budget?: BudgetSpec;
+  /** A public https Git URL to fetch read-only and scan instead of `path` (FR1.2), with `rev`. */
+  readonly url?: string;
+  readonly rev?: string;
+  /** Reads an environment variable; only CRANKPATH_TOKEN_<HOST>[_<PORT>] names are asked for (default: none). */
+  readonly env?: (name: string) => string | undefined;
+  /** The git process port and wall clock (tests only). */
+  readonly gitSpawn?: GitSpawn;
+  readonly gitWallClock?: number;
+  /** generatedApplicationsPerApplicationSet, generatorPatternSteps, generatorRenderSteps (tests use small ones). */
+  readonly expansionLimits?: {
+    readonly applications?: number;
+    readonly patternSteps?: number;
+    readonly renderSteps?: number;
+  };
 }
 
 export type RunOutcome =
@@ -194,16 +223,72 @@ function repoObjectIndex(reads: readonly ReadResult[]): Map<NodeId, RepoObject> 
   return index;
 }
 
+/**
+ * A fetcher over a WorkDir: git found on the tool PATH, tokens only when `anonymous` is false (M2),
+ * and the run's one fetch allowance (fetchesPerRun, B3 review pass 2 M2).
+ */
+function fetcherFor(options: RunOptions, work: WorkDir, anonymous: boolean, allowance: FetchAllowance): RepoFetcher {
+  return createRepoFetcher({
+    work,
+    allowance,
+    network: options.noNetwork !== true,
+    env: options.env ?? (() => undefined),
+    anonymous,
+    git: findGit(options.toolPath ?? process.env.PATH ?? ""),
+    ...(options.gitSpawn === undefined ? {} : { spawn: options.gitSpawn }),
+    ...(options.gitWallClock === undefined ? {} : { wallClock: options.gitWallClock }),
+  });
+}
+
 /** Runs the whole pipeline once. Never throws on hostile input; a bug still throws. */
 export function runPipeline(options: RunOptions): RunOutcome {
-  const absolute = path.resolve(options.cwd, options.path);
+  // `crankpath <url> --rev <rev>` (FR1.2): the URL's object store is fetched into the cache first
+  // (C13: `.crankpath/repos/<host>/<path>@<sha>/`), verified, and its commit's files are written
+  // into a WorkDir of its own, removed at the end (pass 2, M1: a cached store is verified the same
+  // way, never read as a tree); those files are the scanned root and the URL its own URL (FR2.2); the resolved commit is
+  // recorded and a floating revision flagged (OD-12). The only fetch a token is attached to (M2).
+  // One fetch allowance serves the whole run: this fetch and every `repos:` entry's (pass 2, M2).
+  const allowance = createFetchAllowance();
+  if (options.url === undefined) return runScan(options, options.path, null, allowance);
+  const area = resolveCacheRoot(options.cwd, options.cacheDir, null);
+  if (!area.ok) {
+    const shown = options.cacheDir ?? ".crankpath";
+    return usage(`${quote("error: the cache directory", shown, "terminal")} ${CACHE_PROBLEMS[area.problem]}`);
+  }
+  const fetchWork = createWorkDir(area.cacheRoot, area.trusted);
+  try {
+    const got: FetchResult = fetcherFor(options, fetchWork, false, allowance).fetch(options.url, options.rev ?? null);
+    if (!got.ok) {
+      return usage(`${quoteUrl("error: could not fetch", options.url, "terminal")} (${got.reason}: ${got.detail})`);
+    }
+    return runScan(
+      options,
+      got.dir,
+      { commit: got.commit, floating: got.floating, collisions: got.collisions },
+      allowance,
+    );
+  } finally {
+    fetchWork.cleanup();
+  }
+}
+
+function runScan(
+  options: RunOptions,
+  scanPath: string,
+  scannedCommit: ScannedCommit | null,
+  allowance: FetchAllowance,
+): RunOutcome {
+  const absolute = path.resolve(options.cwd, scanPath);
   const opened = openRoot(absolute);
   if (!opened.ok) return usage(quote("error: cannot read path", options.path, "terminal"));
   const root = opened.root;
 
   let scannedUrl: string | null = null;
   let scannedFrom: ScannedUrlFrom | null = null;
-  if (options.repoUrl !== undefined) {
+  if (options.url !== undefined) {
+    scannedUrl = options.url;
+    scannedFrom = "fetched";
+  } else if (options.repoUrl !== undefined) {
     if (normaliseRepoUrl(options.repoUrl) === null) {
       return usage(quoteUrl("error: --repo-url is not a URL crankpath can compare:", options.repoUrl, "terminal"));
     }
@@ -218,6 +303,7 @@ export function runPipeline(options: RunOptions): RunOutcome {
   // mapping. The spaces are disjoint and a label is never set twice, so repo-supplied config can
   // never replace or shadow a root the invoker chose.
   const roots = new Map<string, ScanRoot>([[".", root]]);
+  // fetched `repos:` entries (`fetch:N`) are added while the run resolves them
   // Only `alias:N` (numbered here, one per flag) and a `repos:` label not yet set reach this, so
   // the check below cannot be reached from any input; it guards against a future caller.
   const setRoot = (label: string, r: ScanRoot) => {
@@ -236,6 +322,13 @@ export function runPipeline(options: RunOptions): RunOutcome {
       return usage("error: two --repo-alias values name the same repository");
     const aliasRoot = openRoot(path.resolve(options.cwd, parsed.path));
     if (!aliasRoot.ok) return usage(quote("error: cannot read path", parsed.path, "terminal"));
+    // An alias naming the scanned root itself (`--repo-alias <url>=.`, a mirror of this repo)
+    // reads that root under its own label `.`, as a `repos:` entry with `read_from: .` does: the
+    // same directory is one root, never two copies of it (B3).
+    if (aliasRoot.root.real === root.real) {
+      aliases.push({ url: parsed.url, normalised: parsed.normalised, label: "." });
+      continue;
+    }
     const label = `alias:${aliases.length + 1}`;
     aliases.push({ url: parsed.url, normalised: parsed.normalised, label });
     setRoot(label, aliasRoot.root);
@@ -266,31 +359,94 @@ export function runPipeline(options: RunOptions): RunOutcome {
   }
   const work = createWorkDir(cacheRoot.cacheRoot, cacheRoot.trusted);
   try {
-    return runWith(options, { root, roots, identity, config, work, aliases });
+    return runWith(options, { root, roots, setRoot, identity, config, work, aliases, scannedCommit, allowance });
   } finally {
     work.cleanup();
   }
 }
 
+/** A fetched scanned root: its commit, whether it floats, and its paths not written (pass 3, m1). */
+interface ScannedCommit {
+  readonly commit: string;
+  readonly floating: boolean;
+  readonly collisions: readonly string[];
+}
+
+/** A path of a fetched commit not written because it collides with another (pass 3, m1): an unreadable file. */
+function collisionFile(display: string): UnreadableFile {
+  return Object.freeze({
+    path: display,
+    outcome: "path-collision",
+    reasonWord:
+      "not written: another path of the commit names the same file on a case-insensitive or normalising file system",
+    detail: null,
+  });
+}
+
 interface Prepared {
   readonly root: ScanRoot;
   readonly roots: ReadonlyMap<string, ScanRoot>;
+  readonly setRoot: (label: string, r: ScanRoot) => void;
+  readonly scannedCommit: ScannedCommit | null;
   readonly identity: ReturnType<typeof createRepoIdentity>;
   readonly config: ConfigDocument;
   readonly work: ReturnType<typeof createWorkDir>;
   readonly aliases: readonly RepoAlias[];
+  readonly allowance: FetchAllowance;
 }
 
 function runWith(options: RunOptions, prepared: Prepared): RunOutcome {
-  const { root, roots, identity, config, work, aliases } = prepared;
+  const { root, roots, setRoot, identity, config, work, aliases, scannedCommit, allowance } = prepared;
   // Which mappings a resolution went through (B5 review pass 2, M2): a `repos:` entry of the
   // scanned repo's crankpath.yaml changes what is read (a declared fact, a gap); a --repo-alias is
   // the user's own input (listed as an assumption).
   const usedMappings = new Set<string>();
-  const resolveRepo = (url: string) => {
-    const r = identity.resolve(url);
-    if (r.via === "repos-read-from" || r.via === "repos-fetch" || r.via === "repo-alias") {
-      const n = normaliseRepoUrl(url);
+  // `repos: {"<url>": {fetch: true}}` (OD-10, B3): fetched once, when a source first needs it, at
+  // the default branch (the revision each Application names is taken to be the files as read, a
+  // not-modelled item), through the run's WorkDir into `.crankpath/repos/`, always without a token
+  // (B3 review M2: the scanned repo names it); the checkout is root `fetch:N`. A fetch that could
+  // not be made leaves the URL unreadable with the fetch's own outcome, never absent.
+  let repoFetcher: RepoFetcher | null = null;
+  // paths of a fetched commit not written because they collide (pass 3, m1): unreadable files
+  const fetchCollisions: { readonly label: string; readonly rel: string }[] = (scannedCommit?.collisions ?? []).map(
+    (rel) => ({ label: ".", rel }),
+  );
+  const fetchedMappings = new Map<string, { label: string | null; result: FetchResult }>();
+  const fetchMapping = (normalised: string, url: string): RepoResolution => {
+    let entry = fetchedMappings.get(normalised);
+    if (entry === undefined) {
+      repoFetcher ??= fetcherFor(options, work, true, allowance);
+      const result = repoFetcher.fetch(url, null);
+      let label: string | null = null;
+      if (result.ok) {
+        const fetchedRoot = openRoot(result.dir);
+        if (fetchedRoot.ok) {
+          label = `fetch:${fetchedMappings.size + 1}`;
+          setRoot(label, fetchedRoot.root);
+          for (const rel of result.collisions) fetchCollisions.push({ label, rel });
+        }
+      }
+      entry = { label, result };
+      fetchedMappings.set(normalised, entry);
+    }
+    if (entry.label !== null)
+      return Object.freeze({ outcome: "alias", root: entry.label, via: "repos-fetch", suggestion: null });
+    const failure = entry.result.ok
+      ? { reason: "unreadable-repo" as const, detail: "the fetched checkout could not be opened" }
+      : { reason: entry.result.reason, detail: entry.result.detail };
+    return Object.freeze({ outcome: "unreadable", root: null, via: "repos-fetch", suggestion: null, failure });
+  };
+  const resolveRepo = (url: string): RepoResolution => {
+    let r = identity.resolve(url);
+    const n = normaliseRepoUrl(url);
+    if (r.via === "repos-fetch" && n !== null) {
+      const mapping = config.repos.find((m) => m.normalised === n);
+      if (mapping !== undefined) r = fetchMapping(n, mapping.url);
+    }
+    if (
+      r.outcome !== "unreadable" &&
+      (r.via === "repos-read-from" || r.via === "repos-fetch" || r.via === "repo-alias")
+    ) {
       if (n !== null) usedMappings.add(`${r.via === "repo-alias" ? "alias" : "repos"}\n${n}`);
     }
     return r;
@@ -342,13 +498,19 @@ function runWith(options: RunOptions, prepared: Prepared): RunOutcome {
     return result;
   };
   const display = (label: string, rel: string): string => {
-    if (label.startsWith("alias:")) return `${label}/${rel}`;
+    if (label.startsWith("alias:") || label.startsWith("fetch:")) return `${label}/${rel}`;
     const full = label === "." ? rel : `${label.slice(REPOS_LABEL.length)}/${rel}`;
     // a repo directory spelled like an alias label is shown as `./alias:1/...`, never as an alias
     return ALIAS_LABEL.test(full.split("/")[0] ?? "") ? `./${full}` : full;
   };
   const discovery = discover({
-    walk: () => walkFiles(root, "", { recurse: true, skipNames: SKIP_DIRS, skipAtStart: SKIP_AT_ROOT }),
+    walk: () =>
+      walkFiles(root, "", {
+        recurse: true,
+        skipNames: SKIP_DIRS,
+        skipAtStart: SKIP_AT_ROOT,
+        admit: (rel) => budget.walked(rel),
+      }),
     read: (p) => readUnder(".", p),
   });
   if ("failed" in discovery) return usage(quote("error: cannot read path", options.path, "terminal"));
@@ -384,7 +546,9 @@ function runWith(options: RunOptions, prepared: Prepared): RunOutcome {
     walk: (label, dir, walkOptions) => {
       const r = roots.get(label);
       if (r === undefined) return { ok: false, refusal: { outcome: "not-found", path: dir, reasonWord: "not found" } };
-      return walkFiles(r, dir, walkOptions);
+      // every walk counts against filesPerScan and is charged to the run budget (B3)
+      const admitted: WalkOptions = { ...walkOptions, admit: (rel) => budget.walked(rel) };
+      return walkFiles(r, dir, admitted);
     },
     read: readUnder,
     readText: (label, rel) => {
@@ -507,8 +671,72 @@ function runWith(options: RunOptions, prepared: Prepared): RunOutcome {
     return set;
   };
 
+  const clustersUsed = new Set<string>();
+  const expansionLimits = {
+    applications: LIMITS.generatedApplicationsPerApplicationSet.value,
+    patternSteps: LIMITS.generatorPatternSteps.value,
+    renderSteps: LIMITS.generatorRenderSteps.value,
+    ...options.expansionLimits,
+    // every generated Application is charged before it is built (B3 review M1)
+    admit: (leaves: number) => budget.objects(1, leaves),
+  };
+  // An ApplicationSet is expanded (B3), not rendered: its generated Applications are sources in
+  // turn (planned and rendered like any other Application: plain, Helm or Kustomize), `generated-by`
+  // it, with origin render job `generator:<id>` (never a `render:` crank's). A generator lists its
+  // whole repository; the listing of a root is made once per run, so many ApplicationSets over one
+  // repository cost the scan's file count once.
+  const listings = new Map<string, ReturnType<RenderIo["walk"]>>();
+  const expanderIo = {
+    resolveRepo,
+    read: io.read,
+    display: io.display,
+    walk: (label: string, dir: string, walkOptions: WalkOptions) => {
+      const k = `${label.length}:${label}${dir}`;
+      const hit = listings.get(k);
+      if (hit !== undefined) return hit;
+      const listed = io.walk(label, dir, walkOptions);
+      listings.set(k, listed);
+      return listed;
+    },
+  };
+  const expand = (appSet: RenderedObject): void => {
+    const exp = expandApplicationSet(
+      appSet,
+      expanderIo,
+      config.clusters.length > 0 ? config.clusters : null,
+      expansionLimits,
+    );
+    unreadable.push(...exp.unreadable.map(worded));
+    for (const c of exp.clustersUsed) clustersUsed.add(c);
+    const file = appSet.origin.path ?? appSet.renderedPath;
+    const destination =
+      appSet.origin.renderJob === null ? IN_CLUSTER : (jobs.get(appSet.origin.renderJob)?.destination ?? IN_CLUSTER);
+    // each generated Application was charged to the run budget before it was built (admit, above)
+    const built = buildObjects(
+      exp.documents.map((value, i) => ({
+        file,
+        document: appSet.origin.document ?? 1,
+        value,
+        renderedPath: `${appSet.renderedPath}.generated[${i}]`,
+      })),
+      {
+        renderJob: `${GENERATOR_JOB_PREFIX}${appSet.id}`,
+        defaultNamespace: appSet.namespace,
+        destination,
+        generatedBy: appSet.id,
+      },
+    );
+    rendered.push(...built.objects);
+    skipped.push(...built.skipped);
+    if (exp.mark !== null) markOwner(appSet.id, exp.mark);
+    for (const o of built.objects) enqueue(o);
+  };
   for (let head = 0; head < queue.length; head++) {
     const entry = queue[head] as SourceEntry;
+    if (entry.kind === "ApplicationSet") {
+      expand(entry.object);
+      continue;
+    }
     const planned = planSource({ kind: entry.kind, object: entry.object } as PlanSource, planContext);
     // The reference edges of a Flux source to its values ConfigMaps and Secrets (FR4.2) are the
     // FluxExtractor's (B4), on every source whether or not it renders; the planner's list is data only.
@@ -662,13 +890,13 @@ function runWith(options: RunOptions, prepared: Prepared): RunOutcome {
   outcomes.push(...rootOutcomes);
   const report = assembleReport({
     scanned: identity.scanned,
-    scannedPath: options.path,
+    scannedPath: options.url === undefined ? options.path : (redactUrl(options.url) ?? "unparseable URL"),
     graph,
     analysis,
     config,
     sources: outcomes,
     skipped,
-    unreadable,
+    unreadable: [...unreadable, ...fetchCollisions.map((c) => collisionFile(display(c.label, c.rel)))],
     ignoredFiles: discovery.ignoredFiles,
     droppedHooks,
     timeouts,
@@ -682,13 +910,25 @@ function runWith(options: RunOptions, prepared: Prepared): RunOutcome {
     hiddenCycles: hidden,
     // explanatory only (US5.4): read after the analysis, which never sees it
     controllerMatches: matchControllerSignatures(objects, [...jobs.values()]),
+    scannedCommit,
+    clustersUsed: [...clustersUsed],
     repoMappings: [
-      ...config.repos.map((m) => ({
-        url: m.url,
-        root: m.readFrom === null ? "(fetch)" : m.readFrom === "" ? "." : m.readFrom,
-        from: "crankpath.yaml" as const,
-        used: usedMappings.has(`repos\n${m.normalised}`),
-      })),
+      ...config.repos.map((m) => {
+        const fetched = m.readFrom === null ? fetchedMappings.get(m.normalised) : undefined;
+        const result = fetched?.result;
+        let failure: string | null = null;
+        if (result !== undefined && !result.ok) failure = `${result.reason}: ${result.detail}`;
+        else if (result?.ok === true && fetched?.label === null) failure = "the fetched checkout could not be opened";
+        return {
+          url: m.url,
+          root: m.readFrom !== null ? (m.readFrom === "" ? "." : m.readFrom) : (fetched?.label ?? "(fetch)"),
+          from: "crankpath.yaml" as const,
+          used: usedMappings.has(`repos\n${m.normalised}`),
+          commit: result?.ok === true ? result.commit : null,
+          floating: result?.ok === true ? result.floating : false,
+          failure,
+        };
+      }),
       ...aliases.map((a) => ({
         url: a.url,
         root: a.label,

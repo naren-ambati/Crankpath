@@ -198,3 +198,92 @@ describe("origin from .git/config (BR2.15)", () => {
     expect(readOriginUrl(worktree)).toBeNull();
   });
 });
+
+describe("look-alike URLs are never the scanned repo (B3, BR2.13, AC2.4.2)", () => {
+  const SELF_URL = "https://github.com/org/repo";
+  const id = () => identity({ scanned: SELF_URL });
+  it("reads the scanned repo's own spellings and nothing else", () => {
+    for (const same of [
+      "https://github.com/org/repo.git",
+      "https://GITHUB.com/org/repo/",
+      "https://github.com:443/org/repo",
+      "https://user:secret@github.com/org/repo",
+      "git@github.com:org/repo.git",
+      "ssh://git@github.com/org/repo",
+    ]) {
+      expect(id().resolve(same).outcome, same).toBe("self");
+    }
+  });
+  it("calls every look-alike unreadable: host, prefix path, case, userinfo, port, punycode and IDN", () => {
+    const lookAlikes = [
+      // host
+      "https://github.com.example.org/org/repo",
+      "https://github.co/org/repo",
+      "https://github.com./org/repo",
+      "https://www.github.com/org/repo",
+      // prefix path and case
+      "https://github.com/org/repo-fork",
+      "https://github.com/org/repo/sub",
+      "https://github.com/org",
+      "https://github.com/Org/repo",
+      "https://github.com/org/REPO",
+      // userinfo that hides the real host
+      "https://github.com@example.org/org/repo",
+      "https://github.com:443@example.org/org/repo",
+      // port
+      "https://github.com:8443/org/repo",
+      "http://github.com:443/org/repo",
+      // IDN and punycode look-alikes: a Cyrillic letter, its punycode form, a fullwidth letter the
+      // URL parser would fold to ASCII, and a percent escape in the host the parser would decode
+      "https://gіthub.com/org/repo",
+      "https://xn--gthub-n4a.com/org/repo",
+      "https://ｇithub.com/org/repo",
+      "https://git%68ub.com/org/repo",
+      "https://github.com%2fexample.org/org/repo",
+    ];
+    for (const other of lookAlikes) {
+      const r = id().resolve(other);
+      expect(r.outcome, other).toBe("unreadable");
+      expect(r.root, other).toBeNull();
+    }
+  });
+  it("does not let the URL parser make two spellings equal (non-ASCII and percent-encoded hosts are not comparable)", () => {
+    expect(normaliseRepoUrl("https://ｇithub.com/org/repo")).toBeNull();
+    expect(normaliseRepoUrl("https://gіthub.com/org/repo")).toBeNull();
+    expect(normaliseRepoUrl("https://git%68ub.com/org/repo")).toBeNull();
+    // the parser itself would fold these to github.com: the refusal is crankpath's
+    expect(new URL("https://ｇithub.com/x").hostname).toBe("github.com");
+    expect(new URL("https://git%68ub.com/x").hostname).toBe("github.com");
+    // a percent escape in the userinfo is not the host and still compares
+    expect(normaliseRepoUrl("https://u:p%40ss@github.com/org/repo")).toBe("github.com/org/repo");
+    // a punycode host is compared as the ASCII it is
+    expect(normaliseRepoUrl("https://xn--gthub-n4a.com/org/repo")).toBe("xn--gthub-n4a.com/org/repo");
+  });
+  it("suggests an entry for a look-alike whose last segment matches, and never applies it", () => {
+    const r = id().resolve("https://github.com.example.org/someone/repo");
+    expect(r).toMatchObject({ outcome: "unreadable", suggestion: { readFrom: "." } });
+    expect(id().resolve("https://github.com.example.org/someone/repo").outcome).toBe("unreadable");
+  });
+});
+
+describe("hostile .git/config (B3, BR2.15)", () => {
+  it("reads the config as git does: a continuation is part of its value, a broken quote is no section", () => {
+    // text after a section header is a key on the same line, as in git
+    expect(
+      originFromGitConfig(
+        '[remote "upstream"]\n\turl = https://example.org/a\n[remote "origin" ]x\n\turl = https://example.org/b',
+      ),
+    ).toBe("https://example.org/b");
+    expect(originFromGitConfig('[remote "origin"]\n\tfetch = x\\\n\turl = https://evil.example/c')).toBeNull();
+    expect(originFromGitConfig('[remote "origin\\"]\n\turl = https://evil.example/d')).toBeNull();
+    expect(originFromGitConfig('[remote "origin"]\n\turl = "https://example.org/ops/x"\n')).toBe(
+      "https://example.org/ops/x",
+    );
+  });
+  it("handles a huge line in linear time", () => {
+    const t0 = performance.now();
+    expect(originFromGitConfig(`[remote "${"a".repeat(2_000_000)}`)).toBeNull();
+    expect(originFromGitConfig(`[remote "origin"]\n\turl = ${"\\".repeat(1_000_000)}`)).not.toBeUndefined();
+    expect(performance.now() - t0).toBeLessThan(3000);
+  });
+});

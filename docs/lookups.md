@@ -113,3 +113,86 @@ Read-only fetches of raw files and package metadata, into a scratch folder outsi
 | 2026-11-15 | mermaid-js/mermaid tag `mermaid@12.3.0`, `packages/mermaid/src/docs/syntax/flowchart.md` | entity codes escape characters inside a quoted label (`A["A double quote:#quot;"] --> B["A dec char:#9829;"]`); thick links `==>`, dotted links `-.->`; the `:::` class operator; `direction` inside a subgraph; `classDef` styles such as `stroke-dasharray` (commas there would need escaping, so the renderer writes `5 5`) |
 | 2026-11-15 | `npm install --ignore-scripts mermaid@12.3.0` into a scratch folder outside the repository (removed afterwards) | installed (116 packages); running its parser on the output was refused by the session's permission rules, so the output was not parsed by Mermaid itself (BUILD-NOTES B6, Unverified) |
 | 2026-11-15 | xterm(1) manual page (invisible-island.net/xterm/manpage), resource `saveLines` | "Specifies the number of lines to save beyond the top of the screen when a scrollbar is turned on. The default is "1024"." Basis of `explainOutputLines` (B6 review m4) |
+
+## B3 (2026-11-15): git options, Argo CD's generator semantics, the fetch limits
+
+### The fixed git options (contract C12, step 0)
+
+Read locally on 2026-11-15 in the installed git, `git version 2.55.0` (Homebrew, macOS arm64): `man git-config` (the text `git help config` shows), `man git`, `man git-clone`, `man git-rev-parse`, read through `col -b` into a scratch folder outside the repository. Every option crankpath passes is listed in `src/u4-render-engine/git-runner.ts` (`GIT_CONFIG`) with what the documentation says it does:
+
+| Option or variable | Value | What the 2.55.0 documentation says |
+|---|---|---|
+| `core.hooksPath` | `/dev/null` | "Git will try to find your hooks in that directory": no hook can be found under a path that is not a directory (the reference-transaction hook runs on fetch) |
+| `core.fsmonitor` | `false` | "If set to true, enable the built-in file system monitor daemon" |
+| `core.protectHFS`, `core.protectNTFS` | `true` | "do not allow checkout of paths that would be considered equivalent to .git on an HFS+ filesystem" / "that would cause problems with the NTFS filesystem" |
+| `protocol.allow` | `never` | "provide a user defined default policy for all protocols which don't explicitly have a policy"; `never` - "protocol is never able to be used" |
+| `protocol.https.allow` | `always` | `protocol.<name>.allow`: "Set a policy to be used by protocol <name> with clone/fetch/push commands" |
+| `http.followRedirects` | `false` | "If set to false, git will treat all redirects as errors" (the default is `initial`) |
+| `http.sslVerify` | `true` | "Whether to verify the SSL certificate when fetching or pushing over HTTPS" |
+| `submodule.recurse`, `fetch.recurseSubmodules` | `false` | "A boolean indicating if commands should enable the --recurse-submodules option by default" / "recurse at all when set to [false]" |
+| `credential.helper` | (empty) | helpers form a list; an empty value resets it (`gitcredentials(7)`), so no helper of the machine is asked |
+| `credential.interactive` | `false` | "To avoid the possibility of user interactivity from Git, set credential.interactive=false" |
+| `core.askPass` | (empty) | an external program "that interactively ask[s] for a password"; empty is no program (and `GIT_TERMINAL_PROMPT=0` stops the terminal prompt) |
+| `transfer.fsckObjects` | `true` | "the fetch or receive will abort in the case of a malformed object ... and potential security issues" |
+| `init.templateDir` | (empty) | "the directory from which templates will be copied": none, so the clone gets no sample hooks |
+| `gc.auto`, `maintenance.auto` | `0`, `false` | `git gc --auto` and `git maintenance run --auto` after "their normal work": not run |
+| `safe.bareRepository` | `explicit` | "Git only works with bare repositories specified via the top-level --git-dir" |
+| `--config-env=http.https://<host>[:port]/.extraHeader=CRANKPATH_GIT_AUTH_HEADER` | the header, in the variable | `--config-env`: "Like -c <name>=<value> ... where <envvar> is the name of an environment variable from which to retrieve the value ... useful ... where other processes might be able to read your command line ... but not your environment"; `http.<url>.*`: scheme, host and port "must match exactly"; "URLs visited as a result of a redirection do not participate in matching" |
+| `GIT_CONFIG_NOSYSTEM=1`, `GIT_CONFIG_GLOBAL=/dev/null` | environment | "Can be set to /dev/null to skip reading configuration files of the respective level" |
+| `GIT_TERMINAL_PROMPT=0`, `GIT_PROTOCOL_FROM_USER=0` | environment | "git will not prompt on the terminal"; "prevent protocols ... configured to the user state" |
+| `git clone --depth 1 --single-branch --no-tags --no-recurse-submodules --quiet [--revision <sha> \| --branch <name>]` | | `--revision=<rev>`: "fetch the history leading to the given revision <rev> (and nothing else) ... detach HEAD to <rev> ... a ref name ... or a hexadecimal object name"; `--branch` "can also take tags" |
+| `git rev-parse --verify HEAD` | | "Verify that exactly one parameter is provided, and that it can be turned into a raw 20-byte SHA-1" |
+
+Shown in practice: the installed git under these options refuses `file://` ("transport 'file' not allowed") and writes no header into a clone (`test/u4-render-engine/repo-fetcher.test.ts`, offline), and the live lane fetched over https with an empty `PATH` (below).
+
+### Argo CD v3.6.1 sources read for the generator semantics
+
+`curl` (read-only) of raw files at tag `v3.6.1` of argoproj/argo-cd into a scratch folder outside the repository, 2026-11-15; nothing is copied into the repository (Apache-2.0, read for behaviour only). sha256 of each file as fetched:
+
+| File | sha256 | What crankpath takes from it |
+|---|---|---|
+| `applicationset/generators/repo_path_utils.go` | `9804f9d38c1ad88e463747fc603c31829b77b2a74179e6f0fa6dae882a4ca24f` | `filterPaths` (`path.Match`, include unless any exclude matches); path parameters (`path`, `path.basename`, `path.basenameNormalized`, `path[n]`, `path.filename`, `path.filenameNormalized`, Go-mode `segments`, `pathParamPrefix`); file contents as one object or a list of objects, flattened with `DotStyle` in fasttemplate mode; directories take precedence over files |
+| `applicationset/generators/git.go` | `857cb41a80a580da4816c2ed6ddb130795ee885be77b8128f56aa9b38611eea0` | the git generator's fields |
+| `reposerver/repository/repository.go` (`GetGitDirectories`, `GetGitFiles`) | `27d7b258e902e88a592895d1b6e056cd24b1498caddbef5b4296ccbcf7fae9e8` | directories from a walk of the checkout; files through `gitClient.LsFiles` |
+| `reposerver/repository/utils.go` (`walkDirectoryTree`) | `4cb3ba10bbfc0ee943552033aca21f5c0322038e036b96aeddc1cec000695027` | hidden directories skipped with what is below them (`IncludeHiddenDirectories` off by default) |
+| `util/git/client.go` (`LsFiles`, `runCredentialedCmd`) | `7d0fa21d196268108a28273dafcc8bfa9dfcc7f0d648cbeb4c6f15a2c1ce3022` | the default globbing is `git ls-files -- <pattern>` (a pathspec); Argo CD itself passes a token as `--config-env http.extraHeader=<variable>` |
+| `util/git/creds.go` | `fb0516df80601174cac654c75d72391a271d0d965986b6380a2fd75d3e8b7e8a` | the Basic header form `Authorization: Basic base64(user:password)` |
+| `util/exec/exec.go` | `54b93b205e4e477dd6e3b8cffb84b140d9f5fcf51984e5e03060d54ded788978` | `ARGOCD_EXEC_TIMEOUT` default `90 * time.Second` (`repoFetchWallClock`) |
+| `applicationset/utils/utils.go` (`Replace`) | `21bc4c133dd44bdc03f7963a84e491dd1948a0d2ca25250b9e4056e535e6ed78` | fasttemplate: only strings matching `.*{{.*}}.*` are templated; a tag is trimmed; an unknown tag is written back as it was; Go mode with sprig and `goTemplateOptions` |
+| `applicationset/utils/template_functions.go` (`SanitizeName`) | `59868d8b1e7746607aa1cca014f02d5cac109b7740475d0c0ad2da59ca365849` | lower-case, `[^-a-z0-9.]` to `-`, at most 253, trim `-` and `.` |
+| `applicationset/generators/list.go` | `5d86b69b79f779fa53b939a10f89a4c6f0aa31142e7295edc1273dce7aff26a8` | without goTemplate every element value must be a string and `values` a map of strings; `elementsYaml` |
+| `applicationset/generators/cluster.go` | `b0545f148091c906359a2e55fc62bfd2948c6aab9634b0af8335621e39751534` | cluster parameters (`name`, `nameNormalized`, `server`, `project`, `metadata.labels.*`, `metadata.annotations.*`), the annotations never exposed, the local cluster added last when there is no selector and no Secret for it |
+| `applicationset/generators/matrix.go` | `d991e69b4c6e7397326a3a1cf49b8ef7d331531198c5ef23790b4b98878cd05d` | exactly two children; an error when a child generates nothing; fasttemplate parameters combined (a conflict is an error), Go-mode merge with the first child winning |
+| `applicationset/generators/merge.go` | `eeac03f2369c8e63b9d770566e5113be1f880a93aef5a30495adfa6bd2b498c3` | at least two children; merge keys required; duplicate keys an error; later generators override |
+| `applicationset/controllers/template/template.go` | `bf6f642c1d3adc306ddfcfc56378f658aa397d4a7fa8d6ff423a851774827e70` | every generated Application is put in the ApplicationSet's namespace; `templatePatch` |
+
+### Other B3 lookups
+
+| Date | Lookup | Result |
+|---|---|---|
+| 2026-11-15 | `git ls-remote https://github.com/fluxcd/flux2-kustomize-helm-example HEAD` (read-only) | `4f1a5b1051b469108d1bdf0ebec6c814427e3834`: the commit the live fetch lane (`scripts/live-fetch.mjs`) pins |
+| 2026-11-15 | `curl` (read-only) of torvalds/linux `master` `include/uapi/linux/limits.h` | `#define PATH_MAX 4096 /* # chars in a path name including nul */`: the longest path a walk can list (`filesPerScan`) |
+| 2026-11-15 | `curl` (read-only) of git/git `v2.55.0` `pkt-line.h` | `#define LARGE_PACKET_MAX 65520` (`gitOutputBytes`: one packet line's ceiling; nothing bounds their number) |
+
+## B3 review fixes (2026-11-15)
+
+| Date | Lookup | Result |
+|---|---|---|
+| 2026-11-15 | `curl` (read-only) of https://www.iana.org/assignments/special-use-domain-names/special-use-domain.csv into the shared cache; the registry's XML page for its date | registry "Special-Use Domain Names", updated 2026-05-22; sha256 of the CSV `377ba1290135e5976561834276549018fb36084d8023ac4b92b121c9925da0ec`; its 42 names are committed as `SPECIAL_USE_NAMES` in `src/u4-render-engine/repo-fetcher.ts` (the fetch guard refuses each and every name under it, and anything under `arpa`) |
+| 2026-11-15 | the installed git 2.55.0 against a loopback listener (`test/support/git-http-server.mjs`, 127.0.0.1 only, a dummy token), with crankpath's fixed options and http allowed in place of https | the failure texts recorded in `test/fixtures/git-stderr/git-2.55.0.json`: a 401 is `fatal: unable to get password from user` (no helper, no prompt), a 403 and a refused 301 are `The requested URL returned error: <code>`, a 404 is `repository '<url>' not found`; after a timeout of the plain `spawnSync` call, `git-remote-http` was still running (the reason git now runs in its own process group) |
+
+## B3 review pass 2 (2026-11-16): verified materialisation and the process-group helper
+
+| Date | Lookup | Result |
+|---|---|---|
+| 2026-11-16 | `man git`, `git-clone`, `git-fsck`, `git-read-tree`, `git-checkout-index` of the installed git 2.55.0 | `--attr-source=<tree-ish>`: "Read gitattributes from <tree-ish> instead of the worktree ... equivalent to setting the GIT_ATTR_SOURCE environment variable"; `clone --bare`: "make the <directory> itself the $GIT_DIR. This obviously implies the --no-checkout"; `fsck --strict`: "Enable more strict checking, namely to catch a file mode recorded with g+w bit set" (a tip tree holding one is refused: failed verification, never read unverified), `--no-dangling` omits dangling objects from the output, `--no-progress`; `read-tree <tree-ish>`: "Reads the tree information given by <tree-ish> into the index"; `checkout-index --all` "checks out all files in the index", `--force` "forces overwrite of existing files", `--quiet` |
+| 2026-11-16 | the installed git 2.55.0, local repositories only (sha1 and sha256 object formats) | a shallow `clone --bare` writes `HEAD`, `config`, `packed-refs`, `refs/`, `shallow` (the commit) and `objects/pack/pack-<hash>.{pack,idx,rev}`; a private git directory holding only copies of those object files, crankpath's own config, `HEAD` and `shallow` passes `fsck --strict` and `rev-parse --verify HEAD^{commit}`; `checkout-index --all` with `--attr-source` set to the empty tree (`4b825dc6...` sha1, `6ef19b41...` sha256) leaves a file with `ident eol=crlf` attributes byte-exact, while the same checkout without it expands `$Id$` and converts line endings; `fsck` fails on a flipped pack byte ("pack checksum mismatch", exit 128), a truncated pack, a missing blob ("missing blob", exit 3), a `HEAD` naming an absent object (exit 2) or a tree (exit 8); `rev-parse` and `fsck` do not read the attribute source |
+| 2026-11-16 | Node 22's `child_process` behaviour, observed with a stand-in program | `spawnSync` with `maxBuffer` kills only its direct child on `ENOBUFS`; a child started `detached` (its own group) and its children survive it, and survive SIGINT, SIGTERM or SIGHUP sent to a helper with no handler (the review's repros `ovcap.mjs`, `sig.mjs`). With the helper counting the bytes and handling the three signals, no member of the group is left (tests in `test/u4-render-engine/review-b3-pass2.test.ts`) |
+
+## B3 review pass 3 (2026-11-16): the listing before the write, collisions, fsck strictness
+
+| Date | Lookup | Result |
+|---|---|---|
+| 2026-11-16 | the installed git 2.55.0, local bare repositories with trees written as raw objects (`hash-object -t tree --literally`) | `fsck --strict` on a tree entry with mode `100664`: "warning ... badFilemode: contains bad file modes", exit 0 (so the pass-3 m4 premise does not hold on this git: `--strict` is kept, a legacy mode is not refused). `fsck --strict` exits 1 on an entry named `.GIT`, `git~1` or `.git` followed by U+200C; plain `fsck` exits 0 on all three. `read-tree HEAD` refuses `git~1` and `.git`+U+200C with `core.protectNTFS=true` and `core.protectHFS=true`, and accepts both with the two set to false (`.GIT` is refused either way). |
+| 2026-11-16 | the same git: `ls-tree` output forms | `ls-tree -r -z --format=%(objectsize)%x09%(path)` C-quotes the path (`"caf\303\251.yaml"`, `"a\"q..."`) even with `-z`; `ls-tree -r -l -z` writes `<mode> <type> <name> <size>TAB<path>NUL` with the path byte for byte (a name holding a tab, a newline and a quote came through unchanged), the size right-aligned in 7 columns and `-` for a submodule. crankpath uses the second. |
+| 2026-11-16 | the same git: stray files in a store | in `objects/ab/`, a file whose name is not an object name is reported (`bad sha1 file`) and fsck still exits 0; a well-named file that is not an object fails fsck. crankpath copies only well-named files. |

@@ -1251,3 +1251,272 @@ The owner was away for the whole build; every point below was decided by the lea
 - Memory: one heap figure (the default V8 heap of the smallest hosted runner) is the only budget; per-file and per-render parse transients are charged before parsing, held costs after; every refusal is a counted `limit` and makes counts a floor.
 
 **Progress (lead, 2026-11-16, after a quota stop).** On `main`: B0, B1, B4, B5, B6, B2. In flight: B3 (fixes and integration with B2 done at 9d1de5c; second review pass to re-run), B8 (second pass fixes interrupted mid-work; resumed), B7 (Vault goldens observed with real helm, reviewed by the lead for the owner and pinned at 0b3ebbc; the homelab golden waits for B3 and for the `render:<path>` hand-applied-root rule below). Lead decision for B7 (homelab): at 8b9d40f nothing in the estate deploys `system/argocd`, whose chart renders the root ApplicationSet, so without a crank the run is NOTHING ANALYSED; following FR7.4, a `creates: render:<path>` crank names a chart or Kustomize directory applied by hand at bootstrap, crankpath renders it as a hand-applied root and graphs what it leads to; undeployed chart and Kustomize directories are listed with that suggestion, never graphed without a crank. The research's uncranked homelab expectation was a hand trace that rendered `system/argocd` by hand. The B8 gap rule is per item: any head gap item absent from the base makes the Action NOT_CHECKED.
+
+## B3 (repo identity in full, ApplicationSet expansion, repo fetch)
+
+Branch `bolt/b3`, started at `main` `0a2e479` (B0, B1, B4, B5). B2 (the render engine and its CommandRunner) was not on `main`; its runner was read on `bolt/b2` (read-only) and the git forms were built in its shape beside it (integration items below).
+
+### Built
+- **Step 0.** Git option list confirmed against the installed git's documentation (git 2.55.0, `man git-config`, `git`, `git-clone`, `git-rev-parse`, 2026-11-15; every option with its documented effect in `docs/lookups.md`, "B3"). Limits (`src/u1-graph-model/limits.ts`, `docs/limits.md`, "B3 step 0"): `filesPerScan` 279,235 and `generatedApplicationsPerApplicationSet` 96,638, both derived from B1's per-run budget (the budget already bounds what it charges; these protect what it did not), with `scripts/measure-scan-limits.mjs` measuring the cost of a walked file the budget charges nothing for; three new derived limits, `generatorPatternSteps` 1,572,864, `repoFetchWallClock` 90,000 ms and `gitOutputBytes` 10,000,000. Argo CD v3.6.1's generator, repo-server and git-client sources were read (hashes in `docs/lookups.md`) for the expansion semantics.
+- **RepoIdentity (U2).** Normalisation now refuses (not comparable, so unreadable) any non-ASCII authority and any percent escape in the host: the URL parser would fold a fullwidth `ｇithub.com` and decode `git%68ub.com` to `github.com`, so no mapping of the parser's can make a look-alike equal; a punycode host compares as the ASCII it is. `.git/config` continuations are joined as git joins them (linear). Root labels `fetch:N` (a fetched `repos:` entry) join `alias:N` as labels crankpath assigns: a `read_from` spelled like one is refused, and a scanned directory spelled like one is shown `./fetch:1/...`. An `--repo-alias` whose path is the scanned root itself reads that root as `.` (one root, as `repos: {read_from: .}` already does).
+- **GeneratorExpander (U3)**, `generator-expander.ts`, `generator-template.ts`, `generator-paths.ts`: `list`, `git` (`directories` with include and exclude, `files`, `pathParamPrefix`, `values`), `clusters` (from the `clusters:` block: selector `matchLabels` and `matchExpressions`, the local cluster added as Argo CD adds it, Argo CD's own annotations never exposed), `matrix` (two children) and `merge` (merge keys), in fasttemplate mode (Argo CD's behaviour: a string is templated only when `{{` and `}}` are on one line, a tag is trimmed, an unknown tag stays as written, an unterminated tag is refused) and Go mode (only `{{.a.b}}` and `{{index .a.b N}}`; `<no value>` for a missing last key, refused under `missingkey=error`; any other construct `unsupported-template`). Path parameters (`path`, `path.basename`, `path.basenameNormalized`, `path[n]`, `path.filename`, `path.filenameNormalized`, Go-mode `segments`) as Argo CD gives them; directories as the repo-server lists them (ancestors of what the checkout holds, hidden ones skipped with what is below them); `path.Match` for directories, `git ls-files` pathspec semantics for files (`*` and `?` cross `/`, a literal matches its directory), both by a non-backtracking table counted in `generatorPatternSteps`. Every generated Application is put in the ApplicationSet's namespace, counted against `generatedApplicationsPerApplicationSet` while generated (a matrix builds at most one set more), and built through the RenderedSetBuilder with origin render job `generator:<ApplicationSet id>`, so it is `generated-by` its ApplicationSet, sources in turn, and never created by a `render:` crank. An unreadable generator repository makes the ApplicationSet opaque `unreadable-repo` with the URL quoted and the suggestion; its host-match edge is the Argo extractor's, unchanged (AC2.4.5, a test).
+- **RepoFetcher (U4)**, `repo-fetcher.ts` with `git-runner.ts`: the URL guard (https only; no credential, query or fragment; ASCII only; no IP literal in any spelling, no loopback, link-local, `.local`, single-label, `.svc`, `.cluster.local`, `.internal` name, and no name outside the delegated top-level domains of B4's dated root-zone list); the closed git allowlist in the CommandRunner's style (`git clone --depth 1 --single-branch --no-tags --no-recurse-submodules --quiet [--revision <sha> | --branch <name>] -- <url> repo` and `git rev-parse --verify HEAD`); the fixed `-c` options; an environment built from nothing (private HOME, empty PATH, no system or global config, no prompt); one attempt; a token from `CRANKPATH_TOKEN_<HOST>` sent as a Basic `Authorization` header through `--config-env http.https://<host>[:port]/.extraHeader=CRANKPATH_GIT_AUTH_HEADER`, the header in that one call's environment, never in argv; the resolved commit read with `rev-parse`; `.crankpath/repos/<host>/<path>@<sha>/` (moved there from a private `tmp/fetch-*` directory, which is removed at the end of the run); a trusted cache reused for a pinned commit, also offline; a cache root inside the scanned tree untrusted (never read, fetches kept for the run only). Failures in fixed words from git's standard error, which is never shown: 401, 403, 404, 429, redirect, revision not found, host not resolved, TLS, timeout, each saying the repository may exist.
+- **Wiring (U9).** `crankpath <url> [--rev <rev>]` fetches and scans the checkout with the URL as its own URL (`urlFrom: "fetched"`, commit and floating recorded); `--rev` without a URL and `--repo-url` with one are usage errors; `--no-network` and `--cache-dir` now act. `repos: {fetch: true}` entries are fetched when a source first needs one (default branch, floating; a refusal or failure is the resolution's `failure`, shown as the opaque reason `offline`, `tool-missing` or `unreadable-repo` with its detail). ApplicationSets are expanded in the pipeline's worklist; a generator's listing of a root is made once per run. Every walk counts against `filesPerScan` and charges the run budget per walked file (a refusal is a named, counted unreadable entry and makes the counts a floor).
+- **Report (U8, minimal).** `repo.commit`/`repo.floating` filled for a fetched scan; `repoMappings[]` gain `commit`, `floating`, `failure`; a top-level `clustersUsed` (and its count in the `declared-facts` gap); text: the `scanned:` line for a fetched repo, the fetch details on the mapping line, one line per declared cluster used.
+- **The homelab-shape fixture** `test/fixtures/homelab-shape/` (written for this project from the general Argo CD pattern; nothing copied from any repository) and its definition-of-done tests `test/u9-cli-package/homelab-shape.test.ts`; tests for every module named above (`generator-template`, `generator-expander`, `repo-fetcher`, `repo-fetch`, `generator-pipeline`, the look-alike and hostile `.git/config` tables in `repo-identity.test.ts`, the walk admission in `tree-walk.test.ts`); `test/helpers/git-fake.ts` (a recording fake git: no network); `scripts/live-fetch.mjs` (the live lane).
+
+### Verified
+- `npm run verify` on 2026-11-15 (Node v22.23.2, macOS arm64), exit 0:
+  ```
+  Checked 135 files in 85ms. No fixes applied.
+   Test Files  58 passed (58)
+        Tests  1049 passed (1049)
+  Statements   : 95.21% ( 4692/4928 )
+  Branches     : 88.94% ( 3418/3843 )
+  Functions    : 97.24% ( 635/653 )
+  Lines        : 97.28% ( 3970/4081 )
+  check-tree: 213 files read, 0 finding(s)
+  ```
+- **The definition of done**, run on 2026-11-15 with `npm run build`, then in `test/fixtures/homelab-shape/repo`: `node ../../../../dist/u9-cli-package/cli.js . --repo-url https://git.example.org/ops/homelab` (exit 0; `expected-without-alias.txt`) shows `ApplicationSet "argocd/root"  reason: unreadable-repo` with `suggested repos entry (not applied): "http://gitea-http.gitea:3000/ops/homelab": {read_from: .}`; adding `--repo-alias http://gitea-http.gitea:3000/ops/homelab=.` (exit 0; `expected-with-alias.txt`) gives `Run status: ANALYSED`, 3 generated Applications, and one uncranked `extracted` strongly connected component of 5 nodes and 9 edges that holds both cycles: cycle 1 `ApplicationSet/argocd/root reads-source Service/gitea/gitea-http`, `Service/gitea/gitea-http selects Deployment/gitea/gitea`, `Deployment/gitea/gitea deployed-by Application/argocd/gitea`, `Application/argocd/gitea generated-by ApplicationSet/argocd/root`; cycle 2 `Application/argocd/argocd generated-by ApplicationSet/argocd/root`, `ApplicationSet/argocd/root deployed-by Application/argocd/argocd`. Declared edges 0, declared facts 0; the alias is listed as the user's own input. The tests also show: removing the forge's Service leaves only cycle 2; excluding `system/argocd` removes cycle 2; five look-alike alias URLs (another path, path case, port, host suffix, a prefix path) leave the ApplicationSet unreadable and the alias unused.
+- **Expected outputs: what came first.** The four opacity lines of the unreadable case and the cycle node and edge sets were written in the test before the first run, and held. The two whole expected text files are the first real run, reviewed line by line. My edge count was wrong before that run: I predicted 8 edges; the run found 9, because the forge's Service is also `deployed-by` its Application (in the component, as FR7.2 and BR7.4 require).
+- **A bug the first run found and fixed:** B1's plain renderer passed its job's `generatedBy` to every object it rendered, so each object a generated Application rendered (the forge's Service, Deployment, and the ApplicationSet itself, a self-loop) was also `generated-by` the ApplicationSet. Only the Application is now; the homelab test asserts that the `generated-by` edges are exactly the three Applications'.
+- **Token (AC4.5.2):** with `CRANKPATH_TOKEN_GIT_EXAMPLE_ORG` set, the token, its header and its base64 form appear in no argv, not in standard output (text and JSON), standard error (`--verbose`), or any file of the cache; it reaches only the `git.example.org` clone, through that call's environment; another host's fetch and `rev-parse` get nothing; ambient variables (`GITHUB_TOKEN`, `HOME`) never reach git (`repo-fetch.test.ts`, fake git). With the installed git itself, offline (`file://` only, `repo-fetcher.test.ts`): the fixed options refuse the file transport even with the guard bypassed ("transport 'file' not allowed"), and a clone made with the header in the environment holds no trace of it and no hook.
+- **The live lane**, 2026-11-15: `npm run build && CRANKPATH_LIVE_CACHE=<scratch> node scripts/live-fetch.mjs` printed `live fetch: RAN https://github.com/fluxcd/flux2-kustomize-helm-example at 4f1a5b1051b469108d1bdf0ebec6c814427e3834 (floating: no; pinned and matched) in 637 ms; 67 entries in the checkout; scan: ANALYSED WITH GAPS, 13 sources` (a real https fetch with the fixed options and an empty PATH). Without git on PATH it prints `live fetch: SKIPPED (git not found on PATH)`; a failed fetch prints SKIPPED with the fetch's words. It is a script, not part of `npm run verify`, so it is never counted as a pass there.
+
+### Deviations from the design and why
+1. **Matrix and merge without a `clusters` child are expanded without a `clusters:` block.** BR3.13 reads as needing the block for every matrix and merge; only a `clusters` generator needs cluster inputs, so a matrix of a list and a git generator is expanded from the repository. A `clusters` child without the block is `cluster-inputs-missing`.
+2. **What the `clusters:` block cannot say.** It gives labels and annotations, not a cluster's server URL or project: a template that uses `server` or `project` of a cluster other than `in-cluster` (taken to be `https://kubernetes.default.svc`) is `cluster-inputs-missing`. The block stands for the complete set of cluster Secrets; the local cluster is added as Argo CD adds it (no selector and no entry named `in-cluster`). Expansion through the block is a declared fact of the scanned repo: counted in the `declared-facts` gap, each cluster used listed.
+3. **One opaque reason per ApplicationSet.** When one of several generators cannot be expanded, the Applications of the others are still generated and the ApplicationSet carries the first failure's reason (C1 allows one); the counts are a floor. Two generated Applications with one name: none are generated, `render-failed` (Argo CD applies none of them).
+4. **Fasttemplate's unknown tags stay as written**, as in Argo CD, rather than every `{{...}}` being `unsupported-template`: a typo then shows as a literal (an invalid name is skipped and named; a path is unreadable and named). Constructs crankpath does not reproduce (Go functions, pipes, conditions, `templatePatch`, per-generator templates, `elementsYaml`, generator selectors, nested matrix or merge, a second matrix child templated with the first's parameters, character classes in patterns) are refused by name.
+5. **Files patterns follow the repo-server's default (old) globbing**, `git ls-files -- <pattern>`; the controller's opt-in doublestar globbing is not modelled. Directory and file listings come from the checkout as read, not from a git index (a file on disk that git does not track is listed; the revision is the files as read, as for every source).
+6. **`repos: {fetch: true}` fetches the default branch** (floating, commit recorded): C2 gives the entry no revision, and the revision each Application names is already a not-modelled item. Fetches happen when a source first needs the entry; an unused entry is never fetched.
+7. **An abbreviated sha is refused** (`--rev 8b9d40f`): a server serves full object names only. The research's demo writes `--rev 8b9d40f`; with crankpath that needs the full sha.
+8. **The token header is Basic with user `x-access-token`** (the form git sends a password in; accepted by the forges that take a token as a password). A forge that wants a Bearer token is not served (owner item).
+9. **The URL guard also refuses names outside the delegated top-level domains** (B4's dated root-zone list): such a name can only resolve inside some network. It imports that list from U6 (data only).
+10. **Exit code of a failed positional fetch is 1** (a tool outcome, with the fetch's words), not 2: nothing was read, but "nothing analysed" would read as an empty repository.
+11. **The git runner is its own module** (`git-runner.ts`), in B2's CommandRunner shape (closed `{subcommand, options, positionals}` entries, `--` before positionals, a spawn port, fixed outcome words, `spawnSync` with no shell, caps from LimitSet); git needs per-call environment (the header) and options before its subcommand, which B2's runner does not have. At integration the entries move into `ALLOWED_COMMANDS` or the two runners share the spawn path.
+12. **`filesPerScan` counts every listing** (a directory listed by two renders counts twice) and walked files are also charged to the run budget: pessimistic on estates that render one directory many times.
+
+### Files touched outside U2, U3, U4 and the CLI's URL argument
+- `src/u1-graph-model/limits.ts`, `run-limits.ts` (B3 limits, `WALK_COST`), `extractor.ts` (`RepoResolution.failure`).
+- `src/u7-graph-analysis/crank-applier.ts`: a `render:` target never matches a generated Application (origin render job `generator:`) nor a `fetch:N/` origin.
+- `src/u8-output/report-model.ts`, `report-assembler.ts`, `json-renderer.ts`, `text-renderer.ts`: the additive fields and lines above (B6 owns the schema freeze; these are additive).
+- `src/u9-cli-package/pipeline-runner.ts`, `cli-shell.ts`, `cli.ts`, `run-budget.ts`.
+- Tests of earlier bolts whose expectations changed: `render-planner.test.ts` (an ApplicationSet is no longer planned: it throws if reached), `text-renderer.test.ts` (an ApplicationSet with no template is `unsupported-field`, not `not-in-this-build`), `cli.test.ts` (a URL and `--rev` are no longer "a later build"), `review-b1.test.ts` (the `read_from` refusal now reads `names a root label crankpath assigns (alias:N or fetch:N)`), `review-b5-pass2.test.ts` (mapping entries gain three fields). `test/fixtures/thin-slice/expected.json` gains `"clustersUsed": []` (edited by hand); the thin-slice text is unchanged.
+
+### Integration items (for the merge of B2)
+- B2's `render-io.ts` passes `job.generatedBy` to the objects of every render (line 153 on `bolt/b2`): the same bug fixed here in the plain renderer; it must be removed there too, or a generated Application's Helm or Kustomize objects are `generated-by` the ApplicationSet.
+- B2's planner has the same `repos-fetch` branch (`LATER.fetch`) and ApplicationSet branch (`LATER.appset`) that B3 replaced; take B3's (the fetch failure's reason and detail; ApplicationSets never planned).
+- B2's `WorkDir`/`resolveCacheRoot` and B3's `resolveFetchArea` apply the same cache rule; one should serve both (B3's fetch temp directories are `.crankpath/tmp/fetch-*`, removed at the end of the run).
+- The git allowlist entries join B2's `ALLOWED_COMMANDS`, keeping the per-call header environment and the global options before the subcommand.
+
+### Decisions taken for the owner
+- Matrix and merge expanded without the block when they have no `clusters` child (deviation 1); the block's missing server URL is `cluster-inputs-missing` (deviation 2).
+- Fasttemplate unknown tags kept literal as Argo CD does (deviation 4).
+- `repos: {fetch: true}` at the default branch (deviation 6); a `repos:` fetch entry is a declared fact of the scanned repo, and it decides which repositories of a host the invoker's token for that host reads (the token goes only to that host; what is read only shapes the graph). The owner may want fetch entries honoured only from `--config` or with a flag.
+- Abbreviated shas refused (deviation 7); Basic token header (deviation 8); non-delegated TLDs refused (deviation 9).
+- Generated Applications share their ApplicationSet's job for sync waves, so a wave annotation on them orders them within the set in the plan (Argo CD's ApplicationSet controller does not order by it; the plan's order is still a valid order, with a constraint more than needed).
+
+### Unverified
+- **Hand mutations of the code were not run in this session**: the attempt (sixteen single-line mutations of the rules above, each with its tests, then restored) was refused by the session's permission rules, as in B1 and B4. The suite's own falsifiability checks fail as they should when the input is broken (the fixture mutations, the look-alike tables, the refusal table, the fake-git token checks); a reviewer should still break the code (the host and percent refusals, the token's host, `--config-env` vs argv, the TLD guard, the alias-to-root label, hidden directories, exclude, the generator origin in the crank applier, the plain renderer's `generatedBy`, the unreadable-repo branch, the two limits, redirects, the protocol list, the planner's fetch failure, the Go-template grammar) and see tests turn red.
+- Real git was run only offline (`file://`) and in the one live lane; no test fetches over https except the live lane, and no 401, 403, 404, 429, redirect or timeout was seen from a real server (those words are tested on git's own message texts through the fake).
+- Redirect refusal was not observed against a real redirecting server; DNS rebinding to a private address is a residual risk (the guard sees names, not addresses). A fetched repository's size on disk is bounded only by the wall clock.
+- The generator semantics follow Argo CD v3.6.1's source as read; no Argo CD was run. `scripts/measure-scan-limits.mjs` ran once per shape on one macOS arm64 machine; Linux was not measured.
+
+### Merge of main (B6, `1df4b0a`) into `bolt/b3`
+- A merge commit (`098b2b0`). Ten conflicted files, each resolved keeping both sides: BUILD-NOTES and `docs/lookups.md` are main's file followed by the B3 sections; `docs/limits.md` takes B6's rows with B3's `generatedApplicationsPerApplicationSet`; the CLI keeps B6's colour and `--explain` options with B3's URL, `--rev`, `--no-network`, `--cache-dir` and token reader; the assembler and pipeline pass both B6's `controllerMatches` and B3's `scannedCommit` and `clustersUsed`. No flag of C6 is left that "arrives in a later build" (the test keeps the format check only).
+- B6's frozen schema (`additionalProperties: false`) is extended additively, so `schemaVersion` stays 1: `repo.urlFrom` gains `fetched`; `repoMappings[]` gain `commit`, `floating`, `failure` (required, as the writer always emits them); a top-level `clustersUsed`. The field golden `test/fixtures/schema/report-fields.golden.json` gains the five fields; `docs/json-output.md` was regenerated with `node scripts/json-output-doc.mjs`.
+- The homelab expected texts take B6's 80-column layout (regenerated from the merged build; their content is unchanged); B3's text checks fold white space (`flat` in `test/helpers/scan.ts`) so they test the words, not the wrapping.
+- The review file is committed (`315fbb2`) with one pre-existing note reworded (the design tool's start file named in words), as check-tree requires.
+
+### Review fixes (reviews/bolt-3-review.md: 2 Major, 9 Minor, 6 Nit; lead decisions of 2026-11-15)
+Tests written for the findings, then run against the pre-fix commit `315fbb2` in a temporary worktree with only the new and changed test files copied in: **19 red** (`test/u4-render-engine/review-b3.test.ts`, `test/u3-discovery-expansion/review-b3.test.ts`, `test/u9-cli-package/review-b3.test.ts`, the rewritten and changed tests in `repo-fetch.test.ts` (3) and three changed expectations in `repo-fetcher.test.ts`); the m6 guard tests and the option behaviour tests passed there, as they should: they pin behaviour that existed but no test could fail on. All pass after the fixes. The pre-fix run of the m2 test left two `git-remote-http` processes alive (the defect itself); I stopped them.
+- **M1 (lead decision: charge per Application in the loop, bound the input work).** Before each generated Application is built, the expander asks the run budget for it (`admit`: the per-object rate plus the template's string values and the three it adds), so the generation stops at the first refusal, keeps what was built and marks the ApplicationSet opaque `limit` (`the run's memory budget was reached while its Applications were generated`, a run-limit gap, counts a floor). A new derived limit, **`generatorRenderSteps`** = `runMemory` / 2 = 1,224,309,888 steps, bounds the rendering work of the whole set (one step per template node, one per character a templated string produces, checked while a string is built, so one huge substitution stops at once). The review's file (90,000 elements, 1,000 annotations, 1.8 MB) now ends in 2.4 s, 378 MB resident, exit 0 under `--max-old-space-size=2500`, with 416 Applications and the counted limit (before: out of memory, exit 134, after 150 s).
+- **M2 (lead decision: OD-9 narrowed).** A token is attached only to the fetch the invoker names on the command line (the positional URL). `repos: {fetch: true}` entries, chosen by the scanned repository, are always fetched without a token; a 401, 403 or 404 there is `unreadable-repo` with its words and `fetched without a token (a repos: entry never gets one)`. The report says so on the mapping line (`fetched without a token`); `docs/fetching.md` (new) states it for users.
+- **m1.** A token is scoped to host and port: `CRANKPATH_TOKEN_<HOST>` for 443, `CRANKPATH_TOKEN_<HOST>_<PORT>` otherwise (still injective over what the guard admits: a top-level domain is never all digits).
+- **m2 (lead decision: kill the process group).** git runs through a small Node helper (`GROUP_HELPER`, run with this Node, no shell) that starts it detached in its own process group and kills the whole group with SIGKILL when the wall clock runs out, and again when git exits. A test against a dribbling loopback listener shows no `git-remote-http` alive after a timeout.
+- **m3.** The classifier matches git 2.55.0's real texts, captured against the loopback listener and committed (`test/fixtures/git-stderr/git-2.55.0.json`): 401 (`unable to get password from user`), 403, 404 (`repository '...' not found`), a refused 301 (now worded with the status and a hint that a forge may redirect a URL without `.git`), and any other status by its code. A test runs the real git against the listener and compares its text with the recording.
+- **m4.** The guard refuses the 42 names of the IANA special-use registry (dated lookup) and everything under them, and anything under `arpa`. `example.org` is one of them, so the fetch tests now use `git.acme.dev` (the design allows `acme`); the homelab fixture's `--repo-url` is identity only, never fetched, and keeps `git.example.org`.
+- **m5.** A new derived limit, **`fetchedRepoBytes`** = `runMemory` / 33 = 74,200,599 bytes (what the run budget can hold of a repository's files): a checkout over it, or over `filesPerScan` files, is measured after git ends, removed and refused as a counted `limit` (opaque reason `limit` for a `repos:` entry; exit 1 for a positional URL). Pruning `.crankpath/repos` is not done (recorded in `docs/fetching.md`); `tmp/` is removed when a run leaves it empty (n3).
+- **m6.** Tests that fail without each guard: the pinned-sha mismatch, the `svc` label under a public domain, a revision read as an option at the allowlist layer, the auth origin as a prefix (not a substring), the in-cluster server in Go mode. The literal copy of the option list is gone; instead, against the installed git and the loopback listener: every fixed key is one `git help --config` knows; `http.followRedirects=false` makes a 301 an error, its target is never requested and no header is carried (control: allowed to follow, the target is requested); the header reaches its exact origin and no other host name or port; `credential.helper=` stops a helper from a config file (control: it is asked); `core.hooksPath=/dev/null` stops a template's `post-checkout` hook on a real clone (control: it runs); `protocol.allow=never` refuses http before any request; `safe.bareRepository=explicit` refuses a bare repository found from the working directory (control: used).
+- **m7.** `docs/limits.md` corrected: `filesPerScan` binds before the budget on ordinary paths; `generatorPatternSteps` binds a `directories` generator at about 28,000 directories (stated as a counted outcome); the generated-Application row says what really bounds memory. The expander's own `limit` mark is now the one kept when the budget stops the generation (the generic mark is no longer substituted, and the Applications built before are kept).
+- **m8.** A floating fetch is found in the cache by the commit it resolved to: a branch HEAD is resolved through its loose ref or `packed-refs` (read through BoundedReader), so a later `--rev <that sha>`, offline too, is a cache hit.
+- **m9.** Done in the merge above. B2 has not landed on `main`: its `render-io.ts` still passes `job.generatedBy` to rendered objects; it must be removed at B2's integration (noted again, not changed here).
+- **Nits.** n1: at most one leading and one trailing `/` are dropped in normalisation (`https://h//ops/x` is no longer equal to `https://h/ops/x`). n3: `tmp/` removed when empty. n2 (redundant guard checks) kept for readability; n4 (the thin-slice JSON line) is what a real run gives; n5 recorded (both cycles are in the one component; the text shows the shortest); n6 is not B3's.
+
+**What changed in meaning:**
+- A `repos: {fetch: true}` entry never sends a token. A private repository named there is now `unreadable-repo`; before, it was read with the invoker's token.
+- A positional URL on a non-default port needs `CRANKPATH_TOKEN_<HOST>_<PORT>`; the host's own variable is no longer sent there.
+- Special-use and `arpa` names are refused before git runs. This includes `example.org`, `.test` and `home.arpa`.
+- A checkout over 74,200,599 bytes is refused as a `limit`.
+- A fat ApplicationSet ends in a counted `limit` instead of exhausting memory, and keeps the Applications built before it. Before, the whole set was refused at the end, under a generic mark.
+- A floating fetch's commit is reused from the cache.
+- Failure details are now worded from git's real texts: 401, 403, 404 and redirect each get their own words, where they used to fall to the generic text.
+- URLs with doubled slashes are no longer equal to their single-slash spelling.
+
+`npm run verify` on 2026-11-15, exit 0:
+```
+Checked 162 files in 78ms. No fixes applied.
+ Test Files  73 passed (73)
+      Tests  1211 passed (1211)
+Statements   : 95.37% ( 5362/5622 )
+Branches     : 89.35% ( 3853/4312 )
+Functions    : 97.59% ( 730/748 )
+Lines        : 97.48% ( 4532/4649 )
+check-tree: 257 files read, 0 finding(s)
+```
+- **Still unverified:** no real https server was used for the failure texts (the loopback listener speaks http; git prints the same status lines for both, which is assumed, not shown); DNS rebinding and wildcard-DNS names remain a stated residual risk (`docs/fetching.md`); hand mutations were again not run by me (the review ran 34 and listed the survivors, which m6 now covers).
+
+### Merge of main (B2, `b735eb6`) into `bolt/b3`, and RepoFetcher on B2's runner and WorkDir (2026-11-16)
+- **Merge.** Nine files conflicted. BUILD-NOTES is main's file followed by the B3 sections; `docs/limits.md` and `limits.ts` take B2's derived render limits with B3's rows and entries (one `ARGO_EXEC_TIMEOUT_MS` now serves `renderWallClock` and `repoFetchWallClock`); the planner, plain renderer and render-planner test take B2's code with B3's two semantics re-applied in B2's shared module (`plan-common.ts`: a `repos:` fetch failure is the opaque reason and detail of the fetch, the `LATER` words are gone; an ApplicationSet is never planned); the CLI keeps B2's `toolPath` with B3's URL, `--rev` and token reader; the pipeline was rebuilt from main's version with B3's changes applied to it (no merge markers resolved by picking a side). With no notYetDerived limit left, the limits test shows the type guard on a constructed pending limit.
+- **Git on B2's runner style (lead request).** The git forms are now entries of B2's one closed list (`ALLOWED_COMMANDS` spreads `GIT_ALLOWED_COMMANDS`); B2's CommandRunner refuses tool `git` (it would run without git's fixed options), so git runs only through `git-runner.ts`, which uses B2's spawn port types (`Spawn`, `SpawnOptions`, `SpawnOutput`) and keeps what git needs: the fixed `-c` list before the subcommand, the per-call header environment, an empty private PATH directory and a private HOME, and the process-group kill on timeout. Tests: the allowlist test lists the two git forms; B2's runner refuses a git request.
+- **One cache layout (C13).** The fetcher no longer has a cache area of its own: it takes the run's `WorkDir` (B2) and makes its private fetch directory with `makeDir` inside the run directory, removed with it in every outcome; checkouts go to `.crankpath/repos/<host>/<path>@<sha>/` beside B2's `charts/`. A URL on the command line is fetched with a WorkDir of its own resolved before any scanned tree exists (`resolveCacheRoot(cwd, flag, null)`, a small additive change to B2's function); a `repos:` entry uses the scan's WorkDir, so a cache inside the scanned tree is untrusted for both charts and repositories. `resolveFetchArea`, `ensureCacheRoot` and the fetcher's own cleanup are removed.
+- **B2's twin `generatedBy` bug fixed** in `render-io.ts`: a Helm or Kustomize render no longer passes the owner's generator to the objects it renders. Regression test `test/u9-cli-package/generated-renders.test.ts`: an ApplicationSet generates a Helm, a Kustomize and a plain-directory Application over B2's render fixture; each renders (fake helm and kustomize), its objects are `deployed-by` it, and `generated-by` edges are exactly the three Applications'. Run in a scratch copy with B2's line put back, it is red (10 `generated-by` edges instead of 3).
+- **Generated Applications on every render path.** They are planned by B2's planner like any Application (`planApplication`), so a generated Helm source, Kustomize directory or plain directory renders through the same engine (the test above); their `targetRevision` is flagged floating by B2's rule like any other.
+- **Expected outputs.** The homelab expected texts now come from a run with no tools on PATH (`toolPath: ""`, as B2's goldens), so the toolchain line reads `helm not found on PATH, kustomize not found on PATH`, and the with-alias text gains B2's floating-revision section for the three generated Applications (`targetRevision: main`). Content otherwise unchanged. No JSON field was added by this merge, so the schema and field golden are unchanged (B2's own fields came with main).
+- **What changed in meaning:**
+  - git can no longer be started through B2's runner.
+  - Fetch work directories live in the run directory, and B2's stale-run cleanup covers them.
+  - A Helm or Kustomize render of a generated Application no longer marks its objects `generated-by`. This holds on main too once B3 lands.
+  - Generated Applications show floating revisions as any Application does.
+- **`npm run verify`**, 2026-11-16, exit 0: 89 test files, 1,564 tests; statements 94.25%, branches 87.77%, functions 97.91%, lines 96.38%; check-tree 402 files, 0 findings.
+- **`npm run verify:live`** (B2's live-render lane, with the fetch lane added to it), 2026-11-16:
+  - live-render: `8 passed, 0 failed, 0 skipped`.
+  - live fetch: `RAN https://github.com/fluxcd/flux2-kustomize-helm-example at 4f1a5b1051b469108d1bdf0ebec6c814427e3834 (floating: no; pinned and matched) in 729 ms; 67 entries in the checkout; scan: ANALYSED WITH GAPS, 13 sources`.
+  - The CLI form, `crankpath https://github.com/fluxcd/flux2-kustomize-helm-example --rev <that sha> --cache-dir <scratch>`, fetched into `cache/repos/github.com/fluxcd/...` and scanned with the real helm and kustomize. A rerun with `--no-network` read the cached commit. No git helper was left running.
+
+### Review pass 2 fixes (reviews/bolt-3-review-pass-2.md: 2 Major, 4 Minor, 3 Nit; lead decisions of 2026-11-16)
+Merged main `955014c` first (BUILD-NOTES only: main's file followed by the B3 sections). The new tests are in `test/u4-render-engine/review-b3-pass2.test.ts` (30 tests). They were run against the pre-fix tip `cb7e6b6` with only the fake git changed: 25 failed, 5 passed. The meaningful reds:
+- the planted work tree was read, both offline and with the installed git;
+- after `ENOBUFS`, the stand-in's grandchild was still alive;
+- `%0d%0a` and `:08443` passed the guard;
+- the new limit was absent.
+
+The 5 that passed were the real-git control and the timeout-path tests, which were already met.
+- **M1 (planted cache).** The cache now holds object stores only (`git clone --bare`), and no cached tree is ever read.
+  - Every read of a commit goes the same way, cached or just fetched, and for every cache location:
+    - The store's object files, chosen by name (loose `xx/<38 or 62 hex>`, `pack-<hash>.{pack,idx,rev}`), are opened with `O_NOFOLLOW`, must be regular files, and are bounded by `fetchedRepoBytes` and `filesPerScan`. They are copied into a private git directory in the run directory. crankpath writes that directory's config, `HEAD` (the commit) and `shallow` (the commit) itself. The store's config, hooks, refs, `info/` and `objects/info/` (alternates) are never read.
+    - `git fsck --strict --no-dangling --no-progress` must pass, and `git rev-parse --verify HEAD^{commit}` must print the commit.
+    - Then `git read-tree HEAD` and `git checkout-index --all --force --quiet` write the files into the run directory. They run with `--attr-source=<empty tree of the object format>` and `core.autocrlf=false`. Only that directory is scanned, and it is removed with the run.
+  - The four forms are new entries of the closed list. Each takes an absolute `--git-dir` (and `--work-tree` for checkout-index), and the runner refuses one without it.
+  - A store that fails is removed and fetched again. Under `--no-network` it is `offline`, with the words "the cached copy failed verification ... and was discarded".
+  - Without git, a cached commit is `tool-missing`: it cannot be verified.
+  - A fresh clone is measured, then its commit is read from the store git just wrote, then it goes through the same materialisation. A trusted cache then keeps the store.
+  - The positional URL's default cache under the current directory stays "trusted". It no longer matters for safety: a planted entry is either the pinned commit (git checks every object against its name) or discarded.
+  - Tests (fake git and the installed git, sha1 and sha256):
+    - the reviewer's planted work tree;
+    - a store with the right `HEAD` and another commit's objects;
+    - a flipped pack byte;
+    - a planted config with a required filter, hooks, an fsmonitor command and alternates (no marker written; the alternates' objects are unused);
+    - a symlinked pack;
+    - a `.gitattributes` with `ident eol=crlf` (byte-exact, with a control showing the change without `--attr-source`);
+    - the copy bound.
+  - The reviewer's repro, run with the built CLI in a copy: exit 1, `offline: the cached copy failed verification ... and was discarded`, and the planted entry is removed.
+- **M2 (run-level fetch bound).** A new derived limit, `fetchesPerRun` = floor(`runMemory` / `fetchedRepoBytes`) = 33 (unit `fetches`).
+  - Each fetch is reserved at the most it may put in front of the run, before it starts.
+  - One allowance per run is shared by the positional fetcher and the `repos:` fetcher. A cache read counts too, since it materialises as much as a fetch.
+  - A fetch past the allowance starts no process. It is a counted `limit`: opaque reason `limit`, detail `not fetched: the run has made fetchesPerRun (33) fetches`.
+  - `repoFetchWallClock` now bounds one fetch, all its git calls together (one deadline; each call gets what is left). A run therefore spends at most 33 × 90 s fetching.
+  - Tests: the derivation; the allowance refusing before any process; 35 `repos:` entries giving 33 clones and 2 opaque `limit` sources.
+- **m1 (process group on every exit path).** The helper (`GROUP_HELPER`, `helperArgv`) now covers each way the call can end:
+  - It counts each stream's bytes and kills the group the moment one passes the cap (exit 251, mapped to `over-cap`), so the caller's `maxBuffer` never overflows.
+  - It handles SIGINT, SIGTERM and SIGHUP by killing the group (exit 128 plus the signal number).
+  - It kills the group on git's exit, on a spawn error, and on an EPIPE on its own output (its caller is gone).
+  - Tests use a stand-in program with a marked grandchild: over the cap through the runner and through the spawn port, each of the three signals, and the wall clock. No marked process is left after any of them. The reviewer's `ovcap.mjs` and `sig.mjs`, rerun against the build, leave none.
+  - Residual, stated in `docs/fetching.md`: a SIGKILL to the helper itself cannot be handled.
+  - The suggested `http.lowSpeedLimit` backstop was not added. The deadline per fetch, and the fetch count, already bound the time.
+- **m3.** `HELPER_GRACE_MS` is removed, and nothing replaces it:
+  - `spawnSync` gets no timeout of its own.
+  - The helper enforces the wall clock and exits only on `close`, which comes once git has exited and every process holding its pipes (the group it has just killed) is gone.
+  - The wall-clock test checks that no member is alive at the moment the call returns.
+- **m4.** The `repoFetchWallClock` row and entry are reworded: one fetch, all its calls, and with `fetchesPerRun` the whole bound on a run's fetching. Argo CD's 90 s per command is kept as the basis for what one fetch may take.
+- **m2 (survivors), one behaviour test each:**
+  - PATH: the fake records the entries of the directory each call's PATH names, at call time. They must be empty and inside the run directory (`PATH: process.env.PATH` fails it).
+  - `transfer.fsckObjects`: the installed git clones (file transport allowed for the test) a repository whose commit has no author email. It is refused under the fixed options, and accepted with the option set to false.
+  - ORIGIN: an origin with userinfo, or with a path that is still a prefix of the clone URL, is refused (`/./` fails it).
+  - `maxBuffer`: the over-cap runner test ends `over-cap` within seconds. With the cap lifted it would run to the wall clock and be `timed-out`.
+  - Empty token: `CRANKPATH_TOKEN_...=""` sends no header and no `--config-env`.
+  - Positional cleanup: after a URL run, `.crankpath/tmp` is empty.
+  - The `packed-refs` survivor is moot: the code that read HEAD and refs by hand is gone, and git resolves them.
+  - I did not run the mutations myself (a mutation script was refused by the permission system in pass 1). Each test was written against the mutation's text in `repros/mut.py`.
+- **Nits.**
+  - n1: a percent-encoded control character (`%00` to `%1f`, `%7f`; CR LF among them) anywhere in the path is refused (`path`).
+  - n2: the port is read as a number before it names a token or an origin: `:0443` is the default port and `:08443` is `:8443`.
+  - n3: left as noted.
+- **What changed in meaning:**
+  - A cache entry is a bare object store, not a checkout. An entry written by the first-pass code fails verification and is fetched again.
+  - `FetchResult.dir` is always in the run directory, never in the cache.
+  - A cached read runs git (four calls) and needs git, under `--no-network` too: without git it is `tool-missing`, where before it was read.
+  - `fetchedRepoBytes` now measures the store, the copy and the written files, each against the bound. It used to measure the clone with its `.git`. The size words say "repository" instead of "checkout".
+  - At most 33 fetches per run: a further one is opaque `limit`.
+  - `repoFetchWallClock` is per fetch, no longer per git call.
+  - A repository whose tip tree records a group-writable mode (very old git) fails `fsck --strict` and is unreadable. This is stated in `docs/fetching.md`.
+  - The allowlist has five git forms: `clone --bare`, `fsck`, `rev-parse --verify HEAD^{commit}`, `read-tree HEAD`, `checkout-index`. `rev-parse --verify HEAD` without `--git-dir` is gone.
+  - `core.autocrlf=false` was added to the fixed options.
+- **`npm run verify`**, 2026-11-16, exit 0: 90 test files, 1,594 tests; statements 94.18%, branches 87.84%, functions 97.83%, lines 96.28%; check-tree 404 files, 0 findings.
+- **`npm run verify:live`**, 2026-11-16, exit 0:
+  - live-render: `8 passed, 0 failed, 0 skipped`.
+  - live fetch: `RAN https://github.com/fluxcd/flux2-kustomize-helm-example at 4f1a5b1051b469108d1bdf0ebec6c814427e3834 (floating: no; pinned and matched) in 788 ms; 50 entries materialised; scan: ANALYSED WITH GAPS, 13 sources`.
+  - The new cached read: `RAN, verified (fsck, HEAD^{commit}) and materialised in 195 ms; cached: yes; 50 entries`. The entry count fell from 67 to 50 because `.git` is no longer in the scanned tree.
+- **Still unverified:**
+  - The verification runs against stores written by git 2.55.0 only.
+  - A real https server's pack was verified only through the live lane's one repository.
+  - The mutations were not re-run by me.
+
+### Review pass 3 fixes (reviews/bolt-3-review-pass-3.md: 1 Major, 5 Minor, 4 Nit; lead decisions of 2026-11-16)
+The new tests are in `test/u4-render-engine/review-b3-pass3.test.ts` (18 tests). Run against the pre-fix tip `a8c4268` (an extracted copy, with the new fake git), 10 failed: the bomb, count and listing bounds; both collision tests; both m2 tests; the copy's file bound; the deadline; the m5 cleanup. The other 8 pass there too. They are the m3 tests of guards that already existed, so only a mutation can show them red. I did not run mutations (see below); each is arranged so that only its one guard can stop it, and two carry a control showing the guard is the one that acts.
+- **M1 (bound before the write).** A new form on the closed list, `git ls-tree -r -l -z HEAD`, has its own output cap: the runner's `listingBytes`, `fetchedRepoBytes` by default. Its stdout is kept byte for byte (latin1).
+  - After fsck and before `read-tree`/`checkout-index`, the declared sizes are summed and the entries counted.
+  - Over `fetchedRepoBytes` or `filesPerScan` is a counted `limit` before anything is written. So is a listing larger than `fetchedRepoBytes`, with the detail `...: its file list alone`.
+  - `checkoutSize` after the write stays as a backstop.
+  - `-l -z` is used because a `--format` path is C-quoted even with `-z`, which was checked.
+  - Tests: a 200,000-byte zero blob at 10 paths against a 1 MB bound gives `limit`. Only `fsck` and `ls-tree` ran, and no `.yaml` exists in the run directory. Further tests: 5 paths against a file bound of 3 (the store's 3 loose objects are within it); 50 empty files with long names against a 2,000-byte bound.
+- **m1 (collisions).** The same listing is checked for paths that share a fold key: NFC, then upper and lower case. That covers case pairs, NFC/NFD pairs, and directory pairs.
+  - The colliding names (the shallowest, and everything under them) are removed after the write on every platform. Removal never follows a symlink, and the parent must resolve inside the tree.
+  - `FetchResult.collisions` lists them. The pipeline reports each as an unreadable file (`outcome: path-collision`), a counted gap shown under `unreadable-files`, for the positional URL and for `fetch:N` roots.
+  - Tests: real git with `App.yaml`/`app.yaml`, `café` NFC/NFD and `Docs/`/`docs/` leaves only `ok.yaml`. A pipeline run gives two `path-collision` entries and `unreadable-files: 2`.
+- **m2 (a call that did not finish).** `materialise` returns `verification`, `limit`, `incomplete` or `unwritable`.
+  - Only a finished fsck that refused is `verification`, which discards the store.
+  - A timeout, an over-cap output or a call that never started is `incomplete`. The fetch is `unreadable-repo` with `the cached copy was not read: verifying: <the classifyFailure words>` (or `the fetched commit was not read: ...`), and the cached store is left in place.
+  - `read-tree`/`checkout-index` refusing is `unwritable`.
+- **m3 (tests that could not fail):**
+  - fsck itself: a forged pack whose idx names a blob by another blob's hash. The control shows `cat-file` reads the forged bytes. The fetch is discarded, `offline`, and nothing is written.
+  - Each bound on its own:
+    - the copy's byte bound: a store padded with incompressible noise; no git call ran;
+    - the copy's file bound: 4 loose objects against 3;
+    - the listing bounds (above);
+    - the written-files backstop: the fake's `listingLies`, with a deflated pack of zeros.
+  - The per-fetch deadline, with an injected clock: the timeouts are exactly 90,000, 50,000 and 10,000 ms, then no call is made.
+  - The shallow boundary: a commit whose parent object is absent is verified.
+  - protectNTFS/protectHFS: `read-tree` of `git~1` and `.git`+U+200C is refused over a preceding `-c ...=false`. The control without the fixed options accepts both.
+  - The helper:
+    - git exits while a descendant holds its pipes: the call returns at once with status 0, and the descendant is gone;
+    - the helper's stdout closes: it kills the group and exits.
+  - A loose directory with stray files: only the well-named one is copied.
+  - A symlinked `objects` or `objects/pack` directory is not followed. This test found a real gap, now fixed: `objects/pack` was read through a symlinked `objects`. `copyObjects` now requires `objects` itself to be a real directory.
+  - `rev-parse HEAD^{commit}` was dropped from `materialise`: it was tautological (n4), since fsck already requires `HEAD` to be a commit. It stays for reading a fresh clone's commit.
+- **m4.** `--strict` is kept. In git 2.55.0, `--strict` only warns on a `100664` mode (exit 0, recorded in `docs/lookups.md`), and a test shows such a commit is read. `--strict` does refuse `.git` look-alikes (`.GIT`, `git~1`, `.git`+U+200C), which plain fsck lets through. `docs/fetching.md` was corrected: its pass-2 line said a legacy mode was refused.
+- **m5 (working copies and the disk bound).** Once the files are written, or once refused, the private copy of the objects (`*/git`) is removed. So is the clone's store: moved to the cache when trusted, else removed. A fetch then keeps only its written files.
+  - Test: after a fresh fetch, trusted or not, the fetch directory holds `empty`, `fresh/tree` and `home` only.
+  - The `fetchesPerRun` and `fetchedRepoBytes` texts now say what they bound: the run directory holds at most 33 × `fetchedRepoBytes` (about `runMemory`, taken as the disk bound too). While one fetch is read, at most two more `fetchedRepoBytes` are on disk. A trusted cache grows by at most the same per run.
+- **Nits.**
+  - n1 (a SIGTERM to crankpath alone, with git silent: git runs until the fetch's wall clock) and n2 (a descendant that left the group holding the pipes) are stated in `docs/fetching.md`. No ppid poll was added: it would bring a picked interval, and the wall clock already bounds n1.
+  - n3: the duplicate guard block is removed (`ip6-localhost`, `ip6-loopback` and `.localdomain` kept), and the IDN comment is reworded.
+  - n4: see m3.
+- **What changed in meaning:**
+  - A commit whose listed sizes or entries exceed the bounds is refused before anything is written, where before it was refused after. A listing larger than `fetchedRepoBytes` is a `limit` by itself.
+  - Colliding paths are never scanned on any platform; each is an unreadable `path-collision` file, a gap. Before, one of each pair was silently scanned, on case-insensitive file systems only.
+  - A timeout, cap or not-started call during verification no longer discards a cached store or says "failed verification".
+  - The `VERIFY_FAILED` words are now "(git fsck refused its objects)".
+  - The private object copy and an uncached store no longer stay in the run directory until the run ends.
+  - The allowlist has six git forms (`ls-tree -r -l -z HEAD` added).
+  - A symlinked `objects` directory in a cache entry is never read through.
+- **`npm run verify`**, 2026-11-16, exit 0: 91 test files, 1,613 tests; statements 94.35%, branches 87.95%, functions 97.96%, lines 96.39%; check-tree 406 files, 0 findings.
+- **`npm run verify:live`**, 2026-11-16, exit 0:
+  - live-render: `8 passed, 0 failed, 0 skipped`.
+  - live fetch: `RAN ... at 4f1a5b1051b469108d1bdf0ebec6c814427e3834 (floating: no; pinned and matched) in 803 ms; 50 entries materialised; scan: ANALYSED WITH GAPS, 13 sources`.
+  - The cached read: verified and materialised in 194 ms, `cached: yes`.
+- **Still unverified:**
+  - No mutation run by me. The permission system refused a mutation script in pass 1, and I did not work around that. The reviewer's `mut3.py` survivors each have a test, but none was shown red by mutation.
+  - The collision fold is not every file system's exact rule.
+  - The verification runs against git 2.55.0 only.

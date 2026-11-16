@@ -57,7 +57,7 @@ export type ConfigProblem =
   | "outside the scanned root"
   | "names an environment variable"
   | "not a directory inside the scanned root"
-  | "names a --repo-alias label"
+  | "names a root label crankpath assigns (alias:N or fetch:N)"
   | "a crank needs by"
   | "a crank needs creates or reroutes"
   | "more than one document"
@@ -212,7 +212,8 @@ function readRepos(v: YamlValue | undefined, root: ScanRoot): RepoMapping[] {
     }
     const readAt = keyPathOf(at, "read_from");
     const readFrom = insidePath(str(b.read_from, readAt), readAt);
-    if (ALIAS_LABEL.test(readFrom.split("/")[0] ?? "")) throw new Invalid(readAt, "names a --repo-alias label");
+    if (ALIAS_LABEL.test(readFrom.split("/")[0] ?? ""))
+      throw new Invalid(readAt, "names a root label crankpath assigns (alias:N or fetch:N)");
     const dir = checkDirectory(root, readFrom);
     if (!dir.ok) throw new Invalid(readAt, "not a directory inside the scanned root");
     out.push(Object.freeze({ url, normalised, readFrom, fetch: false, keyPath: at }));

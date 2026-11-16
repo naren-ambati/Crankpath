@@ -47,7 +47,15 @@ describe("M2: repository mappings", () => {
     expect(line(r.text, "Run status:")).toBe("Run status: ANALYSED WITH GAPS");
     expect(line(r.text, "  gaps:")).toContain("1 declared fact changes the graph read");
     expect(r.json.repoMappings).toEqual([
-      { from: "crankpath.yaml", root: "vendor", url: "https://github.com/acme/y", used: true },
+      {
+        commit: null,
+        failure: null,
+        floating: false,
+        from: "crankpath.yaml",
+        root: "vendor",
+        url: "https://github.com/acme/y",
+        used: true,
+      },
     ]);
   });
   it("lists a --repo-alias as the user's own assumption, never a gap", () => {
@@ -63,7 +71,15 @@ describe("M2: repository mappings", () => {
     expect(r.json.runStatus.reasons).not.toContain("declared-facts");
     expect(line(r.text, "  Assumed,")).toContain("1 repository read through --repo-alias");
     expect(r.json.repoMappings).toEqual([
-      { from: "--repo-alias", root: "alias:1", url: "https://github.com/acme/z", used: true },
+      {
+        commit: null,
+        failure: null,
+        floating: false,
+        from: "--repo-alias",
+        root: "alias:1",
+        url: "https://github.com/acme/z",
+        used: true,
+      },
     ]);
   });
 });

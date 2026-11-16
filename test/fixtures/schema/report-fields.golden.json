@@ -1,6 +1,8 @@
 {
   "schemaVersion": 1,
   "fields": {
+    "clustersUsed": "array",
+    "clustersUsed[]": "string",
     "cranks": "array",
     "cranks[]": "object",
     "cranks[].alreadyCreated": "integer",
@@ -176,6 +178,9 @@
     "repo.urlFrom": "null|string",
     "repoMappings": "array",
     "repoMappings[]": "object",
+    "repoMappings[].commit": "null|string",
+    "repoMappings[].failure": "null|string",
+    "repoMappings[].floating": "boolean",
     "repoMappings[].from": "string",
     "repoMappings[].root": "string",
     "repoMappings[].url": "string",

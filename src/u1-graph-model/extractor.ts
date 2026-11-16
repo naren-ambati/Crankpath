@@ -50,12 +50,27 @@ export interface RenderedObject {
   readonly digest: string;
 }
 
-/** How a repoURL resolves (contract C5). `root` is a label (`.`, `alias:N`, a `read_from` path), never a disk path. */
+/**
+ * How a repoURL resolves (contract C5). `root` is a label (`.`, `alias:N`, `fetch:N`, a
+ * `read_from` path), never a disk path. A `repos:` fetch entry resolves to the fetched root
+ * (`alias` outcome, root `fetch:N`) or, when the fetch could not be made, to `unreadable` with the
+ * fetch's own outcome in `failure` (B3): a refusal, a 403, a 404, a timeout or `--no-network` is
+ * never read as an absent repository.
+ */
 export interface RepoResolution {
   readonly outcome: "self" | "alias" | "unreadable";
   readonly root: string | null;
   readonly via: "scanned-url" | "repo-alias" | "repos-read-from" | "repos-fetch" | "none" | "not-comparable";
   readonly suggestion: RepoSuggestion | null;
+  /** Why a `repos:` fetch entry could not be read (fixed words), when it could not. */
+  readonly failure?: RepoFetchFailure | null;
+}
+
+export interface RepoFetchFailure {
+  /** `offline` under `--no-network`, `tool-missing` without git, `limit` over a size bound, else `unreadable-repo`. */
+  readonly reason: "unreadable-repo" | "offline" | "tool-missing" | "limit";
+  /** crankpath's fixed words for the outcome, never git's text. */
+  readonly detail: string;
 }
 
 export interface HostQuery {

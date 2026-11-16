@@ -131,12 +131,8 @@ describe("render planning: plain directories (BR3.18, BR3.19)", () => {
       detail: "not found",
     });
   });
-  it("leaves ApplicationSets to a later build, named, with what could not be seen", () => {
-    const r = planSource({ kind: "ApplicationSet", object: app(plain) }, ctx());
-    expect(r.opaque).toMatchObject({
-      reason: "not-in-this-build",
-      lostEdges: ["Applications generated from its generators"],
-    });
+  it("never plans an ApplicationSet: the GeneratorExpander expands it (B3)", () => {
+    expect(() => planSource({ kind: "ApplicationSet", object: app(plain) }, ctx())).toThrow(/expanded, not planned/);
   });
   it("plans a Kustomize root as a job no source owns", () => {
     expect(planSource({ kind: "KustomizeRoot", dir: "base" }, ctx()).jobs[0]).toMatchObject({

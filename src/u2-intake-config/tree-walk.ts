@@ -93,6 +93,12 @@ export interface WalkOptions {
   readonly skipNames?: ReadonlySet<string>;
   /** Directory names skipped only directly under the start directory. */
   readonly skipAtStart?: ReadonlySet<string>;
+  /**
+   * Asked before each regular file is listed (the scan's file count and the run budget, B3): null
+   * admits it; a refusal stops the walk there, and the refusal is listed for the file not admitted
+   * (outcome `too-large`), so a stopped listing is named and counted, never silently short.
+   */
+  readonly admit?: (rel: string) => { readonly reasonWord: string; readonly detail: string } | null;
 }
 
 export interface WalkResult {
@@ -111,7 +117,8 @@ export function walkFiles(root: ScanRoot, request: string, options: WalkOptions)
   const files: string[] = [];
   const refusals: ReadRefused[] = [];
   const stack: string[] = [start.path];
-  while (stack.length > 0) {
+  let stopped = false;
+  while (stack.length > 0 && !stopped) {
     const dir = stack.pop() as string;
     const full = fullPath(root, dir);
     let names: string[];
@@ -143,10 +150,17 @@ export function walkFiles(root: ScanRoot, request: string, options: WalkOptions)
         if (options.skipNames?.has(name)) continue;
         if (dir === start.path && options.skipAtStart?.has(name)) continue;
         subdirs.push(rel);
-      } else if (st.isFile()) files.push(rel);
-      else refusals.push(refused("not-regular-file", rel));
+      } else if (st.isFile()) {
+        const no = options.admit?.(rel) ?? null;
+        if (no !== null) {
+          refusals.push({ outcome: "too-large", path: rel, reasonWord: no.reasonWord, detail: no.detail });
+          stopped = true;
+          break;
+        }
+        files.push(rel);
+      } else refusals.push(refused("not-regular-file", rel));
     }
-    for (let i = subdirs.length - 1; i >= 0; i--) stack.push(subdirs[i] as string);
+    if (!stopped) for (let i = subdirs.length - 1; i >= 0; i--) stack.push(subdirs[i] as string);
   }
   files.sort(compareCodePoints);
   refusals.sort((a, b) => compareCodePoints(a.path, b.path));

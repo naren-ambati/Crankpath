@@ -19,12 +19,14 @@ const SCP = /^(?:[^@/]+@)?([^@/:[\]]+):(?!\/\/)(.*)$/s;
 const DEFAULT_PORTS: Readonly<Record<string, string>> = Object.freeze({ https: "443", http: "80", ssh: "22" });
 
 function normalisePath(raw: string): string | null {
-  let p = raw;
-  while (p.startsWith("/")) p = p.slice(1);
-  while (p.endsWith("/")) p = p.slice(0, -1);
+  // at most one leading and one trailing `/` are dropped (B3 review n1): `//ops/x` or `x//` is
+  // another spelling, not made equal to `/ops/x`
+  let p = raw.startsWith("/") ? raw.slice(1) : raw;
+  if (p.startsWith("/")) return null;
+  if (p.endsWith("/")) p = p.slice(0, -1);
+  if (p.endsWith("/")) return null;
   const last = p.slice(p.lastIndexOf("/") + 1);
   if (last.endsWith(".git") && last.length > ".git".length) p = p.slice(0, -".git".length);
-  while (p.endsWith("/")) p = p.slice(0, -1);
   if (p === "") return "";
   const segments = p.split("/");
   // Dot segments (plain or percent-encoded) and empty segments are refused rather than resolved:
@@ -53,6 +55,14 @@ export function normaliseRepoUrl(raw: string): string | null {
     const afterScheme = raw.slice((scheme[0] as string).length);
     const slash = afterScheme.indexOf("/");
     const rawPath = slash === -1 ? "" : afterScheme.slice(slash);
+    // The authority is compared as written, never as the URL parser maps it: a non-ASCII host
+    // (an IDN look-alike, a fullwidth letter the parser folds to ASCII) and a percent escape in
+    // the host (`git%68ub.com`, which the parser decodes) are not comparable, so no mapping
+    // of the parser's can make two spellings equal. A punycode (`xn--`) host is compared as the
+    // ASCII it is.
+    const rawAuthority = slash === -1 ? afterScheme : afterScheme.slice(0, slash);
+    const hostPart = rawAuthority.slice(rawAuthority.lastIndexOf("@") + 1);
+    if (!/^[\x21-\x7e]*$/.test(rawAuthority) || hostPart.includes("%")) return null;
     let url: URL;
     try {
       url = new URL(raw);
@@ -101,7 +111,7 @@ export function lastSegment(normalised: string): string | null {
  */
 export function originFromGitConfig(text: string): string | null {
   let inOrigin = false;
-  for (const rawLine of text.split(/\r?\n/)) {
+  for (const rawLine of joinContinuations(text).split(/\r?\n/)) {
     const line = rawLine.trim();
     if (line === "" || line.startsWith("#") || line.startsWith(";")) continue;
     if (line.startsWith("[")) {
@@ -122,6 +132,30 @@ export function originFromGitConfig(text: string): string | null {
     return value === "" ? null : value;
   }
   return null;
+}
+
+/** Joins git's value continuations: a backslash that ends a line (an odd run of backslashes) joins the next. */
+function joinContinuations(text: string): string {
+  // linear: the text between continuations is copied once, by slices
+  const parts: string[] = [];
+  let from = 0;
+  let run = 0;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i] as string;
+    if (c === "\\") {
+      run += 1;
+      continue;
+    }
+    const eol = c === "\n" || (c === "\r" && text[i + 1] === "\n");
+    if (eol && run % 2 === 1) {
+      parts.push(text.slice(from, i - 1));
+      if (c === "\r") i += 1;
+      from = i + 1;
+    }
+    run = 0;
+  }
+  parts.push(text.slice(from));
+  return parts.join("");
 }
 
 function gitConfigValue(raw: string): string {
@@ -146,10 +180,16 @@ export function readOriginUrl(root: ScanRoot): string | null {
   return read.outcome === "ok" ? originFromGitConfig(read.text) : null;
 }
 
-/** The label prefix of a root mapped by `repos:` in crankpath.yaml; `--repo-alias` roots are `alias:N`. */
+/**
+ * The label prefix of a root mapped by `repos:` in crankpath.yaml; `--repo-alias` roots are
+ * `alias:N` and `repos:` fetch roots are `fetch:N` (B3).
+ */
 export const REPOS_LABEL = "repos:";
-/** A path segment spelled like an alias label (`alias:1`): shown with a `./` prefix so it never reads as one. */
-export const ALIAS_LABEL = /^alias:\d+$/;
+/**
+ * A path segment spelled like a root label crankpath assigns (`alias:1`, `fetch:1`): shown with a
+ * `./` prefix so it never reads as one, and never accepted as a `read_from`.
+ */
+export const ALIAS_LABEL = /^(?:alias|fetch):\d+$/;
 
 export interface RepoAlias {
   /** The URL as given on the command line. */
@@ -159,7 +199,8 @@ export interface RepoAlias {
   readonly label: string;
 }
 
-export type ScannedUrlFrom = "flag" | "git-config";
+/** Where the scanned repo's own URL came from: `--repo-url`, `.git/config`, or the URL crankpath fetched (FR2.2). */
+export type ScannedUrlFrom = "flag" | "git-config" | "fetched";
 
 export interface ScannedRepo {
   /** The URL as given or read (may hold userinfo: print only through SafeText's URL functions). */

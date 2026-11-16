@@ -130,6 +130,8 @@ export interface Report {
   readonly matchOverrides: readonly MatchOverride[];
   /** Repository mappings (`repos:` of crankpath.yaml, `--repo-alias`), URL userinfo removed, sorted. */
   readonly repoMappings: readonly RepoMappingEntry[];
+  /** Entries of crankpath.yaml's `clusters:` block a clusters generator used (declared facts, B3), sorted. */
+  readonly clustersUsed: readonly string[];
   /** Cycles of the graph without the `match:` entries that the report does not hold (review M1). */
   readonly hiddenCycles: readonly HiddenCycle[];
   readonly unresolved: readonly UnresolvedItem[];
@@ -165,12 +167,18 @@ export interface Report {
 
 export interface RepoMappingEntry {
   readonly url: string;
-  /** The root read: a path inside the scanned root, `(fetch)`, or an `alias:N` label. */
+  /** The root read: a path inside the scanned root, `fetch:N` (a fetched entry), `(fetch)` (not fetched), or an `alias:N` label. */
   readonly root: string;
   /** `crankpath.yaml`: a declared fact of the scanned repo; `--repo-alias`: the user's own input. */
   readonly from: "crankpath.yaml" | "--repo-alias";
   /** True when some source was read through it. */
   readonly used: boolean;
+  /** A fetched entry's resolved commit (OD-12), else null. */
+  readonly commit?: string | null;
+  /** True when a fetched entry's revision is a branch, a tag or the default branch. */
+  readonly floating?: boolean;
+  /** Why a fetch entry could not be read (crankpath's fixed words), else null. */
+  readonly failure?: string | null;
 }
 
 export interface NotStartableGroup {

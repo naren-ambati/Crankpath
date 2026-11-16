@@ -26,7 +26,7 @@ const req = (tool: string, subcommand: string[], args: string[] = []): CommandRe
   ({ tool, subcommand, args, cwd: tmp }) as CommandRequest;
 
 describe("CommandRunner allowlist (BR4.17, C12)", () => {
-  it("allows exactly the six (tool, subcommand) pairs of FR3.8", () => {
+  it("allows exactly the six (tool, subcommand) pairs of FR3.8 and the six git forms of C12 (B3)", () => {
     expect(ALLOWED_COMMANDS.map((c) => `${c.tool} ${c.subcommand.join(" ")}`)).toEqual([
       "helm template",
       "helm dependency build",
@@ -34,7 +34,19 @@ describe("CommandRunner allowlist (BR4.17, C12)", () => {
       "helm version",
       "kustomize build",
       "kustomize version",
+      "git clone",
+      "git fsck --strict --no-dangling --no-progress",
+      "git rev-parse --verify HEAD^{commit}",
+      "git ls-tree -r -l -z HEAD",
+      "git read-tree HEAD",
+      "git checkout-index --all --force --quiet",
     ]);
+  });
+  it("refuses git: it runs only through the git runner, with its fixed options and process group (B3)", () => {
+    const runner = createCommandRunner({ binaries: { git: "/usr/bin/git" }, env: {} });
+    expect(() =>
+      runner.run({ tool: "git", subcommand: ["rev-parse", "--verify", "HEAD"], args: [], cwd: "/tmp" }),
+    ).toThrow(CommandRefused);
   });
   it.each([
     ["helm", ["install"]],

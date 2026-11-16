@@ -59,6 +59,13 @@ const BASIS =
  */
 export const READER_PARSE_COST = Object.freeze({ bytesPerLexeme: 937, textBytesPerByte: 3 });
 
+/**
+ * What a walked file costs the run beyond its bytes (B3; scripts/measure-scan-limits.mjs,
+ * 2026-11-15): the worst of three shapes, 576.7 bytes per file, rounded up, plus its path at 2
+ * bytes per UTF-16 code unit. filesPerScan is derived from it; the run budget charges it per file.
+ */
+export const WALK_COST = Object.freeze({ perFile: 577, perPathChar: 2 });
+
 export interface RunLimitSet {
   readonly runMemory: DerivedLimit<"bytes">;
   readonly objectsPerRun: DerivedLimit<"objects">;

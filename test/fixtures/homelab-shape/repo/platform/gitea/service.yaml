@@ -1,0 +1,12 @@
+# The in-cluster forge's HTTP Service: the host of every repoURL in this estate.
+apiVersion: v1
+kind: Service
+metadata:
+  name: gitea-http
+spec:
+  selector:
+    app.kubernetes.io/instance: gitea
+  ports:
+    - name: http
+      port: 3000
+      targetPort: 3000

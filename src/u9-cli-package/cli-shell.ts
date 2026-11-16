@@ -1,7 +1,6 @@
 // CliShell (U9, contract C6; BR9.1 to BR9.5, BR9.8, BR9.9, FR9.1, FR9.2): the command line. Every
 // flag of C6 is parsed; an unknown flag is a usage error (exit 1) shown quoted in crankpath's voice;
-// flags whose stage arrives in a later build (a URL and `--rev`) say so and exit 1 rather than run
-// silently without it. `--format mermaid` and `--explain [id]` render the same Report (B6); an
+// a URL is fetched read-only and scanned, with `--rev` (B3). `--format mermaid` and `--explain [id]` render the same Report (B6); an
 // `--explain` id that names no cycle and no node is a usage error. Colour (text and --explain only)
 // is decoration, used only on a terminal without `NO_COLOR` or `--no-color`. Exit codes: 0 the analysis ran (whatever it found), 1 a tool or usage error, 2 nothing
 // analysed. Writes only stdout, stderr and the `--out` file, which may not be inside the scanned
@@ -38,10 +37,20 @@ export interface CliIo {
   readonly toolPath?: string;
   /** The pipeline to run; tests inject a failing one to reach the top-level guard. */
   readonly run?: typeof runPipeline;
+  /** The environment; only CRANKPATH_TOKEN_<HOST> variables are ever read from it (NFR11). */
+  readonly env?: Readonly<Record<string, string | undefined>>;
   /** True when standard output is a terminal (colour is considered only then). */
   readonly isTTY?: boolean;
   /** The value of `NO_COLOR`, when set. */
   readonly noColor?: string;
+}
+
+/** The token variables of an environment, and nothing else: no other variable reaches the pipeline. */
+export function tokenReader(
+  env: Readonly<Record<string, string | undefined>> | undefined,
+): (name: string) => string | undefined {
+  return (name) =>
+    name.startsWith("CRANKPATH_TOKEN_") && env !== undefined && Object.hasOwn(env, name) ? env[name] : undefined;
 }
 
 /** crankpath's one line for any error it did not expect: no stack, no message from the runtime. */
@@ -88,7 +97,7 @@ function program(): Command {
     .description(
       "A black-start planner and cycle finder for GitOps estates (reads files only; never touches a cluster).",
     )
-    .argument("[path]", "checkout to scan", ".")
+    .argument("[path|url]", "checkout to scan, or a public https Git URL to fetch read-only and scan", ".")
     .option("--format <format>", "text | json | mermaid", "text")
     .option("--out <file>", "write the output to this file instead of standard output")
     .option("--config <file>", "crankpath.yaml location (default <path>/crankpath.yaml)")
@@ -99,10 +108,13 @@ function program(): Command {
       (v: string, prev: string[]) => [...prev, v],
       [] as string[],
     )
-    .option("--rev <rev>", "revision of a URL to fetch")
+    .option("--rev <rev>", "revision of a URL to fetch (a full commit sha; a branch, tag or HEAD is flagged floating)")
     .option("--explain [id]", "evidence trail for a cycle or node id (every cycle without an id)")
     .option("--no-color", "no colour, even on a terminal (NO_COLOR does the same)")
-    .option("--no-network", "fetch nothing: charts come from the cache only; a miss is opaque offline")
+    .option(
+      "--no-network",
+      "fetch nothing: charts come from the cache only (a miss is opaque offline), and a repository only from a cached pinned commit",
+    )
     .option("--cache-dir <dir>", "crankpath's cache and private directory (default .crankpath)")
     .option("--verbose", "counts on standard error")
     .option("--version", "the crankpath version and the detected helm and kustomize versions")
@@ -214,16 +226,25 @@ function mainUnguarded(argv: readonly string[], io: CliIo): number {
     io.stderr("error: --explain prints text; it cannot be combined with --format json or mermaid\n");
     return 1;
   }
-  if (o.rev !== undefined || /^[A-Za-z][A-Za-z0-9+.-]*:\/\//.test(target)) {
-    io.stderr("error: scanning a URL (and --rev) arrives in a later build; scan a local checkout\n");
+  // `crankpath <url> --rev <rev>` (FR1.2): a URL is fetched read-only and is its own URL (FR2.2)
+  const isUrl = /^[A-Za-z][A-Za-z0-9+.-]*:\/\//.test(target);
+  if (o.rev !== undefined && !isUrl) {
+    io.stderr("error: --rev applies to a URL to fetch, not to a local checkout\n");
+    return 1;
+  }
+  if (isUrl && o.repoUrl !== undefined) {
+    io.stderr("error: --repo-url cannot be given with a URL to fetch (the URL is its own URL)\n");
     return 1;
   }
   const outcome = (io.run ?? runPipeline)({
-    path: target,
+    path: isUrl ? "." : target,
     cwd: io.cwd,
     repoAliases: o.repoAlias,
     noNetwork: o.network === false,
     toolPath,
+    env: tokenReader(io.env),
+    ...(isUrl ? { url: target } : {}),
+    ...(o.rev === undefined ? {} : { rev: o.rev }),
     ...(o.cacheDir === undefined ? {} : { cacheDir: o.cacheDir }),
     ...(o.repoUrl === undefined ? {} : { repoUrl: o.repoUrl }),
     ...(o.config === undefined ? {} : { config: o.config }),

@@ -11,8 +11,10 @@
 //
 // `render:<path>` (NFR1.1: a path is data, never a pattern) matches a node whose origin file is the
 // path or lies under it as a directory, in the scanned root only: objects read from a repository
-// mapped by `--repo-alias` carry an `alias:N/` origin and never match, so a path of another
-// repository cannot crank this one's objects.
+// mapped by `--repo-alias` carry an `alias:N/` origin (a fetched `repos:` entry `fetch:N/`) and
+// never match, so a path of another repository cannot crank this one's objects. An Application an
+// ApplicationSet generates (origin render job `generator:<id>`, B3) is made by the ApplicationSet
+// controller, not by applying a file, so a `render:` crank never creates it.
 
 import type { CrankDecl } from "../u1-graph-model/declared-facts.js";
 import { type Edge, externalId, type GraphNode, makeEdge, type NodeId } from "../u1-graph-model/graph-model.js";
@@ -62,7 +64,9 @@ export function edgeKey(e: {
   return `${e.from}\n${e.to}\n${e.kind}\n${e.source}`;
 }
 
-const ALIAS_SEGMENT = /^alias:\d+$/;
+const ALIAS_SEGMENT = /^(?:alias|fetch):\d+$/;
+/** The origin render job of an Application generated from an ApplicationSet. */
+export const GENERATOR_JOB_PREFIX = "generator:";
 
 /**
  * The scanned root's nodes sorted by origin file, so a `render:<path>` target is one binary search
@@ -77,7 +81,10 @@ class PathIndex {
     const inRoot = nodes
       .filter(
         (n) =>
-          n.kind !== "External" && n.origin.path !== null && !ALIAS_SEGMENT.test(n.origin.path.split("/")[0] ?? ""),
+          n.kind !== "External" &&
+          n.origin.path !== null &&
+          !ALIAS_SEGMENT.test(n.origin.path.split("/")[0] ?? "") &&
+          !(n.origin.renderJob ?? "").startsWith(GENERATOR_JOB_PREFIX),
       )
       .map((n) => ({ id: n.id, path: n.origin.path as string }))
       .sort((a, b) => compareCodePoints(a.path, b.path) || compareCodePoints(a.id, b.id));

@@ -1,0 +1,29 @@
+# The root ApplicationSet. Its git generator reads the in-cluster forge's copy of this repository
+# (http://gitea-http.gitea:3000/ops/homelab), so listing the directories needs one declared repo
+# identity: crankpath never guesses that the forge's copy is the checkout being scanned.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: root
+  namespace: argocd
+spec:
+  generators:
+    - git:
+        repoURL: http://gitea-http.gitea:3000/ops/homelab
+        revision: main
+        directories:
+          - path: system/*
+          - path: platform/*
+          - path: apps/*
+  template:
+    metadata:
+      name: "{{path.basename}}"
+    spec:
+      project: default
+      source:
+        repoURL: http://gitea-http.gitea:3000/ops/homelab
+        targetRevision: main
+        path: "{{path}}"
+      destination:
+        name: in-cluster
+        namespace: "{{path.basename}}"

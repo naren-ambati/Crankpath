@@ -5,6 +5,7 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
+    "clustersUsed",
     "cranks",
     "cycles",
     "edges",
@@ -210,20 +211,21 @@
           "enum": [
             "flag",
             "git-config",
+            "fetched",
             null
           ],
-          "description": "Where the URL came from: `flag` (--repo-url) or `git-config` (the origin in .git/config); null when unknown."
+          "description": "Where the URL came from: `flag` (--repo-url), `git-config` (the origin in .git/config) or `fetched` (the URL crankpath fetched to scan, FR1.2); null when unknown."
         },
         "commit": {
           "type": [
             "string",
             "null"
           ],
-          "description": "The commit read; null when not read."
+          "description": "The commit read: the resolved commit of a repository crankpath fetched (FR1.2); null for a local checkout (not read)."
         },
         "floating": {
           "type": "boolean",
-          "description": "True when the revision is a branch or tag that can move."
+          "description": "True when the fetched revision is a branch, a tag or the default branch, which can move (OD-12)."
         }
       }
     },
@@ -1300,6 +1302,9 @@
         "description": "A repository mapping.",
         "additionalProperties": false,
         "required": [
+          "commit",
+          "failure",
+          "floating",
           "from",
           "root",
           "url",
@@ -1312,7 +1317,7 @@
           },
           "root": {
             "type": "string",
-            "description": "The root read: a path inside the scanned root, `(fetch)`, or an `alias:N` label."
+            "description": "The root read: a path inside the scanned root, `fetch:N` (a fetched `repos:` entry), `(fetch)` (a fetch entry not fetched), or an `alias:N` label."
           },
           "from": {
             "type": "string",
@@ -1325,10 +1330,35 @@
           "used": {
             "type": "boolean",
             "description": "True when some source was read through it."
+          },
+          "commit": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "A fetched entry's resolved commit (OD-12); null otherwise."
+          },
+          "floating": {
+            "type": "boolean",
+            "description": "True when a fetched entry's revision can move (the default branch)."
+          },
+          "failure": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Why a fetch entry could not be read, in crankpath's fixed words (the reason, then its detail); null otherwise."
           }
         }
       },
       "description": "Mappings, sorted by (from, url)."
+    },
+    "clustersUsed": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Entries of crankpath.yaml's `clusters:` block that a clusters generator used (declared facts the graph rests on), sorted."
     },
     "hiddenCycles": {
       "type": "array",

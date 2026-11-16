@@ -80,3 +80,34 @@ describe("tree walk (BR2.1, FR1.3)", () => {
     expect(w.files).toHaveLength(1);
   });
 });
+
+describe("admitting files (filesPerScan and the run budget, B3)", () => {
+  it("asks before each file and stops the whole walk at the first refusal, naming the file not listed", () => {
+    const asked: string[] = [];
+    const w = walkFiles(root, "", {
+      recurse: true,
+      skipNames: new Set([".git"]),
+      skipAtStart: new Set([".crankpath"]),
+      admit: (rel) => {
+        asked.push(rel);
+        return asked.length > 2 ? { reasonWord: "file count limit reached", detail: "files per scan" } : null;
+      },
+    });
+    if (!w.ok) throw new Error("walk");
+    expect(w.files).toHaveLength(2);
+    expect(asked).toHaveLength(3);
+    expect(w.refusals).toEqual(
+      expect.arrayContaining([
+        { outcome: "too-large", path: asked[2], reasonWord: "file count limit reached", detail: "files per scan" },
+      ]),
+    );
+  });
+  it("lists everything when every file is admitted", () => {
+    const opts = { recurse: true, skipNames: new Set([".git"]), skipAtStart: new Set([".crankpath"]) };
+    const w = walkFiles(root, "", { ...opts, admit: () => null });
+    const plain = walkFiles(root, "", opts);
+    if (!w.ok || !plain.ok) throw new Error("walk");
+    expect(w.files).toEqual(plain.files);
+    expect(w.files.length).toBeGreaterThan(2);
+  });
+});

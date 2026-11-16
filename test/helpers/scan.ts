@@ -75,3 +75,8 @@ export function app(name: string, sourcePath: string, repoURL = THIN_SLICE_URL, 
     .filter((l) => l !== "")
     .join("\n");
 }
+
+/** Text with every run of white space made one space: for checks that a phrase is present, whatever the 80-column wrapping (B6). */
+export function flat(text: string): string {
+  return text.replace(/\s+/g, " ");
+}

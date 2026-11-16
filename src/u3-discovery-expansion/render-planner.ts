@@ -21,7 +21,6 @@ import {
   helmJob,
   insideRoot,
   isValidReleaseName,
-  LATER,
   nonEmpty,
   type Owner,
   opaque,
@@ -620,10 +619,8 @@ export function planSource(source: PlanSource, ctx: PlanContext): PlanResult {
     case "Application":
       return planApplication(source.object, ctx);
     case "ApplicationSet":
-      return opaque("not-in-this-build", "Applications generated from its generators", {
-        field: "spec.generators",
-        detail: LATER.appset,
-      });
+      // ApplicationSets are expanded by the GeneratorExpander (B3), never planned as a render.
+      throw new Error("RenderPlanner: an ApplicationSet is expanded, not planned (a bug)");
     case "Kustomization":
       return planKustomization(source.object, ctx);
     case "HelmRelease":

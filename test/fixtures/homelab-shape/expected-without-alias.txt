@@ -1,0 +1,52 @@
+crankpath 0.1.0
+toolchain: helm not found on PATH, kustomize not found on PATH
+scanned: repo "https://git.example.org/ops/homelab" (from --repo-url)
+    commit: not read in this build  floating: no
+Run status: ANALYSED WITH GAPS
+  gaps: 1 source opaque; 2 unresolved items; no dependency edges were extracted
+
+Opacity: at least 1 of 1 source opaque (at least 100%); sources are
+    Applications, ApplicationSets, Kustomizations, HelmReleases and Kustomize
+    roots; 1 ApplicationSet is not expanded, so the Applications it would
+    generate are not counted; 0 files unreadable.
+  found: 0 Applications, 1 ApplicationSet, 0 Kustomizations, 0 HelmReleases, 0
+      Kustomize roots; 4 files hold no source document
+  opaque 1 of 1  node: ApplicationSet "argocd/root"  reason: unreadable-repo
+    could not see: Applications generated from its git generator
+    field: "spec.generators[0].git.repoURL"
+        value: "http://gitea-http.gitea:3000/ops/homelab"  (not this repository
+        and not mapped)
+    suggested repos entry (not
+        applied): "http://gitea-http.gitea:3000/ops/homelab": {read_from: .}
+
+Cycles: none found among 1 node; no dependency edges were extracted.
+
+Not startable from a cold start: 1 of 1 node (0 blocked, 1 unverified); 0
+    startable
+  unverified, opaque or behind opaque ApplicationSet "argocd/root": 1 node
+    ApplicationSet "argocd/root"
+  unresolved items: 2
+  unresolved 1 of 2  why: host-unplaced  subject: ApplicationSet "argocd/root"
+    where: "system/argocd/root.yaml#1"  field: "spec.generators[0].git.repoURL"
+        host: "gitea-http.gitea"
+  unresolved 2 of 2  why: host-unplaced  subject: ApplicationSet "argocd/root"
+    where: "system/argocd/root.yaml#1"
+        field: "spec.template.spec.source.repoURL"  host: "gitea-http.gitea"
+
+External preconditions: none declared in crankpath.yaml and none extracted from
+    what was read.
+
+Plan (an order, not a schedule; cold-load pickup is not modelled): no steps,
+    because no node is startable; the 1 node not startable is listed above.
+  Assumed, not verified by crankpath: 0 externals declared available; 0
+      externals served by an in-estate node; 0 cranks (documented); 0 match
+      entries; 0 objects every cluster provides; and the 5 not-modelled items
+      below. Every start step is relative to these and to the edges read.
+
+Not verified: 1 source opaque; 2 unresolved items; 1 node unverified. Declared
+    edges: 0 (unverified when present).
+Not modelled (5 items): a running Argo CD or Flux controller is assumed;
+    dependencies only visible at runtime are not seen; the content of opaque
+    nodes is not seen; the revision each Application names is taken to be the
+    files as read; repository credentials not defined in the estate are not
+    seen.

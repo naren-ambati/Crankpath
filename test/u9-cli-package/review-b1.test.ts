@@ -41,7 +41,7 @@ describe("M1: a repo-supplied repos: entry can never shadow a --repo-alias root"
     const r = json(root, alias);
     expect(r.code).toBe(1);
     expect(r.stdout).toBe("");
-    expect(r.stderr).toContain("(names a --repo-alias label)");
+    expect(r.stderr).toContain("(names a root label crankpath assigns (alias:N or fetch:N))");
     fs.rmSync(path.join(root, "crankpath.yaml"));
     const ids = json(root, alias).report.nodes.map((n: { id: string }) => n.id);
     expect(ids).toContain("ConfigMap/a/from-user-dir");
@@ -54,7 +54,7 @@ describe("M1: a repo-supplied repos: entry can never shadow a --repo-alias root"
       "crankpath.yaml": 'repos:\n  "https://example.org/zzz":\n    read_from: "alias:1"\n',
     });
     expect(json(root).stderr).toBe(
-      'error: invalid crankpath.yaml at key path "repos.\\"https://example.org/zzz\\".read_from" (names a --repo-alias label)\n',
+      'error: invalid crankpath.yaml at key path "repos.\\"https://example.org/zzz\\".read_from" (names a root label crankpath assigns (alias:N or fetch:N))\n',
     );
   });
   it("shows a repo directory spelled like an alias label with ./, so it never reads as the user's alias", () => {

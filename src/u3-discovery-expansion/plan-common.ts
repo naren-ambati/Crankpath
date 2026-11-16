@@ -51,11 +51,6 @@ export const IN_CLUSTER_SERVER = "https://kubernetes.default.svc";
 
 export const RENDERS = "objects it renders";
 export const UNDER_PATH = "objects under its source path";
-export const LATER = {
-  fetch: "repository fetch arrives in a later build",
-  appset: "ApplicationSet generators are expanded in a later build",
-} as const;
-
 /** A Helm release name: a DNS-1123 subdomain of at most 53 characters (helm's own rule). */
 export const RELEASE_NAME = /^[a-z0-9](?:[-a-z0-9]*[a-z0-9])?(?:\.[a-z0-9](?:[-a-z0-9]*[a-z0-9])?)*$/;
 const RELEASE_MAX = 53;
@@ -105,8 +100,9 @@ export function destinationKey(destination: DataValue | undefined): string {
 export function unreadableRepo(url: string, resolution: RepoResolution, field: string, lost: string): PlanResult {
   // A repoURL is shown only with its userinfo removed (FR8.9); one that does not parse is not shown.
   const shown = redactUrl(url) ?? null;
-  if (resolution.via === "repos-fetch") {
-    return opaque("not-in-this-build", lost, { field, value: shown, detail: LATER.fetch });
+  // A `repos:` fetch entry that could not be fetched names the fetch's own outcome (B3).
+  if (resolution.failure !== undefined && resolution.failure !== null) {
+    return opaque(resolution.failure.reason, lost, { field, value: shown, detail: resolution.failure.detail });
   }
   const detail =
     resolution.via === "not-comparable" ? "not a URL crankpath can compare" : "not this repository and not mapped";

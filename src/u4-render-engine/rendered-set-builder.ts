@@ -18,6 +18,8 @@ export interface SourceDocument {
   /** 1-based document number in the file. */
   readonly document: number;
   readonly value: DataValue;
+  /** The rendered path, when the document is not a file's own (an Application generated from an ApplicationSet, B3). */
+  readonly renderedPath?: string;
 }
 
 export interface BuildOptions {
@@ -225,7 +227,8 @@ export function buildObjects(documents: readonly SourceDocument[], options: Buil
     const finalAnnotations =
       kind === "Secret" ? stringEntries(getPath(body, ["metadata", "annotations"])) : annotations;
     const renderedPath =
-      item === null ? renderedPathOf(doc.file, doc.document) : renderedPathOf(doc.file, doc.document, item);
+      doc.renderedPath ??
+      (item === null ? renderedPathOf(doc.file, doc.document) : renderedPathOf(doc.file, doc.document, item));
     stringLeaves += countStringLeaves(body);
     const digest = createHash("sha256")
       .update(canonicalJson({ body, namespace: id.namespace, destination: options.destination }))

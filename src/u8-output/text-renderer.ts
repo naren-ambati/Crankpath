@@ -210,11 +210,21 @@ function floatingLines(r: Report, out: string[]): void {
 }
 
 export function scannedLine(r: Report): string {
-  const tail = "  commit: not read in this build  floating: no";
+  // the commit is read only for a repository crankpath fetched itself (FR1.2, B3): a local
+  // checkout's revision is taken as the files as read (a not-modelled item)
+  const tail =
+    r.repo.commit === null
+      ? "  commit: not read in this build  floating: no"
+      : `  ${quote("commit:", r.repo.commit, T)}  floating: ${r.repo.floating ? "yes (a branch, a tag or the default branch; the commit is the one fetched)" : "no"}`;
   if (r.repo.urlFrom === null) {
     return `scanned: repo URL unknown (no --repo-url and no origin in .git/config; only explicit mappings apply)${tail}`;
   }
-  const from = r.repo.urlFrom === "flag" ? "from --repo-url" : "from the origin in .git/config";
+  const from =
+    r.repo.urlFrom === "flag"
+      ? "from --repo-url"
+      : r.repo.urlFrom === "fetched"
+        ? "fetched read-only by crankpath"
+        : "from the origin in .git/config";
   const url = r.repo.url === null ? "repo unparseable URL" : quoteUrl("repo", r.repo.url, T);
   const note = r.repo.comparable ? "" : "; not a URL crankpath can compare, so only explicit mappings apply";
   return `scanned: ${url} (${from}${note})${tail}`;
@@ -283,7 +293,22 @@ function opacity(r: Report, out: string[]): void {
         : m.used
           ? "--repo-alias, your input"
           : "--repo-alias, your input, not used";
-    out.push(`  read through a mapping: ${quoteUrl("repo", m.url, T)}  ${quote("root:", m.root, T)}  (${how})`);
+    const fetched =
+      m.failure !== undefined && m.failure !== null
+        ? `  not fetched: ${m.failure}`
+        : m.commit !== undefined && m.commit !== null
+          ? `  ${quote("commit:", m.commit, T)}  floating: ${m.floating === true ? "yes (the default branch)" : "no"}`
+          : "";
+    // a repos: fetch entry is the scanned repo's choice: it is fetched without a token (B3 review M2)
+    const anonymous = m.from === "crankpath.yaml" && (m.root === "(fetch)" || m.root.startsWith("fetch:"));
+    out.push(
+      `  read through a mapping: ${quoteUrl("repo", m.url, T)}  ${quote("root:", m.root, T)}${fetched}${anonymous ? "  fetched without a token" : ""}  (${how})`,
+    );
+  }
+  for (const c of r.clustersUsed) {
+    out.push(
+      `  expanded from a declared cluster: ${quote("cluster:", c, T)}  (crankpath.yaml clusters:, declared, not verified)`,
+    );
   }
   if (c.foreignDestination > 0) {
     out.push(

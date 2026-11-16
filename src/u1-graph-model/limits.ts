@@ -19,7 +19,8 @@ export type LimitUnit =
   | "lexemes"
   | "entries"
   | "steps"
-  | "lines";
+  | "lines"
+  | "fetches";
 
 export interface DerivedLimit<U extends LimitUnit = LimitUnit> {
   readonly status: "derived";
@@ -52,7 +53,7 @@ export interface LimitSet {
   readonly expandedNodesPerDocument: DerivedLimit<"nodes">;
   readonly lexemesPerFile: DerivedLimit<"lexemes">;
   readonly quotedTextChars: DerivedLimit<"characters">;
-  readonly generatedApplicationsPerApplicationSet: NotYetDerivedLimit<"applications">;
+  readonly generatedApplicationsPerApplicationSet: DerivedLimit<"applications">;
   readonly mermaidMaxEdges: DerivedLimit<"edges">;
   readonly mermaidMaxTextChars: DerivedLimit<"characters">;
   readonly explainElementaryCycles: DerivedLimit<"cycles">;
@@ -61,7 +62,13 @@ export interface LimitSet {
   readonly explainOutputLines: DerivedLimit<"lines">;
   readonly declaredEntries: DerivedLimit<"entries">;
   readonly hostPatternComparisons: DerivedLimit<"steps">;
-  readonly filesPerScan: NotYetDerivedLimit<"files">;
+  readonly filesPerScan: DerivedLimit<"files">;
+  readonly generatorPatternSteps: DerivedLimit<"steps">;
+  readonly repoFetchWallClock: DerivedLimit<"milliseconds">;
+  readonly gitOutputBytes: DerivedLimit<"bytes">;
+  readonly fetchedRepoBytes: DerivedLimit<"bytes">;
+  readonly fetchesPerRun: DerivedLimit<"fetches">;
+  readonly generatorRenderSteps: DerivedLimit<"steps">;
   readonly renderWallClock: DerivedLimit<"milliseconds">;
   readonly renderStdoutBytes: DerivedLimit<"bytes">;
   readonly renderStderrBytes: DerivedLimit<"bytes">;
@@ -69,6 +76,8 @@ export interface LimitSet {
   readonly renderedDocumentBytes: DerivedLimit<"bytes">;
   readonly lexemesPerRender: DerivedLimit<"lexemes">;
 }
+
+import { RUN_LIMITS, RUN_RATES, WALK_COST } from "./run-limits.js";
 
 const DATE = "2026-11-15";
 
@@ -119,7 +128,7 @@ const TEXT_RESERVE_BYTES = 3 * ARGO_COMBINED_DIRECTORY_MANIFESTS_BYTES;
 const WORST_BYTES_PER_LEXEME = MEASURED.worstBytesPerLexeme;
 const LEXEMES_BASIS = `(the default old-generation heap V8 12.4 gives Node 22 on the smallest GitHub-hosted runner, ubuntu-slim with 5 GB: 5,000,000,000 / 4 x 2 = 2,500,000,000 bytes; minus the reader's largest measured baseline before the text exists, ${MEASURED.baselineMiB} MiB; minus a reserve for the text, 3 x fileBytes: the read buffer plus a decoded string of at most 2 bytes per input byte) / ${MEASURED.worstBytesPerLexeme} bytes, the worst resident memory per lexeme of the 39 shapes measured (scripts/measure-limits.mjs, part 1: multi-document files, comments, whitespace, nested collections and invalid YAML included; the worst was a run of commas, which the parser refuses only after spending the memory). It is the worst of the shapes measured, not a proven maximum. Every lexeme counts, in every document of the file.`;
 // Argo CD v3.6.1 util/exec/exec.go: the repo-server stops a helm or kustomize command after
-// ARGOCD_EXEC_TIMEOUT, default `90 * time.Second`.
+// ARGOCD_EXEC_TIMEOUT, default `90 * time.Second`; git too (util/git/client.go runs git through it).
 const ARGO_EXEC_TIMEOUT_MS = 90 * 1000;
 // Argo CD v3.6.1 reposerver/apiclient/clientset.go: MaxGRPCMessageSize, ARGOCD_GRPC_MAX_SIZE_MB
 // default 100, times 1024 * 1024: the largest manifest response the repo-server can send.
@@ -133,6 +142,17 @@ const ETCD_MAX_REQUEST_BYTES = 1.5 * 1024 * 1024;
 // required non-empty kind, name and version: `{"version":"v1","kind":"X","name":"a"},`.
 const FLUX_MINIMAL_INVENTORY_ENTRY = '{"id":"_a__X","v":"v1"},';
 const ARGO_MINIMAL_RESOURCE_STATUS = '{"version":"v1","kind":"X","name":"a"},';
+
+// scripts/measure-scan-limits.mjs, 2026-11-15: what a walked file costs a run that charges it
+// nothing (an empty `.yaml` file: walked, read, parsed, cached), the worst of three shapes
+// (576.7 bytes per file), rounded up (run-limits.ts WALK_COST).
+const WALKED_FILE_BYTES = WALK_COST.perFile;
+// Linux <linux/limits.h> PATH_MAX, 4096 bytes: no path the walk lists is longer, and a JavaScript
+// string holds a path of at most that many UTF-16 code units at 2 bytes each.
+const PATH_RESERVE_BYTES = WALK_COST.perPathChar * 4096;
+// Every generated Application is an object of the run, charged the per-object rate and its string
+// values; every Application has at least four (apiVersion, kind, metadata.name, metadata.namespace).
+const GENERATED_APPLICATION_MIN_STRINGS = 4;
 
 export const LIMITS: LimitSet = freezeAll({
   fileBytes: {
@@ -192,11 +212,15 @@ export const LIMITS: LimitSet = freezeAll({
     date: DATE,
   },
   generatedApplicationsPerApplicationSet: {
-    status: "notYetDerived",
+    status: "derived",
+    value: Math.floor(
+      RUN_LIMITS.runMemory.value / (RUN_RATES.perObject + GENERATED_APPLICATION_MIN_STRINGS * RUN_RATES.perStringLeaf),
+    ),
     unit: "applications",
-    protects: "graph size from one ApplicationSet's generators",
-    derivedIn: "B3 step 0",
-    why: "no source ties a ceiling to what it protects (Argo CD's --max-resources-status-count 5000 is a status-recording default, not a generation ceiling); needs the measured cost of a generated Application in the graph.",
+    protects:
+      "the run's memory and time spent on one ApplicationSet's generated Applications, counted while they are generated",
+    basis: `every generated Application is an object of the run: runMemory (${RUN_LIMITS.runMemory.value.toLocaleString("en-US")} bytes) / (the measured ${RUN_RATES.perObject.toLocaleString("en-US")} bytes per object + ${GENERATED_APPLICATION_MIN_STRINGS} x ${RUN_RATES.perStringLeaf.toLocaleString("en-US")} bytes per string value, for the apiVersion, kind, name and namespace every Application has). One ApplicationSet cannot generate more than the whole run could hold; the generation stops there, before more are built. Argo CD's --max-resources-status-count (5000) is a status-recording default, not a generation ceiling.`,
+    date: DATE,
   },
 
   mermaidMaxEdges: {
@@ -270,11 +294,70 @@ export const LIMITS: LimitSet = freezeAll({
     date: DATE,
   },
   filesPerScan: {
-    status: "notYetDerived",
+    status: "derived",
+    value: Math.floor(RUN_LIMITS.runMemory.value / (WALKED_FILE_BYTES + PATH_RESERVE_BYTES)),
     unit: "files",
-    protects: "total read time of a scan",
-    derivedIn: "B3 step 0",
-    why: "no tool or host publishes a file-count ceiling for a repository (GitHub recommends at most 3,000 entries per directory and a depth of 50, which bound no total); the basis needs discovery's measured per-file cost.",
+    protects:
+      "the memory and time of the file lists a scan holds: files the run budget does not charge by their bytes (empty files, files discovery does not read) still cost the walk",
+    basis: `runMemory (${RUN_LIMITS.runMemory.value.toLocaleString("en-US")} bytes) / (${WALKED_FILE_BYTES} bytes, the measured worst cost of a walked file the budget charges nothing for: scripts/measure-scan-limits.mjs, an empty .yaml file walked, read and cached; + ${PATH_RESERVE_BYTES.toLocaleString("en-US")} bytes for its path at the longest a walk lists: Linux PATH_MAX, 4,096 bytes, at 2 bytes per UTF-16 code unit). Every walk of a scan counts against it (discovery, every render and every generator listing), and each walked file is also charged to the run budget at ${WALKED_FILE_BYTES} bytes plus 2 bytes per character of its path, so the run budget binds first when other things fill it. No tool or host publishes a file-count ceiling for a repository.`,
+    date: DATE,
+  },
+  generatorPatternSteps: {
+    status: "derived",
+    value: Math.floor(APISERVER_MAX_REQUEST_BODY_BYTES / MIN_JSON_BYTES_PER_NODE),
+    unit: "steps",
+    protects:
+      "the time one ApplicationSet's git generator spends matching its path patterns against the repository's paths",
+    basis:
+      "the same basis as expandedNodesPerDocument and hostPatternComparisons: the matching work the patterns of one admitted document may cause is held to the nodes one admitted document may hold, counted in steps actually done (one per pattern consulted, plus the matcher's table: pattern length times path length for each comparison). Directory patterns consult only the paths of their own depth whose first segment they name. A spent budget stops the expansion: the ApplicationSet is opaque limit.",
+    date: DATE,
+  },
+  repoFetchWallClock: {
+    status: "derived",
+    value: ARGO_EXEC_TIMEOUT_MS,
+    unit: "milliseconds",
+    protects:
+      "the time one fetch takes, all its git calls together (the clone, then the verification and checkout of what it got): past it the fetch is unreadable-repo, detail timed out. With fetchesPerRun it is the whole bound on the time a run spends fetching: at most fetchesPerRun x repoFetchWallClock",
+    basis:
+      "Argo CD v3.6.1 stops every command it runs, git included (util/git/client.go runs git through util/exec), after ARGOCD_EXEC_TIMEOUT, default 90 s (util/exec/exec.go). crankpath gives one fetch that time in all (each git call gets what is left), so a repository Argo CD at its defaults could fetch in one command is within it, and a run cannot spend more than this per fetch however many calls the fetch makes.",
+    date: DATE,
+  },
+  generatorRenderSteps: {
+    status: "derived",
+    value: Math.floor(RUN_LIMITS.runMemory.value / 2),
+    unit: "steps",
+    protects:
+      "the time and memory one ApplicationSet's template rendering takes: its parameter sets times its template's size (B3 review M1)",
+    basis: `runMemory (${RUN_LIMITS.runMemory.value.toLocaleString("en-US")} bytes) / 2 bytes per UTF-16 code unit: the text the rendering of one set produces cannot be more than the run can hold as strings. Counted in steps actually done, shared by every Application of the set: one per template node visited, and one per character a templated string produces (checked while the string is built). Each generated Application is also charged to the run budget, with its string values, before it is built.`,
+    date: DATE,
+  },
+  fetchedRepoBytes: {
+    status: "derived",
+    value: Math.floor(RUN_LIMITS.runMemory.value / RUN_RATES.perFileByte),
+    unit: "bytes",
+    protects:
+      "the disk one fetched repository takes (the files a run writes from it, and while it is read its object store and their copy), and a run that could not read it anyway (B3 review m5; checked before anything is written since pass 3, M1)",
+    basis: `runMemory (${RUN_LIMITS.runMemory.value.toLocaleString("en-US")} bytes) / ${RUN_RATES.perFileByte} bytes, the run budget's measured charge per byte of a file held parsed: a run cannot hold more of a repository's files than this, so a larger repository is refused (counted limit) rather than half-read. Measured against it, each on its own: the object store a clone wrote (after git ends; while it runs, repoFetchWallClock bounds it), the object files copied from a store before git verifies them, the sum of the sizes git lists for the commit's files (and the listing itself), before checkout-index writes a byte, and, as a backstop, the files checkout-index wrote.`,
+    date: DATE,
+  },
+  fetchesPerRun: {
+    status: "derived",
+    value: Math.floor(RUN_LIMITS.runMemory.value / Math.floor(RUN_LIMITS.runMemory.value / RUN_RATES.perFileByte)),
+    unit: "fetches",
+    protects:
+      "the disk and time one run's fetches take: the command line's URL and every repos: entry together, reads from the cache included, so a scanned repository naming many cannot make a run fetch or write without end (B3 review pass 2, M2; disk stated since pass 3, m5); a fetch past it is a counted limit",
+    basis: `floor(runMemory / fetchedRepoBytes) = floor(${RUN_LIMITS.runMemory.value.toLocaleString("en-US")} / ${Math.floor(RUN_LIMITS.runMemory.value / RUN_RATES.perFileByte).toLocaleString("en-US")}): what a fetch keeps in the run directory for the rest of the run is its written files, at most fetchedRepoBytes (its object store and their copy are removed once the files are written, or the store moved to the cache), so the run directory holds at most fetchesPerRun x fetchedRepoBytes, about runMemory, the run's one size figure, taken as its disk bound too; while one fetch is read, at most two more fetchedRepoBytes (the store and the copy) are on disk. A trusted cache grows by at most the same per run (one store per fetch). Time: at most fetchesPerRun x repoFetchWallClock.`,
+    date: DATE,
+  },
+  gitOutputBytes: {
+    status: "derived",
+    value: ARGO_COMBINED_DIRECTORY_MANIFESTS_BYTES,
+    unit: "bytes",
+    protects:
+      "memory held by one git command's standard output and error (kept only to classify a failure, never shown)",
+    basis:
+      "fileBytes: the output of a git command is held like one repository file and is never larger than the largest file crankpath reads (git publishes no output size; its own packet lines are at most 65,520 bytes each, LARGE_PACKET_MAX in pkt-line.h, with no bound on their number).",
+    date: DATE,
   },
   renderWallClock: {
     status: "derived",

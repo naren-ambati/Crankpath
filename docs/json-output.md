@@ -33,6 +33,8 @@ Paths use `.` for an object's field and `[]` for each element of an array. "Word
 
 | Field | Type | Meaning |
 |---|---|---|
+| `clustersUsed` | array | Entries of crankpath.yaml's `clusters:` block that a clusters generator used (declared facts the graph rests on), sorted. |
+| `clustersUsed[]` | string | one entry |
 | `cranks` | array | Every crank, in file order. |
 | `cranks[]` | object | A crank of crankpath.yaml and what it did (documented, not verified). |
 | `cranks[].alreadyCreated` | integer | Nodes its targets name that an earlier crank or target already created. |
@@ -202,14 +204,17 @@ Paths use `.` for an object's field and `[]` for each element of an array. "Word
 | `plan.steps[].ref` | null or string | The crank's `ref` (repo text), else null. |
 | `plan.steps[].why` | string | A crank step: the crank's `by` (repo text); a start step: crankpath's fixed reason. |
 | `repo` | object | The scanned repository. |
-| `repo.commit` | null or string | The commit read; null when not read. |
-| `repo.floating` | boolean | True when the revision is a branch or tag that can move. |
+| `repo.commit` | null or string | The commit read: the resolved commit of a repository crankpath fetched (FR1.2); null for a local checkout (not read). |
+| `repo.floating` | boolean | True when the fetched revision is a branch, a tag or the default branch, which can move (OD-12). |
 | `repo.url` | null or string | Its URL with userinfo removed; null when unknown or unparseable. |
-| `repo.urlFrom` | null or string | Where the URL came from: `flag` (--repo-url) or `git-config` (the origin in .git/config); null when unknown. Words: `flag`, `git-config`, null. |
+| `repo.urlFrom` | null or string | Where the URL came from: `flag` (--repo-url), `git-config` (the origin in .git/config) or `fetched` (the URL crankpath fetched to scan, FR1.2); null when unknown. Words: `flag`, `git-config`, `fetched`, null. |
 | `repoMappings` | array | Mappings, sorted by (from, url). |
 | `repoMappings[]` | object | A repository mapping. |
+| `repoMappings[].commit` | null or string | A fetched entry's resolved commit (OD-12); null otherwise. |
+| `repoMappings[].failure` | null or string | Why a fetch entry could not be read, in crankpath's fixed words (the reason, then its detail); null otherwise. |
+| `repoMappings[].floating` | boolean | True when a fetched entry's revision can move (the default branch). |
 | `repoMappings[].from` | string | `crankpath.yaml` (a declared fact of the scanned repo) or `--repo-alias` (the user's own input). Words: `crankpath.yaml`, `--repo-alias`. |
-| `repoMappings[].root` | string | The root read: a path inside the scanned root, `(fetch)`, or an `alias:N` label. |
+| `repoMappings[].root` | string | The root read: a path inside the scanned root, `fetch:N` (a fetched `repos:` entry), `(fetch)` (a fetch entry not fetched), or an `alias:N` label. |
 | `repoMappings[].url` | string | The repository URL, userinfo removed. |
 | `repoMappings[].used` | boolean | True when some source was read through it. |
 | `runStatus` | object | How completely the estate was read and analysed (BR1.10). |

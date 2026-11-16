@@ -1,0 +1,11 @@
+{
+  "captured": "2026-11-15",
+  "how": "git version 2.55.0 (macOS arm64), git clone with crankpath's fixed options (http allowed in place of https for the loopback listener test/support/git-http-server.mjs), standard error as git wrote it; the listener's port is written <port>",
+  "stderr": {
+    "401": "fatal: unable to get password from user\n",
+    "401-with-token": "fatal: unable to get password from user\n",
+    "403": "fatal: unable to access 'http://127.0.0.1:<port>/status/403/x/y/': The requested URL returned error: 403\n",
+    "404": "fatal: repository 'http://127.0.0.1:<port>/status/404/x/y/' not found\n",
+    "301": "fatal: unable to access 'http://127.0.0.1:<port>/redirect/x/y/': The requested URL returned error: 301\n"
+  }
+}

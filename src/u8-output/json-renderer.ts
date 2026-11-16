@@ -113,7 +113,16 @@ function project(report: Report): Json {
       extracted: { outcome: o.extracted.outcome, node: o.extracted.node, candidates: [...o.extracted.candidates] },
       declared: o.declared,
     })),
-    repoMappings: r.repoMappings.map((m) => ({ url: m.url, root: m.root, from: m.from, used: m.used })),
+    repoMappings: r.repoMappings.map((m) => ({
+      url: m.url,
+      root: m.root,
+      from: m.from,
+      used: m.used,
+      commit: m.commit ?? null,
+      floating: m.floating ?? false,
+      failure: m.failure ?? null,
+    })),
+    clustersUsed: [...r.clustersUsed],
     hiddenCycles: r.hiddenCycles.map((h) => ({
       id: h.id,
       label: h.label,

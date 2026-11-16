@@ -70,7 +70,9 @@ describe("opacity statement (FR4.4, M3)", () => {
     expect(line(text, "Opacity:")).toBe(
       "Opacity: at least 1 of 2 sources opaque (at least 50%); sources are Applications, ApplicationSets, Kustomizations, HelmReleases and Kustomize roots; 1 ApplicationSet is not expanded, so the Applications it would generate are not counted; 0 files unreadable.",
     );
-    expect(text).toContain('  opaque 1 of 1  node: ApplicationSet "argocd/root"  reason: not-in-this-build');
+    // B3: an ApplicationSet with no template (and no generator) is not expanded and names the field
+    expect(text).toContain('  opaque 1 of 1  node: ApplicationSet "argocd/root"  reason: unsupported-field');
+    expect(text).toContain('    field: "spec.template"  (missing, or without a spec)');
   });
   it("says at least, and names the file, when a file is unreadable", () => {
     const text = scan({ "apps/a.yaml": app("a", "cfg"), "cfg/cm.yaml": CM, "apps/broken.yaml": "kind: [\n" });

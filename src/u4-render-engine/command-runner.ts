@@ -1,8 +1,9 @@
 // CommandRunner (U4, contract C12; BR4.17 to BR4.19, FR3.8, NFR1): the only way crankpath starts a
 // process. The allowlist is closed and keyed by (tool, subcommand): `helm template`, `helm
-// dependency build`, `helm pull`, `helm version`, `kustomize build`, `kustomize version` (the fixed
-// `git` fetch forms are added by the repository fetcher, whose option names are confirmed at its
-// own step 0). Each allowed command also has a closed set of options: anything else, including
+// dependency build`, `helm pull`, `helm version`, `kustomize build`, `kustomize version`, and the
+// fixed `git` fetch forms (`git clone` and `git rev-parse --verify HEAD`, B3), defined with their
+// own checks in git-runner.ts and run only through it (it adds git's fixed `-c` options and runs
+// git in its own process group; this runner refuses git). Each allowed command also has a closed set of options: anything else, including
 // `--dry-run=server`, `--kubeconfig`, `--post-renderer` or `--enable-helm`, is refused before a
 // process exists. A refusal is a construction error, a bug in crankpath, never a run outcome.
 //
@@ -17,6 +18,7 @@ import { spawnSync } from "node:child_process";
 import path from "node:path";
 import type { DerivedLimit } from "../u1-graph-model/limits.js";
 import { LIMITS } from "../u1-graph-model/limits.js";
+import { GIT_ALLOWED_COMMANDS } from "./git-runner.js";
 import { guardChartUrl } from "./url-guard.js";
 
 export type Tool = "helm" | "kustomize" | "git";
@@ -79,6 +81,8 @@ export const ALLOWED_COMMANDS: readonly AllowedCommand[] = Object.freeze([
     options: Object.freeze({}),
     positionals: 0,
   }),
+  // the git forms (B3): one closed list; checked and run by git-runner.ts only
+  ...GIT_ALLOWED_COMMANDS,
 ] satisfies AllowedCommand[]);
 
 /**
@@ -320,6 +324,8 @@ export function createCommandRunner(config: RunnerConfig): CommandRunner {
   return Object.freeze({
     binary: (tool: Tool) => config.binaries[tool] ?? null,
     run(request: CommandRequest): CommandResult {
+      // git has its own runner (fixed options, per-call header, process group): never this one
+      if (request.tool === "git") throw new CommandRefused("git runs only through the git runner");
       const allowed = checkAllowed(request);
       const file = config.binaries[request.tool] ?? null;
       const base = { tool: request.tool, subcommand: request.subcommand };

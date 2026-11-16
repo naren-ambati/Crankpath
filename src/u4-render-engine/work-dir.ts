@@ -1,6 +1,7 @@
 // WorkDir (U4 and U9, contract C13; BR4.3, BR4.8, BR9.8, FR8.8, NFR17): the one place crankpath
 // writes files. Everything it writes is under its cache root (`.crankpath` in the working
-// directory by default, or `--cache-dir`): `charts/` (the chart cache) and `tmp/<run>/`, a private
+// directory by default, or `--cache-dir`): `charts/` (the chart cache), `repos/<host>/<path>@<sha>/`
+// (fetched repositories, B3) and `tmp/<run>/`, a private
 // mode-0700 directory for this run (helm's homes, values files, chart and kustomization copies),
 // removed when the run ends. Files are created mode 0600, exclusively, never through a symlink.
 // Nothing is created until a job needs it, so a run of plain directories writes nothing.
@@ -29,8 +30,11 @@ function inside(child: string, parent: string): boolean {
   return child === parent || child.startsWith(`${parent}${path.sep}`);
 }
 
-/** Where the cache root is, from `--cache-dir` (or the default) and the scanned root's real path. */
-export function resolveCacheRoot(cwd: string, flag: string | undefined, rootReal: string): CacheRootResult {
+/**
+ * Where the cache root is, from `--cache-dir` (or the default) and the scanned root's real path;
+ * null before a scanned root exists (the fetch of a URL to scan, B3: its checkout goes into the cache).
+ */
+export function resolveCacheRoot(cwd: string, flag: string | undefined, rootReal: string | null): CacheRootResult {
   const target = path.resolve(cwd, flag ?? CACHE_DIR_NAME);
   let parentReal: string;
   try {
@@ -45,7 +49,7 @@ export function resolveCacheRoot(cwd: string, flag: string | undefined, rootReal
   } catch {
     // absent: created when first needed
   }
-  if (inside(cacheRoot, rootReal)) {
+  if (rootReal !== null && inside(cacheRoot, rootReal)) {
     if (cacheRoot !== path.join(rootReal, CACHE_DIR_NAME)) return { ok: false, problem: "inside-tree" };
     return { ok: true, cacheRoot, trusted: false };
   }

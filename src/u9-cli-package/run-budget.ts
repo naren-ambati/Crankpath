@@ -17,6 +17,10 @@ export interface BudgetSpec {
   readonly parse: { readonly bytesPerLexeme: number; readonly textBytesPerByte: number };
   /** The edges a run may keep (edgesPerRun). */
   readonly maxEdges: number;
+  /** The files every walk of the run may list together (filesPerScan, B3); absent: no count limit. */
+  readonly maxFiles?: number;
+  /** What one walked file is charged (WALK_COST); absent: nothing. */
+  readonly walk?: { readonly perFile: number; readonly perPathChar: number };
 }
 
 export interface BudgetUse {
@@ -91,6 +95,26 @@ export class RunBudget {
     const ok = this.charge(count * this.spec.rates.perObject + stringLeaves * this.spec.rates.perStringLeaf);
     if (!ok) this.refusedJobs += 1;
     return ok;
+  }
+
+  private walkedFiles = 0;
+
+  /**
+   * Admits one walked file (B3): refused when the scan has listed filesPerScan files, or when its
+   * cost (WALK_COST: per file plus per path character) does not fit; a refusal stops that walk and
+   * is listed as an unreadable entry (counted, a floor).
+   */
+  walked(rel: string): { readonly reasonWord: string; readonly detail: string } | null {
+    if (this.spec.maxFiles !== undefined && this.walkedFiles >= this.spec.maxFiles) {
+      return { reasonWord: "file count limit reached (the rest of this listing not seen)", detail: "files per scan" };
+    }
+    const w = this.spec.walk;
+    if (w !== undefined && !this.charge(w.perFile + w.perPathChar * rel.length)) {
+      this.refusedFiles += 1;
+      return { reasonWord: "run budget reached (the rest of this listing not seen)", detail: "run budget" };
+    }
+    this.walkedFiles += 1;
+    return null;
   }
 
   use(): BudgetUse {
