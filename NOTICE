@@ -1,0 +1,11 @@
+crankpath
+Copyright 2026 naren-ambati
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE). It is distributed as the npm package
+`crankpath`, which contains only crankpath's own code (dist/), README.md, CHANGELOG.md, LICENSE, this NOTICE and
+package.json.
+
+Third-party files in the source repository: none yet.
+
+Dependencies installed from the npm registry (commander, yaml and the development tools) are not copied into this
+repository or into the package; their licences are in package-lock.json and in docs/lookups.md.

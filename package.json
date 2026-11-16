@@ -1,0 +1,39 @@
+{
+  "name": "crankpath",
+  "version": "0.1.0",
+  "description": "A black-start planner and cycle finder for GitOps estates: reads a GitOps repository, renders Helm and Kustomize, and reports dependency cycles, cold-start reachability and an ordered restoration plan.",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/naren-ambati/crankpath.git"
+  },
+  "homepage": "https://github.com/naren-ambati/crankpath#readme",
+  "bugs": {
+    "url": "https://github.com/naren-ambati/crankpath/issues"
+  },
+  "type": "module",
+  "files": ["dist", "README.md", "CHANGELOG.md", "NOTICE"],
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "biome check .",
+    "test": "vitest run",
+    "check-tree": "node scripts/check-tree.mjs",
+    "census": "node scripts/census.mjs",
+    "verify": "npm run typecheck && npm run lint && vitest run --coverage && npm run build && node scripts/check-tree.mjs"
+  },
+  "dependencies": {
+    "commander": "15.1.0",
+    "yaml": "2.9.1"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.6.7",
+    "@types/node": "22.20.5",
+    "@vitest/coverage-v8": "5.1.0",
+    "typescript": "7.0.2",
+    "vitest": "5.1.0"
+  }
+}

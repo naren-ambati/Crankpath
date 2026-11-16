@@ -2,7 +2,7 @@
 
 **A black-start planner and cycle finder for GitOps estates.** It reads a GitOps repository, renders its Helm and Kustomize sources, and reports every dependency cycle, the nodes unreachable from a cold start, the external preconditions, and an ordered restoration plan with the manual "crank" steps marked. It needs no cluster.
 
-Status: not started — design next with AI-DLC (see START-HERE.md).
+Status: in development (v0.1.0 being built; see BUILD-NOTES.md).
 
 ## Why it should exist
 
@@ -28,4 +28,4 @@ Checked 2026-10-29 to 2026-11-02 (details and links in `docs/research.md`).
 
 L-, about 3 weeks part-time with Claude Code (TypeScript CLI plus a GitHub Action). Needs no containers to demo.
 
-Licence: decided by the owner before release.
+Licence: Apache-2.0 (see LICENSE).
