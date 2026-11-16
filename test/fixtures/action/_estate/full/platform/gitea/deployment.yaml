@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gitea
+  namespace: gitea
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: gitea
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: gitea
+    spec:
+      containers:
+        - name: gitea
+          image: example.org/images/gitea:1.0
+          envFrom:
+            - configMapRef:
+                name: gitea-config
+          env:
+            - name: GITEA_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: gitea-admin
+                  key: password

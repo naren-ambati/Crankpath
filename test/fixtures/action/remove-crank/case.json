@@ -1,0 +1,6 @@
+{
+  "description": "A PR that removes a crank: the cycle is cranked in the base and uncranked in the head (BR10.9).",
+  "base": ["_estate/full", "remove-crank/base"],
+  "head": ["_estate/full"],
+  "expect": { "result": "FAILED", "newCycles": "1", "exit": 1 }
+}

@@ -1,0 +1,6 @@
+{
+  "description": "A PR that adds the same cycle and a crank that breaks it: honoured, listed as documented by the PR author and not verified (BR10.3, BR10.10).",
+  "base": ["_estate/web-only"],
+  "head": ["_estate/full", "add-crank/head"],
+  "expect": { "result": "NO_NEW_CYCLES_FOUND", "newCycles": "0", "exit": 0 }
+}

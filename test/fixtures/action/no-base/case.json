@@ -1,0 +1,7 @@
+{
+  "description": "No base commit (not a pull request, no base-ref): NOT CHECKED, the job is not green (BR10.7).",
+  "base": ["_estate/full"],
+  "head": ["_estate/full", "unrelated-change/head"],
+  "baseRef": "",
+  "expect": { "result": "NOT_CHECKED", "newCycles": "", "exit": 1 }
+}

@@ -10,7 +10,7 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reporter: ["text-summary", "text"],
-      // the core units; the CLI shell (U9) and the fixtures are not part of the floor
+      // the core units and the Action's modules (U10); the CLI shell (U9) and the fixtures are not part of the floor
       include: [
         "src/u1-graph-model/**/*.ts",
         "src/u2-intake-config/**/*.ts",
@@ -20,6 +20,7 @@ export default defineConfig({
         "src/u6-extractors-workload/**/*.ts",
         "src/u7-graph-analysis/**/*.ts",
         "src/u8-output/**/*.ts",
+        "action/**/*.mjs",
       ],
       thresholds: { lines: 80 },
     },

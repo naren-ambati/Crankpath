@@ -1,0 +1,6 @@
+{
+  "description": "A PR that adds two cycles and a crank for one of them: the cranked one is listed with its new edges, and the uncovered CA cycle still fails the check.",
+  "base": ["_estate/web-only"],
+  "head": ["_estate/full", "add-crank/head", "crank-and-new-cycle/head"],
+  "expect": { "result": "FAILED", "newCycles": "1", "exit": 1 }
+}

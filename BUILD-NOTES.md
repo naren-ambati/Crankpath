@@ -1520,3 +1520,308 @@ The new tests are in `test/u4-render-engine/review-b3-pass3.test.ts` (18 tests).
   - No mutation run by me. The permission system refused a mutation script in pass 1, and I did not work around that. The reviewer's `mut3.py` survivors each have a test, but none was shown red by mutation.
   - The collision fold is not every file system's exact rule.
   - The verification runs against git 2.55.0 only.
+
+## B8 (the GitHub Action)
+
+Branch `bolt/b8`, started at `main` 1df4b0a (B0, B1, B4, B5, B6). B2 and B3 had not landed on `main` when this section was written, so `main` was not merged.
+
+### Built
+- **BaseHeadDiffer** (`action/base-head-differ.mjs`, pure): `readReport` checks the shape of the fields the Action reads from a schema-version-1 report (anything else is NOT CHECKED); `diffReports` decides each uncranked head cycle: new when one of its edges (from, to, kind) is absent from the base graph (OD-24; the base graph is every non-ordering edge read plus every edge of every base cycle, so an edge a base reroute added counts), or when its edges are all in the base but the base component holding them was `cranked` (OD-27 a); old otherwise; cranked head cycles never fail. NOTHING ANALYSED or a timeout on either side is NOT CHECKED (OD-27 c, OD-30). It lists the declared facts the head adds or changes (cranks, declared edges, declared externals, match overrides, `crankpath.yaml` repos: mappings) and the cycles a head match entry hides that the base did not hold.
+- **Summary, annotations, outputs** (`action/summary.mjs`, pure): the M7 lines inside one fenced `text` block under a fixed heading; `NO_NEW_CYCLES_FOUND` always opens `No new uncranked cycle found. Not a pass: ...` with what it does not cover; base and head run status with opaque and skipped counts side by side (`at least` on a floor) and each side's gap words; one error annotation per new cycle (at most 10, the last counting the rest), warnings for declared facts, hidden cycles and gaps; `result` and `new-cycles` outputs; exit 0 only for `NO_NEW_CYCLES_FOUND`. Repo text: after a fixed label, as the CLI escaped it, with every non-printable-ASCII character as a code and each destination's specials as `\xNN` (Markdown and HTML characters in the summary, `%` in annotations), then the workflow-command encoding (`%25`, `%0D`, `%0A`, and `%3A`, `%2C` in properties). The summary is bounded at 1 MiB and the annotations at 10 per kind (GitHub's documented limits, `docs/lookups.md`); the string bound is derived from the CLI's (381 code points x 10 characters per code + 64 for the cut marker).
+- **ActionEntry** (`action/action-entry.mjs`): validates the inputs; finds the checkout (`rev-parse --show-toplevel`, `--show-prefix`), the head (`HEAD`) and the base (`base-ref`, `--verify --end-of-options`; a missing base is worded `(shallow clone)` when the repository is shallow); copies each commit's tree out of git with `git read-tree` into a temporary index and `git checkout-index --all --prefix` into `RUNNER_TEMP` (both removed at the end); runs the CLI built in this checkout (`dist/u9-cli-package/cli.js`) on both with `--format json --out <file outside the tree>`, `--repo-url GITHUB_SERVER_URL/GITHUB_REPOSITORY`, the same config and alias rules on both sides, and an environment allowlist; writes the summary and outputs and prints the annotations. git always runs with `core.hooksPath=/dev/null`, `core.fsmonitor=false`, `protocol.allow=never` and PATH, HOME, `LC_ALL=C` only. Any unexpected error is NOT CHECKED.
+- **The composite Action** (`action/action.yml`, `action/build.sh`): C10's inputs, defaults and outputs; `actions/setup-node` pinned to `949feb2413d6458794dcd2491c4babbbce0c15c1` (v7.1.0, released 2026-10-08, read from the GitHub API on 2026-11-15) with `package-manager-cache: false`; the build runs `npm ci --ignore-scripts` and `npm run build` in the Action's own checkout; the inputs reach the script only as environment variables.
+- **The local harness** `scripts/action-local.mjs`: for each `test/fixtures/action/<case>/case.json` it builds a git repository with a base and a head commit (fixed identity and dates, so fixed commit ids; head-only renames for names a committed file cannot carry), optionally clones it shallow over `file://`, runs `action/action-entry.mjs` as a program with `GITHUB_STEP_SUMMARY`, `GITHUB_OUTPUT`, `RUNNER_TEMP` pointed at temporary files and a fake `GITHUB_TOKEN`, and prints the exit status, outputs, annotations and summary. Cases: `add-crank`, `add-cycle`, `hostile-name`, `no-base`, `nothing-analysed`, `remove-crank`, `shallow`, `tool-error`, `unrelated-change` (the brief's "passing PR", named so its output never reads as a pass).
+- **Docs**: `docs/action.md` (the guide, D11), `docs/lookups.md` (B8 rows), one README sentence.
+- **Tests** (`test/u10-github-action/`): `base-head-differ`, `summary`, `action-entry`, `action-local`, `action-yml` (88 tests).
+
+### Verified
+- `npm run verify` on 2026-11-15 (Node v22.23.2, git 2.55.0, macOS arm64), exit 0:
+  ```
+  Checked 154 files in 127ms. No fixes applied.
+   Test Files  69 passed (69)
+        Tests  1140 passed (1140)
+  Statements   : 96% ( 4855/5057 )
+  Branches     : 89.15% ( 3314/3717 )
+  Functions    : 97.46% ( 730/749 )
+  Lines        : 97.28% ( 4092/4206 )
+  check-tree: 266 files read, 0 finding(s)
+  ```
+  The Action's modules are in the coverage floor now: `action/` 95.5% lines (`action-entry.mjs` 92.94%, `summary.mjs` 96.62%).
+- **The definition of done, through the harness and the tests** (`npm run build && node scripts/action-local.mjs`, 2026-11-15): `add-cycle` FAILED, exit 1, `new-cycles=1`, one error annotation naming `c-d8197e7d` with `file=apps/gitea.yaml`; `add-crank` NO_NEW_CYCLES_FOUND, exit 0, the first line `No new uncranked cycle found. Not a pass: it rests on 1 declared fact this pull request added or changed, which crankpath does not verify.` and the crank listed `(creates 4 nodes; documented by the PR author, not verified)`; `no-base` NOT_CHECKED, exit 1, `new-cycles=` empty. The other cases: `unrelated-change` NO_NEW_CYCLES_FOUND (the old cycle does not fail), `remove-crank` FAILED (`cranked in base, uncranked in head`), `shallow`, `nothing-analysed`, `tool-error` NOT_CHECKED with their reasons, `hostile-name` FAILED with every hostile piece quoted and inert. `docs/action.md` quotes three cases' output; a test checks the quote equals a fresh run.
+- **Determinism**: three full harness runs (the third under `LANG=de_DE.UTF-8 LC_ALL=de_DE.UTF-8 TZ=Asia/Tokyo`) were byte-identical (`cmp`); a test runs two cases twice.
+- **The workflow token**: a probe in crankpath's place records its own environment and that of a process it starts; neither holds `GITHUB_TOKEN`'s value or any of `GITHUB_TOKEN`, `GH_TOKEN`, `ACTIONS_RUNTIME_TOKEN`, `ACTIONS_ID_TOKEN_REQUEST_TOKEN`, `NODE_OPTIONS`, `GIT_DIR`, `INPUT_*`; a `CRANKPATH_TOKEN_<HOST>` holding the workflow token's value is dropped (its twin without the workflow token is passed). Every harness output is checked for the fake token.
+- **Nothing written into the checkout**: a test snapshots every path under the checkout (`.git` included) with size and mtime before and after the Action and finds them equal, and `RUNNER_TEMP` empty afterwards; an uncommitted deletion in the working tree changes no result (commits are analysed).
+- **Hand mutations, run 2026-11-15 and reverted (a scratch script restoring each file from a copy)**, each turned `test/u10-github-action` red: crank-removed check off (4 red), cranked head cycles judged (4), added cranks not listed (4), timeouts ignored (1), destination specials kept (4), `,` not encoded in properties (1), NOT CHECKED exit 0 (7), no summary budget (1), no annotation cap (1), the head-versus-base opacity clause dropped (1), the full environment passed to the CLI (2), a per-host variable holding the workflow token passed (2), a missing config not NOT CHECKED (1), the shallow wording lost (1). One survived at first: counting ordering-only edges as base edges, because the fail-safe branch (no base component) still failed the case; the test now asserts the reason and the new edge, and the mutant turns it red (1).
+
+### Deviations from the design and why
+1. **`new-cycles` is empty when the result is NOT_CHECKED.** C10 says integer; with no comparison no count exists, and `0` would read as "none found".
+2. **Where U10 lives.** `action/*.mjs`, self-contained (no import of the build), as the bolt brief allows: the CLI shares none of it. The two vocabularies it needs (printable kinds, edge words) are copies, held equal to `src/u1-graph-model/vocabulary.ts` by a test; its string bound is tested against `LIMITS.quotedTextChars`. `action/` is added to the typecheck, Biome and the coverage include (the floor now covers it).
+3. **Both sides are commits copied out of git**, not a `git worktree` and not `git archive`: a worktree writes into the checkout's `.git` and runs the `post-checkout` hook; `git archive` applies the base's `export-ignore` and `export-subst` attributes, which could hide a base `crankpath.yaml` and turn a removed crank into an "old" cycle. `read-tree` plus `checkout-index --prefix` uses the checkout machinery (the same conversions `actions/checkout` applied) and writes only under `RUNNER_TEMP`. The head is `HEAD`'s tree, not the working tree, so both sides are read the same way and an earlier step's edits change nothing. *(Superseded: `checkout-index` applies attributes and filter drivers; both commits are now copied raw from `ls-tree` and `cat-file --batch`, and the base is the merge base; see the review fixes, m2 and m6.)*
+4. **Working files.** "Writes only the summary, annotations, outputs and exit status" holds for the checkout and the workspace; the Action's copies and JSON live in a directory under `RUNNER_TEMP` that it removes before it ends (a test checks it is empty).
+5. **M7 says "opaque nodes"; the Action says "opaque sources"**, because `runStatus.counts.opaque` counts opaque sources.
+6. **"pass" and "green" appear, negated only**: `Not a pass:` (M7) and `This job is not green.` (M7's NOT CHECKED line). The brief says never use those words; M7's own wording is kept and a test asserts every occurrence is negated and that passed, OK, clean and safe never appear.
+7. **Gaps alone are not NOT CHECKED.** `components.md` says "an incomparable side (error or gaps) is NOT CHECKED"; BR10.7 and BR10.8 list the NOT CHECKED cases and say gaps are stated beside the result. The rules are followed. *(Superseded by the lead's M1 decision: more gaps in the head than in the base is NOT CHECKED; see the review fixes.)*
+8. **More declared facts listed than FR10.5 names**: besides cranks, declared edges and externals, the `match:` overrides and `crankpath.yaml` repos: mappings the head adds (both change what is read), and the cycles a head match entry hides (listed as not checked, with a warning). Their identity: a crank by (by, ref, created nodes, reroutes), so a moved crank is not "added"; a declared edge by (from, to, kind); an external by (cold start, served by); an override by (host, declared node); a mapping by (url, root).
+9. **No timer of the Action's own** (OD-30 covers render timeouts, which crankpath counts): no bound for a whole estate's run could be derived; the guide tells the workflow to set `timeout-minutes`, and a cancelled job is not green.
+10. **One rule for paths on both sides**: `path`, a relative `config` and relative `repo-alias` paths are read from each commit; an absolute `config` or alias path is the same for both. A relative `config` or the scanned `path` missing from one commit is NOT CHECKED (so a pull request that adds the whole estate, or its first explicit config file, is NOT CHECKED); the default `crankpath.yaml` location keeps the CLI's rule (absent is no declared facts).
+11. **A cycle a head crank only touched** (uncranked, with a residual) is judged on all its edges, as BR10.1 reads; a pull request whose new edge lies only in the part a crank broke still fails.
+12. **A head cycle whose edges are all in the base but whose base component is missing** (not possible for a report crankpath wrote) is new, never old.
+13. **The repository URL** passed to both runs is `GITHUB_SERVER_URL/GITHUB_REPOSITORY` (shape-checked): a copied tree has no `.git/config`, and both sides must name the scanned repository the same way.
+14. **`permissions: contents: read`** is a workflow key, which `action.yml` cannot set; the file's header and the guide's example workflow state it.
+15. **Annotations name a `file` only for a plain repository path** (letters, digits, `._/@+-`, no `..`, no `alias:` label); hostile paths are quoted in the message instead. Properties are still encoded.
+16. **`CRANKPATH_TOKEN_<HOST>` variables reach the CLI** (the design's per-host token rule), except one whose value equals a workflow token's.
+17. **Two harness cases beyond the brief's seven** (`shallow`, `tool-error`); the fixtures are layered (`case.json` names shared trees) rather than nine full copies.
+18. **Tests first, partly**: the fixture cases and their expected results came first (`487f9c3`); each module was written before its unit tests, and each test's falsifiability was then shown by the mutations above.
+19. **BR10.5 "render subprocesses"**: B2's CommandRunner is not on `main`, so the proof is one level up: the CLI process and anything it starts hold no workflow token. After B2 merges, its own allowlist is a second layer.
+20. **The CLI runs without `--no-network`**, as a local run does (B8's CLI makes no network call; B3's fetches would run on both sides).
+
+### Decisions taken for the owner
+- NOT CHECKED fails the job (OD-11 as recommended); the owner may prefer a neutral conclusion.
+- Cranks, declared edges and externals are evaluated from the head's `crankpath.yaml` (OD-27 b as recommended), listed as unverified; the owner may prefer the base config only.
+- A relative config or scanned path missing from one commit is NOT CHECKED (deviation 10).
+- `new-cycles` empty on NOT CHECKED (deviation 1).
+- The harness's "passing PR" case is named `unrelated-change`.
+
+### Unverified
+- **The Action has never run on a GitHub-hosted runner** (Linux or macOS): the build step (`npm ci --ignore-scripts`, `npm run build` in the Action's checkout), `setup-node`, the composite `default:` expression for `base-ref`, the runner's own `GITHUB_*` values and the summary's rendering on github.com are unexercised until the owner's first push. The harness runs the entry script with the built `dist/` on one macOS arm64 machine.
+- Git filter drivers configured in the runner's own git configuration (Git LFS, for example) would apply when a commit is copied out, as they apply to `actions/checkout`; the Action does not disable them. *(Superseded: the copy is raw now, review m2.)* Container jobs whose checkout is owned by another user may need `safe.directory`, without which git refuses and the result is NOT CHECKED.
+- B2 and B3 are not merged: the toolchain line, rendering, fetches and timeouts (`counts.timeouts` > 0 is tested on synthetic reports only) were not exercised through the Action.
+- Windows runners are not supported (POSIX paths, bash steps).
+
+### Review fixes (reviews/bolt-8-review.md: 1 Major, 6 Minor, 4 Nit; lead decisions of 2026-11-15)
+Tests written first: `test/u10-github-action/review-b8.test.ts` (24 of 24 red on `1f55063`: the eight M1 dimensions, the multi-count wording, the submodule dimension, m4 twice, the merge-base summary line, m1, the filter driver, the raw-copy shape, the link collision, m3, the git-call options, m6 twice, n1 twice, the RunSummary counts) and the new harness tests in `action-local.test.ts` (the `gap-rise` and `crank-and-new-cycle` cases and the `checkStep` test did not load: `checkStep` did not exist). Two tests were added after the fixes to make survivors red (below). The shared report builders moved to `test/helpers/action-reports.ts`.
+- **M1 (lead decision).** When any gap count is higher in the head than in the base, the result is NOT_CHECKED, job not green, naming each count that rose, base against head: `NOT CHECKED: the head reads less than the base (base -> head): unreadable files 0 -> 1, unresolved items 0 -> 1; a comparison over a head that reads less cannot clear it. This job is not green.` The counts (`GAP_DIMENSIONS` in `action/base-head-differ.mjs`): opaque sources, unreadable files, skipped objects, unresolved items, files and render jobs refused by the run budget, edges not kept over the run limit, declared facts that change the graph (`runStatus.counts.declaredFacts`), and submodules the Action could not read (m3). Timeouts stay NOT CHECKED on either side. Equal or fewer gaps: compared as before, with the gaps stated. The comparison is of counts, so a pull request that removes one gap and adds another of the same kind is compared as usual (stated in `docs/action.md`). New fixture `gap-rise` (the review's repro: the head makes `apps/gitea.yaml` invalid YAML).
+- **m1.** A base that resolves to the head commit (after the merge base, m6) is NOT_CHECKED: `the base commit is the head commit, so there is nothing to compare`.
+- **m2 (lead decision).** Both commits are copied raw: entries from `git ls-tree -r -z -l --full-tree`, blobs from `git cat-file --batch` (in chunks of at most 64 MiB of blob bytes, a working set only: any value gives the same copy), written byte for byte (`copyCommitTree` in `action/action-entry.mjs`). No attribute, filter, end-of-line or `ident` processing runs. Modes: 100644 and 100664 as 0644, 100755 as 0755 (chmod after the write, so the umask does not matter); 120000 a link, recreated and never followed; 160000 a gitlink, an empty directory, counted (m3); any other mode stops the copy. A path segment that is empty, `.`, `..` or `.git` (any case), a write over an existing entry (files are created `wx`) and a directory that is a link stop the copy too, as `unsafe-tree` (NOT CHECKED, "the head commit holds a path crankpath will not write"). git now runs only `rev-parse`, `merge-base`, `ls-tree` and `cat-file`.
+- **m3 (lead decision).** A gitlink is a counted gap of its side: `submodules not read` in the side's line, `unreadable-submodules` among its gap words, an ANALYSED side shown as ANALYSED WITH GAPS (`effectiveState`), and a dimension of the M1 comparison.
+- **m4.** Each cranked head cycle says `(cranked by a crank this pull request adds; N of its edges are new in this pull request)` or `(cranked by a crank the base already had; ...)`. New fixture `crank-and-new-cycle`: two new cycles, a crank for one; the other (a self-issued CA: Issuer, Certificate, Secret) fails the check.
+- **m5.** Both survivors are red now: a probe CLI that prints `::error::from the CLI` reaches no standard output of the Action (`stdio` changed to inherit: 1 red), and a `git` wrapper on PATH records every call and the test asserts each starts with `GIT_OPTIONS` and is one of the four read-only subcommands (`core.hooksPath` removed: 1 red).
+- **m6 (lead decision).** The base is `git merge-base <base-ref> <head>`; the summary says `base commit <id> (the merge base of base-ref "<ref>" and the head)`. No merge base is NOT CHECKED (`(shallow clone)` when the checkout is shallow), and the guide recommends `fetch-depth: 0`. **For the lead:** the merge base does not cover the review's own scenario. On a `pull_request` event the head is GitHub's merge commit, and `pull_request.base.sha` is an ancestor of it, so the merge base is `base.sha` itself; base-branch commits the merge commit holds beyond `base.sha` still count as the pull request's (a failure, never a hidden cycle). The guide says so and suggests checking out the pull request's own head (`ref: github.event.pull_request.head.sha`), which compares exactly the pull request's commits with its fork point. Comparing with `HEAD^1` when the head is a merge commit (the review's other option) would cover it; not done, per the decision.
+- **m7.** `docs/action.md` and the `action.yml` input descriptions say an absolute `config` or alias path must be outside the workspace, or the pull request controls both sides.
+- **n1.** `GITHUB_STEP_SUMMARY` or `GITHUB_OUTPUT` unset is NOT CHECKED (`the runner gave no GITHUB_OUTPUT file, so the result cannot be written where the runner reads it`).
+- **n2.** Not changed (no Action timer; documented).
+- **n3 (lead: the harness runs the same entry as action.yml).** `scripts/action-local.mjs` reads the `check` step of `action/action.yml` and runs its `run` line with `bash --noprofile --norc -eo pipefail -c`, with the step's `env` evaluated from a fixed table (`inputs.<name>` from each input's default, `github.event.pull_request.base.sha` from the case, `github.action_path`); any other expression is a harness error. It skips the `setup-node` and build steps (stated in the script and the guide).
+- **n4.** The two fixtures above.
+- **Hand mutations of the fixes, run 2026-11-15 and reverted**, each turned `test/u10-github-action` red: the gap-rise check off (15), submodules not compared (2), submodules not counted (2), base-is-head off (1), the merge base not used (1), a directory that is a link written through (1), runner files unchecked (2), m4 always "this pull request adds" (1), CLI standard output inherited (1), `core.hooksPath` removed (1). Two survived at first and now have tests: the copy overwriting an existing entry (a case-folding test that expects the copy to stop, or both files on a case-sensitive file system; 1 red) and no `chmod` after the write (a test under umask 077; 1 red).
+- **What changed in meaning:**
+  - A head with more gaps of any counted kind than the base is NOT_CHECKED (was NO_NEW_CYCLES_FOUND, or FAILED, with the gaps stated).
+  - The base is the merge base of base-ref and the head (was base-ref itself). A base the head already contains is NOT_CHECKED.
+  - The copies are the committed bytes. Before, checkout-index applied end-of-line and `ident` attributes and ran filter drivers from the runner's configuration.
+  - Submodules are a gap, so a side with one is never ANALYSED.
+  - Cranked head cycles say whether their edges and crank are new.
+  - A missing runner file is NOT_CHECKED (was a silent skip).
+  - The summary's second line names the merge base.
+  - The `add-crank` and `crank-and-new-cycle` cranked-cycle lines are longer; `docs/action.md` quotes the new output (four cases, test-checked).
+- **Files outside `action/`, the Action's tests and fixtures:** `scripts/action-local.mjs`, `docs/action.md`, `docs/lookups.md` (one row), `test/helpers/action-reports.ts`. No CLI or schema change. `main` had not moved (still 1df4b0a), so nothing was merged.
+
+- Two full harness runs (the second under `LANG=de_DE.UTF-8 LC_ALL=de_DE.UTF-8`) were byte-identical (`cmp`).
+- `npm run verify` on 2026-11-15 (Node v22.23.2, git 2.55.0), exit 0:
+  ```
+  Checked 156 files in 84ms. No fixes applied.
+   Test Files  70 passed (70)
+        Tests  1173 passed (1173)
+  Statements   : 96.01% ( 4988/5195 )
+  Branches     : 89.01% ( 3397/3816 )
+  Functions    : 97.5% ( 744/763 )
+  Lines        : 97.38% ( 4209/4322 )
+  check-tree: 273 files read, 0 finding(s)
+  ```
+
+### Merge of main (B2 `b735eb6`), 2026-11-16
+- **The merge.** `main` was merged into `bolt/b8` as a merge commit. The only conflict was this file: both sides had appended sections. It is resolved as main's file (B0, B1, B4, B5, B6, B2) followed by the B8 sections. `package.json` takes main's `verify:live`. The Action's code merged cleanly, and all 121 Action tests passed on the merged tree before any change.
+- **One chart cache for both sides.** The Action now passes `--cache-dir <work>/chart-cache` to both CLI runs. That directory is outside both copied trees: B2 never trusts a cache inside a scanned tree. A chart fetched for one side is rendered from the same bytes for the other, and the cache is removed with the rest of the Action's working files. Test: a probe CLI records both argument lists, and both runs get the same cache path, outside each tree.
+- **B2's render outcomes through the Action.** These tests were written before the code change and seen red where the code was missing:
+  - **New case `add-helm-chart`.** The head adds an Application whose source is a chart in the repository (`charts/ca`). The chart renders an Issuer and a Certificate that form a self-issued CA cycle.
+    - The new `"tools": "fake"` case field puts the fake helm and kustomize of `test/fixtures/fake-tools` (tested versions) first on PATH, so the render is the same on every machine.
+    - Result: FAILED. The new cycle `c-ed2e2e22` is visible only because the chart rendered.
+    - Rendered evidence is a render label (`render:Application/argocd/ca#0`). It is quoted, and it is never an annotation `file`.
+    - The chart also holds real templates: real helm v4.3.2 renders the same two objects, in the other order.
+  - **No helm on PATH.** The same case becomes NOT CHECKED, "opaque sources 0 -> 1", because the head's chart is `tool-missing` and the head reads less than the base. This test passed on first run: it guards the M1 rule with a B2 outcome.
+  - **A real timeout.** A wrapper runs the built CLI with only the render wall clock shortened to 1.5 s (the derived 90 s would make the test slow). The head's chart is given the fake helm's `sleep` mode. The result is NOT CHECKED: "1 render timed out on the head, so its output may differ on a rerun". `runStatus.counts.timeouts` comes from B2's real runner.
+- **For the lead: the M1 rule counts gaps, so a growing estate can be NOT CHECKED with nothing hidden.** The first version of `add-helm-chart` was built on `_estate/web-only`, where every Application's repository host is `host-unplaced` because Gitea is absent there. That case came out NOT CHECKED, "unresolved items 1 -> 2": the new Application's own unresolved item counts as a rise. The fixture now builds on `_estate/full`. Any pull request that adds a source carrying an unresolved item hits the same rule, for example a new Application reading a public host whose cold start is not declared (an `external-unspecified` item). It is NOT CHECKED until the item is resolved or declared. That is the decision as written, but it reaches further than hidden cycles. Per-item matching would be finer: a gap is new only when its subject was read in the base. That is for the owner.
+- **Docs.** `docs/action.md` now covers:
+  - helm and kustomize are taken from the runner's PATH and not installed by the Action; without them a pull request that adds a chart is NOT CHECKED;
+  - the shared chart cache;
+  - the harness's `tools` field and the new case.
+- **Verified.** Two full harness runs were byte-identical. `npm run verify` on 2026-11-16, exit 0:
+  ```
+  Checked 191 files in 86ms. No fixes applied.
+   Test Files  85 passed (85)
+        Tests  1530 passed (1530)
+  Statements   : 94.65% ( 6465/6830 )
+  Branches     : 87.38% ( 4654/5326 )
+  Functions    : 97.85% ( 912/932 )
+  Lines        : 96.23% ( 5520/5736 )
+  check-tree: 423 files read, 0 finding(s)
+  ```
+- **Unverified.** The real-helm render of `charts/ca` was checked by hand (`helm template ca test/fixtures/action/add-helm-chart/head/charts/ca --namespace web`), not by a test. B3 is not merged yet.
+
+### Review fixes, pass 2 (reviews/bolt-8-review-pass-2.md: 0 Major, 5 Minor, 3 Nit; lead decisions of 2026-11-16)
+Tests written first in `test/u10-github-action/review-b8-pass2.test.ts`, with the shared repository builder `test/helpers/action-repo.ts`. 15 of the first 18 were red on `6aad6f1`. The three that passed pin behaviour that was already right and make the review's survivors red: the `..`, `.GIT`, `.git` and `.` tree entries, base before head, and the copy in many chunks. Three tests were added after the fixes to make new survivors red (below).
+
+**m1 (lead decision: per-item matching).** The count rule is gone (`GAP_DIMENSIONS`, `gapRises`). `newGapItems` in `action/base-head-differ.mjs` matches every gap item of the head with the base's:
+- an opaque source by (node or Kustomize root, reason);
+- an unreadable file by path;
+- a skipped object by (file, document, item);
+- an unresolved item by (subject, why, where);
+- a submodule by path (`copyCommitTree` now returns the paths);
+- edges not kept over the run limit by their count, since the report lists none of them.
+
+A head item with no equal base item is new. Removing a base gap never compensates (test: one unresolved item swapped for another). The review's swap repro (hide the Gitea cycle with a kind typo and delete an unrelated gapped Application) is NOT CHECKED. The summary names each new item after `new in the head:`, at most `GAP_LIST_ENTRIES` (21, crankpath's `explainListEntries`, held equal by a test), then counts the rest.
+
+**m2 (lead decision: the order).** The decision now runs in this order:
+1. NOTHING ANALYSED or a timeout on either side is NOT CHECKED.
+2. Any new uncranked cycle is FAILED. A cycle that needs a declared edge the PR adds shows its `declared (unverified)` label and the edge marked `[declared, not verified]`. Gap items new in the head are listed beside it ("Gaps new in the head: N").
+3. With no new cycle, new gap items are NOT CHECKED: "the head has N gaps the base did not have, so what they hide could not be compared (listed below)".
+4. With no new cycle, new graph-changing declared facts are NOT CHECKED in their own words: "the head relies on N declared facts the base did not (crankpath.yaml; documented by the PR author, not verified; listed below)". These are a declared edge by (from, to, kind), a match override by (host, node), and a used `crankpath.yaml` repos: mapping by (url, root). "reads less" appears nowhere.
+
+The review's p10 repro edge (`Deployment/web/web` depends on `Application/argocd/web`) closes no cycle, because the Application does not depend on the Deployment. The test uses the reverse edge, which does close one.
+
+**m3.** After each copy the Action resolves, with every link followed, the scanned path, a relative `config` and every relative alias path. Each must stay under the copy's real root (`placeInCopy`), or the result is NOT CHECKED: `path "sub/dir" in the base commit leads outside the copy (through a symbolic link)`, and the same form for `config` and `repo-alias line N`. A missing path keeps its own reason (`path-missing`, `config-missing`). `parseAliases` now records each entry's line.
+
+**m4.** Five survivors red:
+- the `.git` segment check (1 red) and the `..` segment check (1), by crafted trees written with `hash-object --literally`;
+- head before base (2): a probe CLI records the order, and the base must run first;
+- the multi-chunk copy: compared byte for byte with a single chunk, and its blob fetches counted through a git wrapper, so ignoring the chunk bound is red (1);
+- the scan directory: now checked by its real path, the `lstat`-to-`stat` mutation no longer applies, and the outside-link test is red without the check (1).
+
+**m5 (lead decision: crankpath's own limits).** `copyCommitTree` takes `CopyBounds`, built by `copyBounds(LIMITS)` from crankpath's limits by name:
+- `filesPerScan`: tree entries;
+- `fetchedRepoBytes`: all blob bytes;
+- `fileBytes`: the largest blob;
+- `repoFetchWallClock`: the whole copy, checked before and after each git call, and passed as the call's timeout.
+
+The entries, bytes and blob checks run before anything is written. `main` loads `LIMITS` from the build this Action made (`dist/u1-graph-model/limits.js`, dynamic import). A hit is NOT CHECKED with the limit named, for example `the base commit is over a bound of the Action's copy: a file over fileBytes (10 bytes)`. A write the file system refuses for any reason other than an existing entry (name too long, no space) is `copy-io`, in its own words, never "a path crankpath will not write". **Not applied yet:** `filesPerScan` is not derived on `main` and `fetchedRepoBytes` and `repoFetchWallClock` do not exist there; they are B3's. Until B3 merges, only `fileBytes` bounds a copy. When B3 lands I will add a test that all four come from the build.
+
+**Nits.**
+- n1: the guide says directories that differ only in case merge in a copy on a case-insensitive file system (a superset, the same on both sides).
+- n2: the guide's cache paragraph says the base runs first, and a fetch that fails for the base only is a false failure.
+- n3: no change.
+
+**Hand mutations of the fixes, run 2026-11-16 and reverted.** Each turned `test/u10-github-action` red:
+- new gaps ignored (10 red), new declared facts ignored (2), gaps decided before cycles (1);
+- each key narrowed: skipped by file only (1), unresolved by why only (1), opaque by reason only (1), override by node only (1); run-limit edges ignored (1);
+- the gap list uncapped (1);
+- the scan, config and alias outside checks off (1 each);
+- each of the four copy bounds off (1 to 2), the I/O failure worded as unsafe (1);
+- the batch parse off by one (39), the chunk bound ignored (1).
+
+The three key mutations survived at first; a test of items that differ only in that part of the key now catches them.
+
+**What changed in meaning:**
+- Gaps are matched item by item. A swap no longer clears a head, and a new gap whose kind the base already had in equal number is now NOT CHECKED.
+- A new cycle is FAILED even when the head also has new gaps (before: NOT CHECKED).
+- A declared fact the base did not rely on, with no new cycle, is NOT CHECKED in its own words (before: counted as "reads less").
+- A path that resolves outside its copy is NOT CHECKED (before: read).
+- A copy over a derived bound is NOT CHECKED naming it.
+- I/O failures have their own words.
+- The `gap-rise` case now names its two new gap items. `docs/action.md` quotes the new output (2026-11-16, test-checked).
+
+**Merge of main (955014c, lead BUILD-NOTES only).** BUILD-NOTES conflict only, resolved as main's file followed by the B8 sections.
+
+**Verified.** Two full harness runs, the second under `LANG=de_DE.UTF-8 LC_ALL=de_DE.UTF-8 TZ=Asia/Tokyo`, were byte-identical. `npm run verify` on 2026-11-16, exit 0:
+```
+Checked 193 files in 72ms. No fixes applied.
+ Test Files  86 passed (86)
+      Tests  1539 passed (1539)
+Statements   : 94.52% ( 6594/6976 )
+Branches     : 87.29% ( 4755/5447 )
+Functions    : 97.93% ( 950/970 )
+Lines        : 96.09% ( 5637/5866 )
+check-tree: 426 files read, 0 finding(s)
+```
+
+### Merge of main (B3 `ede1900`), 2026-11-16
+- **The merge.** It is a merge commit, `b09e5bd`. Conflicts appeared only in `BUILD-NOTES.md` and `docs/lookups.md`, where both sides appended sections at the end. Each is resolved as main's file followed by the B8 sections. There was no code conflict, and the Action's 136 tests passed on the merged tree before any change.
+- **All four copy bounds now come from the build.** B3 derives `filesPerScan` (279,235 files) and adds `fetchedRepoBytes` (74,200,599 bytes) and `repoFetchWallClock` (90,000 ms), beside `fileBytes` (10,000,000 bytes).
+  - `loadCopyBounds()` in `action/action-entry.mjs` imports the build's `LIMITS` and passes them through `copyBounds`. `main` now calls it.
+  - Two tests check this:
+    1. All four bounds equal the source `LIMITS`, by name, value and unit, and `loadCopyBounds()` returns the same four. This was red before the function existed.
+    2. The entry script, run as a program on a head holding a file one byte over `fileBytes`, ends NOT CHECKED: `the head commit is over a bound of the Action's copy: a file over fileBytes (10,000,000 bytes)`.
+  - `docs/action.md` gives the four values and points to `docs/limits.md`.
+- **For the lead.** `fetchedRepoBytes` is derived from what one run can hold (`runMemory` / 33). A GitOps repository whose committed blobs total more than 74,200,599 bytes is therefore NOT CHECKED on every pull request, naming that bound. The same holds for a repository with more than 279,235 tree entries. That is the bound as decided; it reaches large monorepos.
+- **Verified.**
+  - The harness output is byte-identical to the pass-2 run, and identical again under `LANG=de_DE.UTF-8 LC_ALL=de_DE.UTF-8 TZ=Asia/Tokyo`.
+  - `npm run verify` on 2026-11-16, exit 0:
+  ```
+  Checked 214 files in 120ms. No fixes applied.
+   Test Files  98 passed (98)
+        Tests  1750 passed (1750)
+  Statements   : 94.31% ( 7893/8369 )
+  Branches     : 87.76% ( 5817/6628 )
+  Functions    : 97.79% ( 1062/1086 )
+  Lines        : 96.3% ( 6742/7001 )
+  check-tree: 460 files read, 0 finding(s)
+  ```
+
+### Copy only what crankpath reads (lead decision after the B3 merge, 2026-11-16)
+- **The decision.** From each commit, the Action now copies only what the CLI reads, and applies the four bounds to that set:
+  - the subtree at `path`;
+  - a relative `config`;
+  - the subtrees of relative alias paths.
+  
+  When `path` is the repository root, it still copies the whole tree. The listing is `git ls-tree -r -z -l --full-tree <commit> -- <paths>`, run with `GIT_LITERAL_PATHSPECS=1`, so an input is a literal path and never a pattern. A pull request to a large monorepo is now bounded by its estate, not by the repository.
+- **Links on the way to a path.** Before the copy, `pathKind` walks every requested path one parent directory at a time with `git ls-tree`. If the path itself or any directory above it is a symbolic link in that commit, the result is NOT CHECKED, with the m3 wording: "... leads outside the copy (through a symbolic link)". The Action never follows a link to decide what to copy. A link elsewhere in the repository could point into the copied set; that case is refused too, which is the safe direction. The real-path checks after the copy stay as a second guard.
+- **`.git/config` (confirmed).** The CLI reads `.git/config` for the origin only when `--repo-url` is not given. The Action passes `--repo-url` whenever `GITHUB_SERVER_URL` and `GITHUB_REPOSITORY` have the expected shape. A copy never holds a `.git` entry: a tree entry named `.git` in any case stops the copy. So even without `--repo-url`, the CLI finds no git configuration, on either side alike. A test asserts that no copy holds `.git`.
+- **Tests written first** (`review-b8-pass2.test.ts`, "copy only what crankpath reads", 3 red before the change):
+  1. A file over a small `fileBytes` outside the scanned path no longer stops the check. Its twin, the same file inside the path, still does.
+  2. A probe CLI lists each copied tree and finds only `estate/`, `ci/cfg.yaml` and `vendor/x`: no `big/` and no `.git`.
+  3. A directory literally named `e*` is copied alone, never matched as a pattern.
+- **Hand mutations, run and reverted:**
+  - Always copying the whole tree turned 3 tests red.
+  - Skipping the link-ancestor check turned 1 red.
+  - Dropping `GIT_LITERAL_PATHSPECS` survived, and it is equivalent on git 2.55.0: `git ls-tree` does no glob matching (`git ls-tree -r HEAD -- 'a*'` lists nothing in a repository whose only directory is `a`). The variable stays, so a git that matched patterns there would still be held to literal paths.
+- **What changed in meaning:**
+  - The bounds count only what crankpath reads.
+  - A scanned path, config or alias path under a link in its commit is NOT CHECKED even when the link points back inside the repository. Before, a link that stayed inside the copy was followed.
+  - The harness output is unchanged (byte-identical).
+- **Verified.** `npm run verify` on 2026-11-16, exit 0:
+  ```
+  Checked 214 files in 88ms. No fixes applied.
+   Test Files  98 passed (98)
+        Tests  1753 passed (1753)
+  Statements   : 94.21% ( 7922/8408 )
+  Branches     : 87.68% ( 5846/6667 )
+  Functions    : 97.79% ( 1066/1090 )
+  Lines        : 96.21% ( 6763/7029 )
+  check-tree: 460 files read, 0 finding(s)
+  ```
+
+### Review fixes, pass 3 (reviews/bolt-8-review-pass-3.md: 1 Major, 3 Minor, 2 Nit; lead decisions of 2026-11-16)
+Tests written first in `test/u10-github-action/review-b8-pass3.test.ts`: 32 of the first 46 were red on `de901ae`. The 14 that passed are the m1 key-part tests whose field was already in the key, plus the `derived` check. All 14 are now shown able to fail by mutation, below.
+
+The review file is committed with one phrase reworded: it named the design workspace's folder, the local settings folder and the start file literally, which check-tree refuses. The file says so at its end.
+
+- **M1 (lead decision: multiset over full keys).**
+  - `readReport` gives every gap item and declared fact a key: `canonical` JSON of the item as the report carries it, every field included, objects with sorted keys. This covers opaque, unreadable, skipped and unresolved items, match overrides, repo mappings, and declared edges with their evidence.
+  - `newItems` matches each base item with one equal head item. Every head item left over is new.
+  - The review's s6 (a second unplaced source on a multi-source Application) is now NOT CHECKED, naming the new `host-unplaced` item. So is a second identical item.
+  - The `docs/action.md` sentence that said a head with more gaps "never gets this far" is replaced. The guide now describes the multiset and the full keys.
+- **m1.** The five survivors are red. A table test changes each field of each item kind, one at a time; every change must be a new item, and its twin (the same item) must not be. Further tests cover a declared edge whose evidence moves, and a limit that is not `derived` (no bound).
+  - Mutations, run and reverted. Each narrowed key turned tests red: unresolved (5), override host only (3), mapping url only (4), unreadable path only (3).
+  - The multiset turned into a set (1), the `derived` check dropped (1).
+- **m2.** A copy bound names what is over it, capped at 21 with a count:
+  - `fileBytes`: the files over it;
+  - `fetchedRepoBytes`: the largest files;
+  - `filesPerScan`: the top-level directories of what was listed, with their entry counts.
+  
+  These appear as `over the bound: path "docs/demo.mp4"  (20,000 bytes)` lines. When `path` is the repository's root, the reason adds: `with path the repository's root the whole tree is copied, so set the path input to the estate's directory and only what crankpath reads counts`. Mutations: list uncapped (1), hint dropped (3).
+- **m3.** The guide states the safe-direction false NOT CHECKED. Keys hold the file, document number and field, so a gap that only moves is new: renaming its file, inserting a document before it, or adding a source ahead of it in a list.
+- **n1.** The entries bound is applied while the listing is parsed. The parse stops once one more entry than `filesPerScan` would be taken; there is no longer a check after the parse. Test: an unsafe `.GIT` entry past the bound is never reached, so the bound is the reason. Off-by-one mutation (`>=` to `>`) turned 1 red.
+- **n2.** Covered by M1 (the opaque key now holds `field` and every other field).
+- **What changed in meaning:**
+  - Gap items match only when every field the report carries is equal, and as a multiset: more items are new (NOT CHECKED), never fewer.
+  - A bound hit names the paths over it and, for a whole-tree copy, the way out.
+  - The entries bound stops the parse early, so an entries-bound hit wins over an unsafe entry later in the listing.
+  - The harness output is byte-identical to the previous run, and identical again under `LANG=de_DE.UTF-8 LC_ALL=de_DE.UTF-8 TZ=Asia/Tokyo`.
+- **Verified.** `npm run verify` on 2026-11-16, exit 0:
+  ```
+  Checked 215 files in 101ms. No fixes applied.
+   Test Files  99 passed (99)
+        Tests  1799 passed (1799)
+  Statements   : 94.25% ( 7952/8437 )
+  Branches     : 87.68% ( 5879/6705 )
+  Functions    : 97.82% ( 1077/1101 )
+  Lines        : 96.23% ( 6790/7056 )
+  check-tree: 462 files read, 0 finding(s)
+  ```

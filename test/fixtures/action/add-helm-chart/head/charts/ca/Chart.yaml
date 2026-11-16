@@ -1,0 +1,4 @@
+apiVersion: v2
+name: ca
+description: A self-issued certificate authority (a fixture chart written for crankpath's tests).
+version: 0.1.0

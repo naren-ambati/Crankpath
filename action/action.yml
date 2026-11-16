@@ -1,0 +1,60 @@
+# crankpath GitHub Action (U10, contract C10). A composite Action: it builds crankpath from this
+# Action's own checkout (`npm ci --ignore-scripts`, then the build; nothing comes from a registry),
+# copies the head commit and the base (the merge base of base-ref and the head) out of git raw into
+# the runner's temporary directory, analyses both with the same config and alias rules, and fails
+# only on a new uncranked cycle (an uncranked head cycle with an edge the base graph lacks, or one
+# whose base crank was removed). When it cannot compare (no base commit, a shallow checkout without
+# it, no new cycle but a gap the base did not have, a tool error, NOTHING ANALYSED or a timeout on either
+# side) it says NOT CHECKED and the step fails: a check that did not run is never green. It writes only the job summary, the annotations, the outputs
+# and its exit status. Inputs reach the script as environment variables, never inside a command.
+# The calling workflow should grant `permissions: contents: read` only; the Action needs no token.
+# This Action has not run on a GitHub-hosted runner yet (see docs/action.md).
+name: crankpath
+description: Fails a pull request only when it adds an uncranked dependency cycle to a GitOps estate; says NOT CHECKED when it cannot compare.
+inputs:
+  path:
+    description: The directory to scan, relative to the workspace, inside a git checkout that holds the base commit and the history back to the merge base (use fetch-depth 0).
+    required: false
+    default: "."
+  config:
+    description: crankpath.yaml location, relative to the repository root (read from each commit) or absolute (the same file for both; keep it outside the workspace, which the pull request controls); empty means crankpath.yaml at the scanned path.
+    required: false
+    default: ""
+  base-ref:
+    description: The base branch side; the Action compares with the merge base of this commit and the head. Defaults to the pull request base. Empty (not a pull request) gives NOT CHECKED.
+    required: false
+    default: ${{ github.event.pull_request.base.sha }}
+  repo-alias:
+    description: Newline-separated url=path entries mapping a repoURL to a local path (relative paths are read from each commit; absolute ones are the same for both and belong outside the workspace).
+    required: false
+    default: ""
+outputs:
+  result:
+    description: FAILED, NO_NEW_CYCLES_FOUND (never a pass; see the job summary) or NOT_CHECKED.
+    value: ${{ steps.check.outputs.result }}
+  new-cycles:
+    description: The number of new uncranked cycles; empty when the result is NOT_CHECKED.
+    value: ${{ steps.check.outputs.new-cycles }}
+runs:
+  using: composite
+  steps:
+    # actions/setup-node v7.1.0, released 2026-10-08, commit read from the GitHub API on 2026-11-15
+    - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+      with:
+        node-version: "22"
+        package-manager-cache: false
+    - name: Build crankpath from this Action's checkout
+      shell: bash
+      env:
+        CRANKPATH_ACTION_PATH: ${{ github.action_path }}
+      run: bash "$CRANKPATH_ACTION_PATH/build.sh"
+    - name: Compare the base and the head
+      id: check
+      shell: bash
+      env:
+        CRANKPATH_ACTION_PATH: ${{ github.action_path }}
+        INPUT_PATH: ${{ inputs.path }}
+        INPUT_CONFIG: ${{ inputs.config }}
+        INPUT_BASE_REF: ${{ inputs.base-ref }}
+        INPUT_REPO_ALIAS: ${{ inputs.repo-alias }}
+      run: node "$CRANKPATH_ACTION_PATH/action-entry.mjs"

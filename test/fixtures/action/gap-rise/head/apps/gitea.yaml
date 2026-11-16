@@ -1,0 +1,4 @@
+# The pull request makes the file that carries the Gitea cycle unreadable (not valid YAML):
+# the head reads less than the base, so nothing can be cleared.
+a: [unclosed
+  b: {

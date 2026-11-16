@@ -1,0 +1,4 @@
+# A key crankpath does not know: the head cannot be analysed (crankpath exits 1).
+crank:
+  - creates: Service/gitea/gitea-http
+    by: "a misspelt key"

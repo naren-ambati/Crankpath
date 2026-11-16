@@ -1,0 +1,15 @@
+# Argo CD deploys Gitea from a repository that this same Gitea serves.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: gitea
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: http://gitea-http.gitea:3000/ops/estate
+    targetRevision: main
+    path: platform/gitea
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: gitea

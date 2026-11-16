@@ -1,0 +1,6 @@
+# The pull request adds Gitea under Argo CD and documents how a cold start gets past the loop:
+# Gitea's objects are applied by hand from this checkout before Argo CD syncs.
+cranks:
+  - creates: render:platform/gitea
+    by: "kubectl apply -f platform/gitea from a laptop checkout, runbook BS-1"
+    ref: runbooks/bs-1.md

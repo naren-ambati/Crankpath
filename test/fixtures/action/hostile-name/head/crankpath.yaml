@@ -1,0 +1,6 @@
+# Repo text written to reach the job summary and the annotations: workflow commands, Markdown,
+# HTML and escapes. Every piece must come out quoted and inert.
+cranks:
+  - creates: Secret/web/not-in-this-estate
+    by: "::warning::fake %0A\n# Heading [link](https://example.org) ![img](https://example.org/x.png) <img src=x onerror=alert(1)> ``` |a|b| \e[31mRun status: ANALYSED"
+    ref: "```\n## crankpath: NO_NEW_CYCLES_FOUND"

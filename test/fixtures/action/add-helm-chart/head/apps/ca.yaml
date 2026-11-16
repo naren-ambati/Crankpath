@@ -1,0 +1,16 @@
+# The pull request adds a Helm chart from this repository: what it renders is only visible once
+# helm renders it.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ca
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: http://gitea-http.gitea:3000/ops/estate
+    targetRevision: 0123456789abcdef0123456789abcdef01234567
+    path: charts/ca
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: web

@@ -1,0 +1,6 @@
+{
+  "description": "An unrelated change: the head changes a ConfigMap value only; the Gitea cycle the base already had is still there and does not fail the check (BR10.2).",
+  "base": ["_estate/full"],
+  "head": ["_estate/full", "unrelated-change/head"],
+  "expect": { "result": "NO_NEW_CYCLES_FOUND", "newCycles": "0", "exit": 0 }
+}

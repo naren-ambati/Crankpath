@@ -1,0 +1,7 @@
+{
+  "description": "A PR that adds a Helm chart (rendered by the fake helm of test/fixtures/fake-tools, put first on PATH) whose rendered Issuer and Certificate form a self-issued CA cycle: visible only once the chart renders, and new, so the check fails.",
+  "base": ["_estate/full"],
+  "head": ["_estate/full", "add-helm-chart/head"],
+  "tools": "fake",
+  "expect": { "result": "FAILED", "newCycles": "1", "exit": 1 }
+}

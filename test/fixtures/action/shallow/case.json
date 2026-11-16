@@ -1,0 +1,7 @@
+{
+  "description": "A shallow checkout that does not hold the base commit: NOT CHECKED, never a comparison against nothing (BR10.7).",
+  "base": ["_estate/web-only"],
+  "head": ["_estate/full"],
+  "clone": "shallow",
+  "expect": { "result": "NOT_CHECKED", "newCycles": "", "exit": 1 }
+}

@@ -1,0 +1,6 @@
+{
+  "description": "The head crankpath.yaml is invalid, so crankpath stops with a usage error on the head: NOT CHECKED (BR10.7).",
+  "base": ["_estate/web-only"],
+  "head": ["_estate/full", "tool-error/head"],
+  "expect": { "result": "NOT_CHECKED", "newCycles": "", "exit": 1 }
+}

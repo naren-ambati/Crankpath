@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gitea-config
+  namespace: gitea
+data:
+  APP_NAME: estate
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: gitea-admin
+  namespace: gitea
+type: Opaque
+stringData:
+  password: fixture-value-that-must-not-be-printed

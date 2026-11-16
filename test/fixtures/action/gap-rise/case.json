@@ -1,0 +1,6 @@
+{
+  "description": "The head reads less than the base: the PR makes the file holding the Gitea cycle unreadable, so the cycle drops out of the head. NOT CHECKED naming the counts that rose, never cleared (M1).",
+  "base": ["_estate/full"],
+  "head": ["_estate/full", "gap-rise/head"],
+  "expect": { "result": "NOT_CHECKED", "newCycles": "", "exit": 1 }
+}

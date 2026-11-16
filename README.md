@@ -2,7 +2,7 @@
 
 **A black-start planner and cycle finder for GitOps estates.** It reads a GitOps repository, renders its Helm and Kustomize sources, and reports every dependency cycle, the nodes unreachable from a cold start, the external preconditions, and an ordered restoration plan with the manual "crank" steps marked. It needs no cluster.
 
-Status: in development (v0.1.0 being built; see BUILD-NOTES.md). The command is `crankpath`; the package's library entry (`src/u9-cli-package/library.ts`) is unstable until 1.0, and the JSON output with its `schemaVersion` is the stable contract: schema version 1, frozen in B6, described in `docs/json-output.md` with its JSON Schema in `schemas/crankpath-report.schema.json`. Formats: `--format text` (default), `json` and `mermaid`; `--explain [id]` prints the evidence behind a cycle or node.
+Status: in development (v0.1.0 being built; see BUILD-NOTES.md). The command is `crankpath`; the package's library entry (`src/u9-cli-package/library.ts`) is unstable until 1.0, and the JSON output with its `schemaVersion` is the stable contract: schema version 1, frozen in B6, described in `docs/json-output.md` with its JSON Schema in `schemas/crankpath-report.schema.json`. Formats: `--format text` (default), `json` and `mermaid`; `--explain [id]` prints the evidence behind a cycle or node. A GitHub Action (`action/`, guide in `docs/action.md`) fails a pull request only on a new uncranked cycle and says NOT CHECKED when it cannot compare; it has never run on a GitHub-hosted runner.
 
 helm and kustomize are found on `PATH` and run with an empty `PATH` of their own, so each must be the real binary: a version-manager shim or a wrapper script that looks a program up on `PATH` does not run, and the toolchain line says so.
 

@@ -1,0 +1,22 @@
+---
+# Source: ca/templates/ca.yaml
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: RELEASE
+spec:
+  ca:
+    secretName: RELEASE-key
+---
+# Source: ca/templates/ca.yaml
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: RELEASE
+spec:
+  isCA: true
+  commonName: RELEASE
+  secretName: RELEASE-key
+  issuerRef:
+    name: RELEASE
+    kind: Issuer

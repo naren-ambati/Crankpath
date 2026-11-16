@@ -1,0 +1,14 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: web
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: http://gitea-http.gitea:3000/ops/estate
+    targetRevision: main
+    path: platform/web
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: web

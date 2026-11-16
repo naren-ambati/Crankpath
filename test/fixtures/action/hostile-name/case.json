@@ -1,0 +1,11 @@
+{
+  "description": "A PR adding the cycle with repo text built to break out of the summary and the annotations: file names holding workflow commands, Markdown, HTML, a newline and a terminal escape, and a crank whose text does the same. Every piece is quoted and inert; the cycle still fails the check.",
+  "base": ["_estate/web-only"],
+  "head": ["_estate/full", "hostile-name/head"],
+  "renames": {
+    "apps/gitea.yaml": "apps/gitea,line=1::error::owned%0D%0A.yaml",
+    "platform/gitea/service.yaml": "platform/gitea/::error title=x::pwned%0A,[y](javascript:alert(1))<img src=x>#.yaml",
+    "platform/gitea/deployment.yaml": "platform/gitea/deploy\n\u001b[31mRun status: ANALYSED.yaml"
+  },
+  "expect": { "result": "FAILED", "newCycles": "1", "exit": 1 }
+}

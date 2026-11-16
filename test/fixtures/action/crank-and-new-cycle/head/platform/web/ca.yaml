@@ -1,0 +1,23 @@
+# A self-signed CA chicken-and-egg the pull request adds beside Gitea: the Issuer needs the
+# Secret the Certificate it issues produces. No crank covers it.
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: web-ca
+  namespace: web
+spec:
+  ca:
+    secretName: web-ca-key
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: web-ca
+  namespace: web
+spec:
+  isCA: true
+  secretName: web-ca-key
+  commonName: web-ca
+  issuerRef:
+    name: web-ca
+    kind: Issuer

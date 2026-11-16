@@ -1,0 +1,6 @@
+{
+  "description": "The base holds no GitOps source: crankpath reports NOTHING ANALYSED for it, so nothing can be compared (OD-27 c).",
+  "base": ["nothing-analysed/base"],
+  "head": ["_estate/full"],
+  "expect": { "result": "NOT_CHECKED", "newCycles": "", "exit": 1 }
+}
