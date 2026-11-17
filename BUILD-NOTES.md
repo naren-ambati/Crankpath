@@ -2608,3 +2608,18 @@ Before the first push, as for the owner's sibling project mel-check:
   - `npm run verify:golden`: 19 passed, 0 failed, 0 skipped.
   - `npm run release:check` with the owner's denylist supplied through `CRANKPATH_DENYLIST_FILE` (kept outside the repository): 10 passed, 0 failed, 0 not run; the denylist check covered files, names, all 16 commits and the git config.
 - Pushed as `main` only; the local `bolt/*` and `release/*` branches stay local. Nothing is on npm; the release workflow runs only on a pushed `v*` tag (`docs/release-checklist.md`).
+
+## Scenario census before the push (2026-11-16, coordinator)
+
+Every documented scenario was run again from a fresh clone of the rewritten history (a different parent folder, `npm ci --ignore-scripts`, `npm run build`), each compared with what the repository says it produces, not with an aggregate count:
+
+| Lane | Scenarios | Result |
+|---|---|---|
+| Screenshot scenarios (`docs/images/capture.mjs` in trial mode, outside `docs/images`) | 15 scenarios, 24 commands | 15 of 15 match what is written down; every transcript identical to the committed one apart from the time fields; exits 0/1/1/2 on the exit-codes scenario as pinned |
+| Examples lane (`node scripts/examples.mjs`) | 10 examples, 21 runs | 21 passed, 0 failed, 0 skipped (byte-for-byte against the pinned outputs) |
+| Action harness (`node scripts/action-local.mjs <case>`) | 12 fixture cases | every case's result, exit status and new-cycle count equal its `case.json` (2 NO_NEW_CYCLES_FOUND, 5 FAILED, 5 NOT_CHECKED) |
+| Live render lane (`npm run verify:live`, real helm v4.3.2 and kustomize v5.8.1, network) | 8 checks + the live fetch | 8 passed, 0 skipped; live fetch RAN on the pinned public repository and again from the verified cache |
+| Golden lane (`npm run verify:golden`, helm + network, empty cache) | 19 checks | 19 passed, 0 failed, 0 skipped |
+| Release checks with the owner's denylist | 10 checks | 10 passed, 0 not run |
+
+Not run here, as before: a GitHub-hosted runner, Linux and x64, the release workflow.
